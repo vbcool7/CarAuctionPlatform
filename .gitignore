@@ -1,0 +1,21 @@
+
+# backend
+API/node_modules/
+API/.env
+
+# frontend
+CarAuction/node_modules/
+CarAuction/dist/
+CarAuction/.env
+CarAuction/.env.production
+
+# frontend
+Admin/node_modules/
+Admin/dist/
+Admin/.env
+Admin/.env.production
+
+# common
+npm-debug.log*
+yarn-debug.log*
+*.zip

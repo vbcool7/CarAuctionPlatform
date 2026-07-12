@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* hide scrollbar  */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+/* home - review  */
+.testimonialSwiper {
+    padding-bottom: 60px !important;
+}
+
+.testimonialSwiper .swiper-pagination {
+    bottom: 10px !important;
+}
+
+.testimonialSwiper .swiper-pagination-bullet {
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, .35);
+    opacity: 1;
+}
+
+.testimonialSwiper .swiper-pagination-bullet-active {
+    width: 30px;
+    border-radius: 999px;
+    background: #D97706;
+}
+
+/* sidebar filter page */
+.vehicleList .swiper-pagination-bullet {
+    width: 6px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.8);
+    opacity: 1;
+    margin: 0 4px !important;
+    transition: all 0.3s ease;
+}
+
+.vehicleList .swiper-pagination-bullet-active {
+    width: 7px;
+    height: 7px;
+    background: #D97706 !important;
+}
