@@ -46,6 +46,13 @@ const menuItems = [
         icon: RiAuctionLine,
         label: "Auction Management",
         active: false,
+        submenu: [
+            { id: "all-auctions", label: "All Auctions" },
+            { id: "live-auctions", label: "Live Auctions", badge: "Live" },
+            { id: "upcoming-auctions", label: "Upcoming Auctions" },
+            { id: "completed-auctions", label: "Completed Auctions" },
+            { id: "cancelled-auctions", label: "Cancelled Auctions" },
+        ]
     },
     {
         id: "bid-management",
@@ -238,7 +245,21 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                                                         : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                                                     }`}
                                             >
-                                                {subitem.label}
+                                                <div className="flex items-center gap-5">
+                                                    {subitem.label}
+                                                    
+                                                    {/* sub menu badge */}
+                                                    {subitem.badge && (
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors
+                                                            ${currentPage === subitem.id
+                                                                ? "bg-green-600 text-white"
+                                                                : "bg-transparent text-slate-500 border border-slate-500"
+                                                            }`}
+                                                        >
+                                                            {subitem.badge}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </button>
                                         ))}
                                     </div>

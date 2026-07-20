@@ -1,52 +1,122 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Filter, Calendar, Edit2, PauseCircle, Trash2, Eye } from 'lucide-react';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import DeleteModal from './Shared/DeleteModal';
 import { dummySeller } from '../Data';
 
+const filterConfig = [
+  {
+    label: 'Seller Type',
+    key: 'sellerType',
+    options: ['All', 'Dealer', 'Individual'],
+  },
+  {
+    label: 'Status',
+    key: 'status',
+    options: ['All', 'Active', 'Inactive', 'Suspended'],
+  },
+  {
+    label: 'Trade License',
+    key: 'tradeLicense',
+    options: ['All', 'Verified', 'Pending', 'Expired', "Not Applicable"],
+  },
+];
+
 function SellerList({ sellers, onViewSeller, setCurrentPage }) {
+
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // filter drop down
+  const [filters, setFilters] = useState({
+    verificationStatus: 'All',
+    status: 'All',
+    kycStatus: 'All',
+  });
+
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // delete 
+  const handleDeleteClick = (seller) => {
+    setDeleteTarget(seller);
+  };
+
+  const handleDeleteConfirm = () => {
+    console.log('deleting seller:', deleteTarget.id);
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
+  };
+
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
+    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
 
-      {/* top filter bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+      {/* top filter part */}
+      <div className="bg-white rounded-2xl md:border md:border-slate-100 md:shadow-sm p- sm:p-6 space-y-4">
 
-        <div className="lg:col-span-2">
+        {/* Row 1: Search full width on its own */}
+        <div>
           <label className="block text-xs font-semibold text-slate-500 mb-2">Search</label>
           <div className="relative">
             <Search className="absolute left-3 top-3 text-slate-400" size={18} />
             <input
               type="text"
               placeholder="Search by name, email, phone or user ID..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-100 outline-none transition-all"
             />
           </div>
         </div>
 
-        {/* Dropdowns */}
-        {['Seller Type', 'Status', 'Trade License'].map((label) => (
-          <div key={label}>
-            <label className="block text-xs font-semibold text-slate-500 mb-2">{label}</label>
-            <select className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100">
-              <option>All</option>
-            </select>
-          </div>
-        ))}
+        {/* Row 2: Dropdowns + date + button, wraps naturally */}
+        <div className="flex flex-wrap gap-4 items-end">
+          {filterConfig.map(({ label, key, options }) => (
+            <div key={key} className="flex-1 min-w-35">
+              <label className="block text-xs font-semibold text-slate-500 mb-2">{label}</label>
+              <select
+                value={filters[key]}
+                onChange={(e) => updateFilter(key, e.target.value)}
+                className="w-full px-3 py-2 md:py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-100"
+              >
+                {options.map((opt) => (
+                  <option
+                    key={opt}
+                    value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
 
-        {/* Date Picker & Filter Button */}
-        <div className="flex gap-2">
-          <div className="flex-1">
+          {/* date selector */}
+          <div className="flex-1 min-w-40">
             <label className="block text-xs font-semibold text-slate-500 mb-2">Join Date</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-3 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Select Date Range"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+              <Calendar className="absolute left-3 top-2.5 z-10 text-slate-400 pointer-events-none" size={18} />
+              <DatePicker
+                selectsRange={true}
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(update) => {
+                  setStartDate(update[0]);
+                  setEndDate(update[1]);
+                }}
+                placeholderText="Select Date Range"
+                className="w-full pl-10 pr-4 py-2 md:py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#D97706] transition-colors"
+                calendarClassName="rounded-xl shadow-lg border-slate-200"
               />
             </div>
           </div>
 
-          <button className="flex items-center gap-2 px-4 py-2.5 mt-6 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-all">
+          <button className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-all whitespace-nowrap">
             <Filter size={18} />
             Filters
           </button>
@@ -173,7 +243,9 @@ function SellerList({ sellers, onViewSeller, setCurrentPage }) {
                         <Edit2 size={16} />
                       </button>
 
-                      <button className="rounded-lg border border-gray-200 p-1.5 text-red-600 hover:text-red-400">
+                      <button
+                        onClick={() => handleDeleteClick(seller)}
+                        className="rounded-lg border border-gray-200 p-1.5 text-red-600 hover:text-red-400">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -193,6 +265,14 @@ function SellerList({ sellers, onViewSeller, setCurrentPage }) {
           </tbody>
         </table>
       </div>
+
+      {/* delete modal */}
+      <DeleteModal
+        isOpen={!!deleteTarget}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        itemName="Seller"
+      />
     </div>
   )
 }

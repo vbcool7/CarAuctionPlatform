@@ -4,17 +4,31 @@ import DatePicker from "react-datepicker";
 import { Calendar } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 
-// dob
-//   const yesterday = new Date();
-//   yesterday.setDate(yesterday.getDate() - 1);
-
-const DateInputField = ({ label, selected, onChange, placeholder = "Select date", required = false }) => {
+const DateInputField = ({ label, selected, onChange, placeholder = "Select date", required = false, variant }) => {
 
     const [isOpen, setIsOpen] = useState(false);
 
+    const pickerProps = {};
+
+    switch (variant) {
+        case "dob":
+            pickerProps.maxDate = new Date();
+            pickerProps.scrollableYearDropdown = true;
+            pickerProps.yearDropdownItemNumber = 100;
+            break;
+
+        case "future":
+            pickerProps.minDate = new Date();
+            break;
+
+        default:
+            break;
+    }
+    
     const CustomInput = forwardRef(({ value, onClick }, ref) => (
-        <div className="relative w-full"
-            onClick={() => setIsOpen(!isOpen)} ref={ref}
+        <div
+            className="relative w-full"
+            onClick={() => setIsOpen(!isOpen)}
             ref={ref}
         >
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -25,7 +39,7 @@ const DateInputField = ({ label, selected, onChange, placeholder = "Select date"
                 readOnly
                 value={value}
                 placeholder={placeholder}
-                className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all text-[#0B1E3D] cursor-pointer"
+                className="w-full h-11 pl-10 pr-4 text-sm text-[#0B1E3D] placeholder:text-slate-400 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all cursor-pointer"
             />
         </div>
     ));
@@ -39,12 +53,16 @@ const DateInputField = ({ label, selected, onChange, placeholder = "Select date"
                 selected={selected}
                 onChange={(date) => {
                     onChange(date);
-                    setIsOpen(false); 
+                    setIsOpen(false);
                 }}
-                open={isOpen} 
+                open={isOpen}
                 onClickOutside={() => setIsOpen(false)}
                 customInput={<CustomInput placeholder={placeholder} />}
-                dateFormat="yyyy/MM/dd"
+                dateFormat="dd/MM/yyyy"
+                showMonthDropdown={variant === "dob"}
+                showYearDropdown={variant === "dob"}
+                dropdownMode="select"
+                {...pickerProps}
             />
         </div>
     );

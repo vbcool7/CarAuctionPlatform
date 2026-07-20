@@ -9,56 +9,8 @@ import ProfileImageUpload from '../Shared/ProfileImageUpload';
 import NotesField from '../Shared/NotesField';
 import CustomDropdown from '../../SharedComponents/CustomDropDown';
 import DateInputField from '../Shared/DateInputField';
+import InputField from '../Shared/InputField';
 
-const InputField = ({ label, name, value, onChange, type = 'text', options = [], disabled = false, required = false }) => {
-
-    const [showPassword, setShowPassword] = useState(false);
-
-    // Determine if we should show the toggle icon
-    const isPasswordField = type === 'password';
-    const inputType = isPasswordField ? (showPassword ? 'text' : 'password') : type;
-
-    return (
-        <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide">
-                {label}
-                {required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            {type === 'select' ? (
-                <select
-                    value={value}
-                    onChange={(e) => onChange(name, e.target.value)}
-                    disabled={disabled}
-                    className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all text-[#0B1E3D] bg-white disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                >
-                    {options.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                </select>
-            ) : (
-                <div className="relative">
-                    <input
-                        type={inputType}
-                        value={value}
-                        onChange={(e) => onChange(name, e.target.value)}
-                        disabled={disabled}
-                        placeholder={`Enter ${label}`}
-                        className="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all text-[#0B1E3D] disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                    />
-                    {isPasswordField && (
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                        >
-                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    )
-};
 
 function AddNewBuyerForm({ setCurrentPage }) {
 
@@ -88,10 +40,10 @@ function AddNewBuyerForm({ setCurrentPage }) {
 
     const [selectedDate, setSelectedDate] = useState(new Date());
 
-    const [selectedGender, setSelectedGender] = useState("Select Gender");
-    const [selectedKYC, setSelectedKYC] = useState("Select KYC Status");
-    const [selectedStatus, setSelectedStatus] = useState("Select Status");
-    const [selectedLang, setSelectedLang] = useState("Select Preffered Language");
+    const [selectedGender, setSelectedGender] = useState("");
+    const [selectedKYC, setSelectedKYC] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState("");
+    const [selectedLang, setSelectedLang] = useState("");
 
     const [authToggle, setAuthToggle] = useState(true);
     const [emailToggle, setEmailToggle] = useState(true);
@@ -126,15 +78,17 @@ function AddNewBuyerForm({ setCurrentPage }) {
                 ]}
                 onBack={() => setCurrentPage('buyers')}
                 backLabel="Back to Buyers"
+                backLabelOnMob="Back"
             />
-
+            
+            {/* form container */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-6">
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
 
                     {/* Personal Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Personal Information
                         </h2>
@@ -149,12 +103,14 @@ function AddNewBuyerForm({ setCurrentPage }) {
                                 label="Date of Birth"
                                 selected={formData.dob}
                                 onChange={(date) => updateField('dob', date)}
-                                placeholder="Select date of birth"
+                                placeholder="Select Date Of Birth"
+                                variant="dob"
                                 required
                             />
 
                             <CustomDropdown
                                 label="Gender"
+                                placeholder="Select Gender"
                                 options={['Male', 'Female', 'Other']}
                                 selected={selectedGender}
                                 onChange={setSelectedGender}
@@ -166,6 +122,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                             {/* preffered lang */}
                             <CustomDropdown
                                 label="Preffered Language"
+                                placeholder="Select Preffered Language"
                                 options={['English']}
                                 selected={selectedLang}
                                 onChange={setSelectedLang}
@@ -179,7 +136,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                     </div>
 
                     {/* Account Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Account Information
                         </h2>
@@ -214,7 +171,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                     </div>
 
                     {/* Verification & Status */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Verification & Status
                         </h2>
@@ -224,6 +181,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                             {/* kyc */}
                             <CustomDropdown
                                 label="KYC Status"
+                                placeholder="Select KYC Status"
                                 options={['NA', 'NA', 'NA']}
                                 selected={selectedKYC}
                                 onChange={setSelectedKYC}
@@ -232,6 +190,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                             {/* acc status */}
                             <CustomDropdown
                                 label="Account Status"
+                                placeholder="Select Status"
                                 options={['NA', 'NA', 'NA']}
                                 selected={selectedStatus}
                                 onChange={setSelectedStatus}

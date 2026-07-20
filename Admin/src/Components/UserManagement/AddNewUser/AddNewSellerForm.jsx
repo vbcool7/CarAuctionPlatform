@@ -54,13 +54,13 @@ function AddNewSellerForm({ setCurrentPage }) {
     });
 
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedGender, setSelectedGender] = useState("Select Gender");
+    const [selectedGender, setSelectedGender] = useState("");
 
-    const [selectedBusiness, setSelectedBusiness] = useState("Select Business Type");
-    const [selectedSeller, setSelectedSeller] = useState("Select Seller Type");
+    const [selectedBusiness, setSelectedBusiness] = useState("");
+    const [selectedSeller, setSelectedSeller] = useState("");
 
     const [authToggle, setAuthoggle] = useState(true);
-    const [selectedLang, setSelectedLang] = useState("Select Prefferd Language");
+    const [selectedLang, setSelectedLang] = useState("");
 
     const [welcomeEmailToggle, setWelcomeEmailToggle] = useState(true);
 
@@ -92,6 +92,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                 ]}
                 onBack={() => setCurrentPage('sellers')}
                 backLabel="Back to Sellers"
+                backLabelOnMob="Back"
             />
 
             {/* form container */}
@@ -101,7 +102,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                 <div className="lg:col-span-2 space-y-6">
 
                     {/* Personal Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Personal Information
                         </h2>
@@ -113,15 +114,17 @@ function AddNewSellerForm({ setCurrentPage }) {
 
                             {/* dob */}
                             <DateInputField
-                                label="Date of Birth"
+                                label="Date Of Birth"
                                 selected={formData.dob}
                                 onChange={(date) => updateField('dob', date)}
-                                placeholder="Select date of birth"
+                                placeholder="Select Date Of Birth"
+                                variant='dob'
                                 required
                             />
 
                             <CustomDropdown
                                 label="Gender"
+                                placeholder="Select Gender"
                                 options={['Male', 'Female', 'Other']}
                                 selected={selectedGender}
                                 onChange={setSelectedGender}
@@ -134,7 +137,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                     </div>
 
                     {/*business Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Business Information
                         </h2>
@@ -145,6 +148,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                             {/* business type */}
                             <CustomDropdown
                                 label="Business Type"
+                                placeholder="Select Business Type"
                                 options={['NA', 'NA', 'NA']}
                                 selected={selectedBusiness}
                                 onChange={setSelectedBusiness}
@@ -154,6 +158,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                             {/* seller type */}
                             <CustomDropdown
                                 label="Seller Type"
+                                placeholder="Select Seller Type"
                                 options={['Dealer', 'Individual']}
                                 selected={selectedSeller}
                                 onChange={setSelectedSeller}
@@ -167,7 +172,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                                 label="Trade License Expiry Date"
                                 selected={formData.tradeLicenseExpiryDate}
                                 onChange={(date) => updateField('tradeLicenseExpiryDate', date)}
-                                placeholder="Select license expiry date"
+                                placeholder="Select License Expiry Date"
                             />
 
                             <InputField label="VAT Number (Optional)" name="vatNumber" value={formData.vatNumber} onChange={updateField} />
@@ -178,7 +183,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                     </div>
 
                     {/* Account Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Account Information
                         </h2>
@@ -213,7 +218,7 @@ function AddNewSellerForm({ setCurrentPage }) {
                     </div>
 
                     {/* additional Information */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
                             Additional Information
                         </h2>
@@ -222,6 +227,7 @@ function AddNewSellerForm({ setCurrentPage }) {
 
                             <CustomDropdown
                                 label="Preffered Language"
+                                placeholder="Select Preffered Language"
                                 options={['English']}
                                 selected={selectedLang}
                                 onChange={setSelectedLang}
@@ -234,46 +240,36 @@ function AddNewSellerForm({ setCurrentPage }) {
                     </div>
 
                     {/* btns */}
-                    <div className='flex justify-between'>
+                    <div className="flex flex-col lg:flex-wrap xl:flex-nowrap xl:flex-row xl:justify-between gap-6">
 
                         {/* toggle */}
-                        <div className='flex gap-2 items-center'>
+                        <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                             <button
                                 onClick={() => setWelcomeEmailToggle(!welcomeEmailToggle)}
                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none 
-                                        ${welcomeEmailToggle ? "bg-[#D97706]" : "bg-gray-300"}`}>
+                        ${welcomeEmailToggle ? "bg-[#D97706]" : "bg-gray-300"}`}>
                                 <span
                                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 
-                                            ${welcomeEmailToggle ? "translate-x-6" : "translate-x-1"}`}
+                            ${welcomeEmailToggle ? "translate-x-5 md:translate-x-6" : "translate-x-1"}`}
                                 />
                             </button>
-                            <div className='flex flex-col gap-1'>
-                                <label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                                <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wide">
                                     Send Welcome Email
-                                </label>
-                                <span className="text-sm text-slate-500">seller will receive an email with login credentails</span>
+                                </span>
+
+                                <span className="text-[13px] md:text-sm text-slate-500">
+                                    Seller will receive an email with login credentials
+                                </span>
                             </div>
                         </div>
 
-                        {/* btns */}
-                        <div className="mt-6 flex items-center justify-end gap-3">
+                        <div className="flex w-full sm:w-auto flex-wrap justify-end gap-3 xl:ml-6 shrink-0">
 
                             {/* Cancel */}
                             <button
                                 onClick={handleCancel}
-                                className="
-            rounded-xl
-            border border-slate-200
-            bg-white
-            px-5 py-2.5
-            text-sm font-medium
-            text-slate-600
-            transition-all duration-300
-            hover:border-[#D97706]
-            hover:bg-amber-50
-            hover:text-[#0B1E3D]
-            cursor-pointer
-        "
+                                className="flex-1 md:flex-none rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 transition-all duration-300 hover:border-[#D97706] hover:bg-amber-50 hover:text-[#0B1E3D] cursor-pointer"
                             >
                                 Cancel
                             </button>
@@ -281,13 +277,11 @@ function AddNewSellerForm({ setCurrentPage }) {
                             {/* Create Buyer */}
                             <button
                                 onClick={handleSubmit}
-                                className="rounded-xl bg-[#D97706] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-[#B45309] hover:shadow-lg active:scale-[0.98] cursor-pointer"
+                                className="flex-1 md:flex-none rounded-xl bg-[#D97706] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-[#B45309] hover:shadow-lg active:scale-[0.98] cursor-pointer"
                             >
                                 Create Seller
                             </button>
-
                         </div>
-
                     </div>
                 </div>
 

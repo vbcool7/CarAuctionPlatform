@@ -24,7 +24,7 @@ function PermissionSelector() {
   return (
     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
       <div className="flex flex-col gap-1.5">
-        <h3 className="font-bold text-slate-800 mb-4">
+        <h3 className="text-base font-bold text-slate-800 mb-4">
           Permissions <span className='text-red-500'>*</span>
         </h3>
 

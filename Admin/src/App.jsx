@@ -18,12 +18,18 @@ import AddNewStaffForm from './Components/UserManagement/AddNewUser/AddNewStaffF
 import BuyerDetail from './Components/UserManagement/BuyerDetail';
 import SellerDetail from './Components/UserManagement/SellerDetail';
 import StaffDetail from './Components/UserManagement/StaffDetail';
+import VehicleApprovals from './Components/VehicleApprovals/VehicleApprovals';
+import AllAuctions from './Components/AuctionManagement/AllAuctions/AllAuctions';
+import LiveAuctions from './Components/AuctionManagement/LiveAuctions/LiveAuctions';
+import LiveAuctionsDetail from './Components/AuctionManagement/LiveAuctions/LiveAuctionsDetail';
+import UpcomingAuctions from './Components/AuctionManagement/UpcomingAuctions/UpcomingAuctions';
+import UpcomingAuctionsDetail from './Components/AuctionManagement/UpcomingAuctions/UpcomingAuctionsDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [currentPage, setCurrentPage] = useState("upcoming-auctions");
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -34,6 +40,9 @@ function App() {
   const [selectedBuyer, setSelectedBuyer] = useState(null);
   const [selectedSeller, setSelectedSeller] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
+
+  // auct management
+  const [selectedAuction, setSelectedAuction] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -134,7 +143,7 @@ function App() {
                 {/* user management */}
                 {currentPage === 'buyers' && <Buyer onViewBuyer={handleViewBuyer} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'sellers' && <Seller onViewSeller={handleViewSeller} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'staffs' && <Staff  onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'staffs' && <Staff onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
 
                 {/* user management - detail page : buyer, seller, staff */}
                 {currentPage === 'buyer-detail' && <BuyerDetail buyer={selectedBuyer} setCurrentPage={setCurrentPage} />}
@@ -145,6 +154,40 @@ function App() {
                 {currentPage === 'add-new-buyer' && <AddNewBuyerForm setCurrentPage={setCurrentPage} />}
                 {currentPage === 'add-new-seller' && <AddNewSellerForm setCurrentPage={setCurrentPage} />}
                 {currentPage === 'add-new-staff' && <AddNewStaffForm setCurrentPage={setCurrentPage} />}
+
+                {/* vehicle approval */}
+                {currentPage === 'vehicle-approvals' && <VehicleApprovals setCurrentPage={setCurrentPage} />}
+
+                {/* auction management */}
+                {currentPage === 'all-auctions' && <AllAuctions setCurrentPage={setCurrentPage} setSelectedAuction={setSelectedAuction} />}
+
+                {/* auc man - live */}
+                {currentPage === 'live-auctions' &&
+                  <LiveAuctions
+                    setCurrentPage={setCurrentPage}
+                    onSelectVehicle={(auction) => {
+                      setSelectedAuction(auction);
+                      setCurrentPage('live-auction-detail');
+                    }}
+                  />
+                }
+                {currentPage === 'live-auction-detail' && (
+                  <LiveAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                )}
+
+                {/* auc man - upcoming */}
+                {currentPage === 'upcoming-auctions' &&
+                  <UpcomingAuctions
+                    setCurrentPage={setCurrentPage}
+                    onSelectVehicle={(auction) => {
+                      setSelectedAuction(auction);
+                      setCurrentPage('upcoming-auction-detail');
+                    }}
+                  />
+                }
+                {currentPage === 'upcoming-auction-detail' && (
+                  <UpcomingAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                )}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

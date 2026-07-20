@@ -12,9 +12,9 @@ const activities = [
 
 function RecentActivities() {
   return (
-    <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm w-full max-w-md">
+    <div className="w-full bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm ">
 
-      <h2 className="text-[15px] md:text-lg font-bold text-gray-900 mb-5 md:mb-6">
+      <h2 className="text-[14px] md:text-base font-bold text-gray-900 mb-5 md:mb-6">
         Recent Activities
       </h2>
 
@@ -22,9 +22,9 @@ function RecentActivities() {
         {activities.map((activity) => {
           const Icon = activity.icon;
           return (
-            <div 
-            key={activity.id} 
-            className="flex items-center justify-between">
+            <div
+              key={activity.id}
+              className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${activity.theme}`}>
                   <Icon className="w-4 h-4" />
@@ -37,7 +37,8 @@ function RecentActivities() {
         })}
       </div>
 
-      <button className="w-full mt-4 py-3 text-[13px] md:text-sm font-semibold text-[#D97706] border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+      <button 
+      className="w-full mt-4 py-2 md:py-3 text-[13px] md:text-sm font-semibold text-[#D97706] border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
         View All Activities
       </button>
     </div>

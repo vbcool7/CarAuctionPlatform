@@ -10,3 +10,78 @@
   -ms-overflow-style: none; 
   scrollbar-width: none; 
 }
+
+/* upcoming auct - calender (sidebar) */
+/* Calendar */
+.biddrive-calendar {
+    border: none !important;
+    width: 100%;
+    font-family: inherit;
+    border-radius: 16px;
+}
+
+/* Header */
+.biddrive-calendar .react-datepicker__header {
+    background: #fff;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 14px;
+}
+
+/* Month */
+.biddrive-calendar .react-datepicker__current-month {
+    color: #0B1E3D;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Week Names */
+.biddrive-calendar .react-datepicker__day-name {
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Days */
+.biddrive-calendar .react-datepicker__day {
+    width: 1.8rem;
+    line-height: 2rem;
+    border-radius: 999px;
+    transition: .2s;
+    color: #334155;
+}
+
+/* Hover */
+.biddrive-calendar .react-datepicker__day:hover {
+    background: #FEF3C7;
+    color: #D97706;
+}
+
+/* Selected */
+.biddrive-calendar .react-datepicker__day--selected {
+    background: #D97706 !important;
+    color: white !important;
+}
+
+/* Today */
+
+.biddrive-calendar .react-datepicker__day--today {
+    font-weight: 700;
+    color: #0B1E3D;
+}
+
+/* Keyboard Selected */
+.biddrive-calendar .react-datepicker__day--keyboard-selected {
+    background: #F59E0B;
+    color: white;
+}
+
+/* Navigation */
+
+.biddrive-calendar .react-datepicker__navigation-icon::before {
+    border-color: #0B1E3D;
+}
+
+/* Remove triangle */
+.react-datepicker__triangle {
+    display: none;
+}

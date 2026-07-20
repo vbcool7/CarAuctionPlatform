@@ -50,7 +50,7 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
     <div>
 
       {/* personal info */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <div className="flex items-center gap-2 mb-4">
           <User className="w-5 h-5 text-amber-500" />
           <h3 className="font-bold text-slate-900">Personal Information</h3>
@@ -69,7 +69,7 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
               ) : (
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
-                  <p className="text-sm font-semibold text-slate-900 mt-1">
+                  <p className="text-sm font-semibold text-slate-700 mt-1">
                     {item.value || '--'}
                   </p>
                 </div>
@@ -79,8 +79,10 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
         </div>
       </div>
 
+      <hr className="my-4 md:my-6 border-slate-100" />
+
       {/* work info */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <div className="flex items-center gap-2 mb-4">
           <Building className="w-5 h-5 text-amber-500" />
           <h3 className="font-bold text-slate-900">Work Information</h3>
@@ -99,7 +101,7 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
               ) : (
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
-                  <p className="text-sm font-semibold text-slate-900 mt-1">
+                  <p className="text-sm font-semibold text-slate-700 mt-1">
                     {item.value || '--'}
                   </p>
                 </div>
@@ -109,8 +111,10 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
         </div>
       </div>
 
+      <hr className="my-4 md:my-6 border-slate-100" />
+
       {/* acc info */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <div className="flex items-center gap-2 mb-4">
           <UserCheck className="w-5 h-5 text-amber-500" />
           <h3 className="font-bold text-slate-900">Account Information</h3>
@@ -141,7 +145,8 @@ function StaffOverviewTab({ isEditing, data, updateField }) {
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
                   {item.name === "status" ? (
-                    <span className={`text-[12px] font-semibold px-2 py-0.5 rounded capitalize ${item.value === 'active' ? 'bg-green-50 text-green-700' :
+                    <span className={`text-[12px] font-semibold px-2 py-0.5 rounded capitalize 
+                      ${item.value === 'active' ? 'bg-green-50 text-green-700' :
                       item.value === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'
                       }`}>
                       {item.value || '--'}

@@ -36,11 +36,11 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
     <div>
 
       {/*contact Information */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <h3 className="font-bold text-slate-900 mb-4">
           Contact Information
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {contactInfoFields.map((item, i) => (
             <div key={i}>
               {isEditing ? (
@@ -54,7 +54,7 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
                 <>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-900">{item.value || '--'}</p>
+                    <p className="text-sm font-semibold text-slate-700">{item.value || '--'}</p>
                     {item.badge && <span className="text-[10px] bg-green-50 text-green-600 px-1.5 rounded">{item.badge}</span>}
                   </div>
                 </>
@@ -64,10 +64,10 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
         </div>
       </div>
 
-      <hr className="my-6 border-slate-100" />
+      <hr className="my-4 md:my-6 border-slate-100" />
 
       {/* bank and pay info */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <h3 className="font-bold text-slate-900 mb-4">Bank & Payment Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {bankInfoFields.map((item, i) => (
@@ -82,7 +82,7 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
               ) : (
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
-                  <p className="text-sm font-semibold text-slate-900 mt-1">{item.value || '--'}</p>
+                  <p className="text-sm font-semibold text-slate-700 mt-1">{item.value || '--'}</p>
                 </div>
               )}
             </div>
@@ -90,12 +90,12 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
         </div>
       </div>
 
-      <hr className="my-6 border-slate-100" />
+      <hr className="my-4 md:my-6 border-slate-100" />
 
       {/* Social Media */}
-      <div className="mb-8">
+      <div className="md:mb-8">
         <h3 className="font-bold text-slate-900 mb-4">Social Media</h3>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid md:grid-cols-2 gap-6">
           {socialMediaFields.map((item, i) => {
             const Icon = item.icon;
             return (
@@ -110,7 +110,7 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Icon className={`w-4 h-4 ${item.color}`} />
-                    <p className="text-sm font-semibold text-slate-900">{item.value || '--'}</p>
+                    <p className="text-sm font-semibold text-slate-700">{item.value || '--'}</p>
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, ChevronUp, ChevronDown } from 'lucide-react';
 
-function CustomDropdown({ label, options, selected, onChange, multi = false, placeholder = 'Select...', requiredField = false }) {
+function CustomDropdown({ label, options, selected, onChange, multi = false, placeholder = "Select an option", requiredField = false }) {
 
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
@@ -89,7 +89,7 @@ function CustomDropdown({ label, options, selected, onChange, multi = false, pla
                             key={opt}
                             onClick={() => toggle(opt)}
                             className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors
-                ${isSelected(opt) ? 'bg-amber-50 text-[#0B1E3D] font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                            ${isSelected(opt) ? 'bg-amber-50 text-[#0B1E3D] font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
                         >
                             <span>{opt}</span>
                             {isSelected(opt) && (

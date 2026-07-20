@@ -66,7 +66,6 @@ export const buyerProfile = {
     password: "John@123",
 };
 
-
 export const notificationSettings = [
     // ── Auction Notifications ──
     {

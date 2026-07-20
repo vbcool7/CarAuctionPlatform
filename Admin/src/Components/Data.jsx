@@ -1,4 +1,10 @@
 
+import {
+  LayoutDashboard, User, Users, Briefcase, Car,
+  Gavel, HandCoins, ShieldAlert, FileText,
+  BarChart3, Settings, Fingerprint, Cpu, MessageSquare
+} from 'lucide-react';
+
 export const dummyBuyers = [
   {
     id: "BUY-12456",
@@ -283,7 +289,7 @@ export const dummySeller = [
     sellerId: 'SLR-1002',
     name: 'Fatima Hassan',
     username: '@fatima.hassan',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: 'Al Noor Auto Sales',
     sellerType: 'Dealer',
     email: 'fatima.h@alnoorauto.com',
@@ -298,7 +304,7 @@ export const dummySeller = [
     sellerId: 'SLR-1003',
     name: 'Rashid Khoury',
     username: '@rashid.khoury',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: null, // individual seller — no company
     sellerType: 'Individual',
     email: 'rashid.k@gmail.com',
@@ -313,7 +319,7 @@ export const dummySeller = [
     sellerId: 'SLR-1004',
     name: 'Maria Santos',
     username: '@maria.santos',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: 'Premier Auto Group',
     sellerType: 'Dealer',
     email: 'maria.s@premierauto.com',
@@ -328,7 +334,7 @@ export const dummySeller = [
     sellerId: 'SLR-1005',
     name: 'Omar Farouk',
     username: '@omar.farouk',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: null,
     sellerType: 'Individual',
     email: 'omar.f@gmail.com',
@@ -343,7 +349,7 @@ export const dummySeller = [
     sellerId: 'SLR-1006',
     name: 'Layla Ibrahim',
     username: '@layla.ibrahim',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: 'Emirates Fleet Solutions',
     sellerType: 'Dealer',
     email: 'layla.i@emiratesfleet.com',
@@ -358,7 +364,7 @@ export const dummySeller = [
     sellerId: 'SLR-1007',
     name: 'Khalid Rahman',
     username: '@khalid.rahman',
-    avatar: '',
+    avatar: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
     companyName: 'Al Falah Vehicle Trading',
     sellerType: 'Dealer',
     email: 'khalid.r@alfalahtrading.com',
@@ -369,3 +375,792 @@ export const dummySeller = [
     joinedOn: 'Apr 18, 2024, 08:50 AM',
   },
 ];
+
+// staff detail - permission tab
+export const permissionsData = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: <LayoutDashboard size={16} className="text-gray-600" />,
+    channels: { view: true, add: false, edit: false, delete: false, approve: null }
+  },
+  {
+    id: 'user-management',
+    label: 'User Management',
+    icon: <User size={16} className="text-gray-600" />,
+    channels: { view: true, add: true, edit: true, delete: false, approve: null },
+    children: [
+      {
+        id: 'buyers',
+        label: 'Buyers',
+        icon: <Users size={16} className="text-gray-600" />,
+        channels: { view: true, add: true, edit: true, delete: false, approve: null }
+      },
+      {
+        id: 'sellers',
+        label: 'Sellers',
+        icon: <Users size={16} className="text-gray-600" />,
+        channels: { view: true, add: true, edit: true, delete: false, approve: null }
+      },
+      {
+        id: 'staff',
+        label: 'Staff',
+        icon: <User size={16} className="text-gray-600" />,
+        channels: { view: true, add: true, edit: true, delete: false, approve: null }
+      }
+    ]
+  },
+  {
+    id: 'vehicle-approvals',
+    label: 'Vehicle Approvals',
+    icon: <Car size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: null, delete: null, approve: true }
+  },
+  {
+    id: 'auction-management',
+    label: 'Auction Management',
+    icon: <Gavel size={16} className="text-gray-600" />,
+    channels: { view: true, add: true, edit: true, delete: false, approve: false }
+  },
+  {
+    id: 'bid-management',
+    label: 'Bid Management',
+    icon: <HandCoins size={16} className="text-gray-600" />,
+    channels: { view: true, add: true, edit: true, delete: false, approve: false }
+  },
+  {
+    id: 'payment-management',
+    label: 'Payment Management',
+    icon: <Briefcase size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: true, delete: false, approve: null }
+  },
+  {
+    id: 'dispute-management',
+    label: 'Dispute Management',
+    icon: <ShieldAlert size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: true, delete: false, approve: null }
+  },
+  {
+    id: 'cms-management',
+    label: 'CMS Management',
+    icon: <FileText size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: null, delete: null, approve: null }
+  },
+  {
+    id: 'reports',
+    label: 'Reports & Analytics',
+    icon: <BarChart3 size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: null, delete: null, approve: null }
+  },
+  {
+    id: 'system-settings',
+    label: 'System Settings',
+    icon: <Settings size={16} className="text-gray-600" />,
+    channels: { view: false, add: false, edit: false, delete: false, approve: false }
+  },
+  {
+    id: 'kyc-verification',
+    label: 'KYC Verification',
+    icon: <Fingerprint size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: false, delete: false, approve: true }
+  },
+  {
+    id: 'ai-features',
+    label: 'AI & Advanced Features',
+    icon: <Cpu size={16} className="text-gray-600" />,
+    channels: { view: true, add: null, edit: null, delete: null, approve: null }
+  },
+  {
+    id: 'live-chat',
+    label: 'Live Chat',
+    icon: <MessageSquare size={16} className="text-gray-600" />,
+    channels: { view: true, add: true, edit: null, delete: null, approve: null }
+  }
+];
+
+export const vehicleApproval = [
+  {
+    id: 1,
+    vehicleDetails: {
+      name: "2022 Toyota Land Cruiser",
+      vin: "JTMCY7AJ8N4101234",
+      type: "SUV",
+      color: "White",
+      transmission: "Automatic",
+      imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg"
+    },
+    ownerSeller: {
+      name: "James Wilson",
+      bid: "BID-10023",
+      email: "james.wilson@email.com",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+    },
+    submittedOn: "May 20, 2024",
+    submittedDate: "09:15 AM",
+
+    status: "Pending",
+
+    documents: [
+      { id: 1, name: "Vehicle Registration", description: "Registration Certificate (Mulkiya)", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 2, name: "Insurance Certificate", description: "Valid Vehicle Insurance", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 3, name: "Emirates ID (Owner)", description: "Owner Emirates ID Copy", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 4, name: "Driving License (Owner)", description: "Valid UAE Driving License", status: "Pending", fileUrl: "..." },
+      { id: 5, name: "Vehicle Photos", description: "Front, Back, Both Sides & Interior", status: "Uploaded", fileUrl: "..." },
+      { id: 6, name: "Vehicle Fitness Certificate", description: "RTA Fitness Certificate", status: "Pending", fileUrl: "..." },
+      { id: 7, name: "Bank Loan Clearance (If any)", description: "No Objection Certificate from Bank", status: "Not Applicable", fileUrl: null },
+      { id: 8, name: "Customs Clearance (If Imported)", description: "Customs Clearance Certificate", status: "Pending", fileUrl: "..." },
+    ],
+    history: [
+      { id: 1, date: "May 20, 2024", time: "09:15 AM", action: "Request Submitted", description: "Vehicle approval request has been submitted by the seller.", performedBy: "James Wilson", role: "Seller", status: "Pending Review", remarks: "Initial request submitted." },
+      { id: 2, date: "May 20, 2024", time: "09:18 AM", action: "Documents Uploaded", description: "All required documents have been uploaded.", performedBy: "James Wilson", role: "Seller", status: "Completed", remarks: "7 documents uploaded.", hasDocLink: true },
+      { id: 3, date: "May 20, 2024", time: "09:25 AM", action: "Under Review", description: "Vehicle request is now under admin review.", performedBy: "Sarah Johnson", role: "Admin", status: "Under Review", remarks: "Documents are being verified." },
+    ],
+    notes: [
+      {
+        id: 1,
+        author: "James Wilson",
+        role: "Seller",
+        message: "Hi, I have uploaded all the requested documents. Please let me know if anything is missing.",
+        date: "May 20, 2024",
+        time: "09:25 AM",
+      },
+      {
+        id: 2,
+        author: "Sarah Johnson",
+        role: "Admin",
+        message: "Please upload a valid Insurance Certificate. The current document is expired.",
+        date: "May 20, 2024",
+        time: "09:40 AM",
+      },
+    ]
+  },
+  {
+    id: 2,
+    vehicleDetails: {
+      name: "2021 BMW 5 Series",
+      vin: "WBA53BH06MCG12345",
+      type: "Sedan",
+      color: "Black",
+      transmission: "Automatic",
+      imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg"
+    },
+    ownerSeller: {
+      name: "Sophia Brown",
+      bid: "BID-10035",
+      email: "sophia.brown@email.com",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+    },
+
+    submittedOn: "May 20, 2024",
+    submittedDate: "09:15 AM",
+
+    approvedOn: "May 20, 2024",
+    approvedDate: "09:15 AM",
+    approvedBy: "Admin",
+    approvedUserImg: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+
+    status: "Approved",
+
+    documents: [
+      { id: 1, name: "Vehicle Registration", description: "Registration Certificate (Mulkiya)", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 2, name: "Insurance Certificate", description: "Valid Vehicle Insurance", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 3, name: "Emirates ID (Owner)", description: "Owner Emirates ID Copy", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 4, name: "Driving License (Owner)", description: "Valid UAE Driving License", status: "Pending", fileUrl: "..." },
+      { id: 5, name: "Vehicle Photos", description: "Front, Back, Both Sides & Interior", status: "Uploaded", fileUrl: "..." },
+      { id: 6, name: "Vehicle Fitness Certificate", description: "RTA Fitness Certificate", status: "Pending", fileUrl: "..." },
+    ],
+    history: [
+      { id: 1, date: "May 20, 2024", time: "09:15 AM", action: "Request Submitted", description: "Vehicle approval request has been submitted by the seller.", performedBy: "James Wilson", role: "Seller", status: "Pending Review", remarks: "Initial request submitted." },
+      { id: 2, date: "May 20, 2024", time: "09:18 AM", action: "Documents Uploaded", description: "All required documents have been uploaded.", performedBy: "James Wilson", role: "Seller", status: "Completed", remarks: "7 documents uploaded.", hasDocLink: true },
+      { id: 3, date: "May 20, 2024", time: "09:25 AM", action: "Under Review", description: "Vehicle request is now under admin review.", performedBy: "Sarah Johnson", role: "Admin", status: "Under Review", remarks: "Documents are being verified." },
+    ],
+    notes: [
+      {
+        id: 1,
+        author: "James Wilson",
+        role: "Seller",
+        message: "Hi, I have uploaded all the requested documents. Please let me know if anything is missing.",
+        date: "May 20, 2024",
+        time: "09:25 AM",
+      },
+      {
+        id: 2,
+        author: "Sarah Johnson",
+        role: "Admin",
+        message: "Please upload a valid Insurance Certificate. The current document is expired.",
+        date: "May 20, 2024",
+        time: "09:40 AM",
+      },
+    ]
+  },
+  {
+    id: 3,
+    vehicleDetails: {
+      name: "2020 Ford F-150",
+      vin: "1FTEW1E50LFA12345",
+      type: "Pickup",
+      color: "Silver",
+      transmission: "Automatic",
+      imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg"
+    },
+    ownerSeller: {
+      name: "Michael Davis",
+      bid: "BID-10018",
+      email: "michael.davis@email.com",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png"
+    },
+
+    submittedOn: "May 20, 2024",
+    submittedDate: "09:15 AM",
+
+    approvedBy: "Admin",
+    approvedUserImg: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+
+    rejectedOn: "May 20, 2024",
+    rejectedDate: "09:15 AM",
+    rejectedReason: "Invalid Documents",
+
+    status: "Rejected",
+
+    documents: [
+      { id: 1, name: "Vehicle Registration", description: "Registration Certificate (Mulkiya)", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 2, name: "Insurance Certificate", description: "Valid Vehicle Insurance", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 3, name: "Emirates ID (Owner)", description: "Owner Emirates ID Copy", status: "Pending", fileUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCGaWLzPWHCzPfAIjxaDNvMoA0Ddy9FeL7p0BaQR6CgQ&s=10" },
+      { id: 4, name: "Driving License (Owner)", description: "Valid UAE Driving License", status: "Pending", fileUrl: "..." },
+    ],
+    history: [
+      { id: 1, date: "May 20, 2024", time: "09:15 AM", action: "Request Submitted", description: "Vehicle approval request has been submitted by the seller.", performedBy: "James Wilson", role: "Seller", status: "Pending Review", remarks: "Initial request submitted." },
+      { id: 2, date: "May 20, 2024", time: "09:18 AM", action: "Documents Uploaded", description: "All required documents have been uploaded.", performedBy: "James Wilson", role: "Seller", status: "Completed", remarks: "7 documents uploaded.", hasDocLink: true },
+      { id: 3, date: "May 20, 2024", time: "09:25 AM", action: "Under Review", description: "Vehicle request is now under admin review.", performedBy: "Sarah Johnson", role: "Admin", status: "Under Review", remarks: "Documents are being verified." },
+    ],
+    notes: [
+      {
+        id: 1,
+        author: "James Wilson",
+        role: "Seller",
+        message: "Hi, I have uploaded all the requested documents. Please let me know if anything is missing.",
+        date: "May 20, 2024",
+        time: "09:25 AM",
+      },
+      {
+        id: 2,
+        author: "Sarah Johnson",
+        role: "Admin",
+        message: "Please upload a valid Insurance Certificate. The current document is expired.",
+        date: "May 20, 2024",
+        time: "09:40 AM",
+      },
+    ]
+  }
+];
+
+// all auction 
+export const allAuctionData = [
+  {
+    id: "AUC-2024-00048",
+    imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg",
+    title: "2021 BMW X5 xDrive30i",
+    vin: "WBABC3S0MCG12345",
+    specs: {
+      body: "SUV",
+      color: "White",
+      transmission: "Automatic",
+      make: "Not Applicable",
+      model: "xDrive40i",
+      year: "2023",
+      doors: "Not Applicable",
+      seats: "Not Applicable",
+      vehicleType: "Luxury SUV",
+      engine: "Turbocharged Inline-6",
+      engineSize: "3.0L",
+      fuelType: "Petrol",
+      cylinder: "6",
+      driveType: "AWD",
+      mileage: "14,500 km",
+    },
+    stockId: "AUC-2024-00048",
+    seller: "John Motors FZ LLC",
+    sellerVerified: true,
+    fuelType: "Petrol",
+    endsAt: "01:30 PM, May 20, 2024",
+
+    type: "Standard",
+    startTime: "10:00 AM",
+    startDate: "May 20, 2024 ",
+    endTime: "07:00 PM",
+    endDate: "May 20, 2024 ",
+    currentBid: "$28,500",
+    reserve: "$25,000",
+    bids: 23,
+    bidders: 12,
+    status: "Live",
+    you: "you",
+
+    timeLeft: "00 : 04 : 00",
+    extended: "Extended +2 min",
+    extensionRule: "2 minutes on last bid",
+    startingBid: "$20,000",
+    buyNowPrice: null,
+    bidIncrement: "$250",
+    description: "Very clean BMW X5 xDrive30i with low mileage. Full service history available. Single owner, accident free and ready to drive.",
+    features: [
+      "Panoramic sunroof",
+      "Leather seats",
+      "Navigation system",
+      "360° camera",
+      "Parking sensors",
+    ],
+    images: [
+      "https://5.imimg.com/data5/SELLER/Default/2024/8/444303282/EO/TR/EQ/3199782/car-carrier-trailer-500x500.jpg",
+      "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&q=80&w=600",
+    ],
+    documents: [
+      {
+        id: 1,
+        name: "Registration Certificate.pdf",
+        type: "Registration",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:15 AM",
+        size: "245 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 2,
+        name: "Insurance Document.pdf",
+        type: "Insurance",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:16 AM",
+        size: "320 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 3,
+        name: "Inspection Report.pdf",
+        type: "Inspection Report",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:17 AM",
+        size: "512 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 4,
+        name: "Service History.pdf",
+        type: "Service History",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:18 AM",
+        size: "410 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 5,
+        name: "Front View.jpg",
+        type: "Vehicle Image",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:19 AM",
+        size: "1.2 MB",
+        status: "Verified",
+        fileType: "image",
+      },
+    ],
+    participants: [
+      {
+        name: "Michael Davis",
+        isYou: true,
+        email: "michael.davis@email.com",
+        phone: "+1 (408) 555-1234",
+        date: "May 20, 2024",
+        time: "12:45:20 PM",
+        score: 12,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "John Smith",
+        isYou: false,
+        email: "john.smith@email.com",
+        phone: "+1 (415) 555-5678",
+        date: "May 20, 2024",
+        time: "12:42:10 PM",
+        score: 11,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "Sarah Johnson",
+        isYou: false,
+        email: "sarah.johnson@email.com",
+        phone: "+1 (310) 555-8822",
+        date: "May 20, 2024",
+        time: "12:40:05 PM",
+        score: 10,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "David Lee",
+        isYou: false,
+        email: "david.lee@email.com",
+        phone: "+1 (214) 555-3344",
+        date: "May 20, 2024",
+        time: "12:38:50 PM",
+        score: 9,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "Emma Wilson",
+        isYou: false,
+        email: "emma.wilson@email.com",
+        phone: "+1 (602) 555-7788",
+        date: "May 20, 2024",
+        time: "12:37:15 PM",
+        score: 8,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "Robert Johnson",
+        isYou: false,
+        email: "robert.j@email.com",
+        phone: "+1 (773) 555-9011",
+        date: "May 20, 2024",
+        time: "12:36:02 PM",
+        score: 7,
+        status: "Active",
+        verification: "Verified"
+      }
+    ],
+    biddersData: [
+      {
+        id: 1,
+        bidderName: "Michael Davis",
+        isYou: true,
+        totalBids: 12,
+        bidAmount: "$28,500",
+        isCurrentHighest: true,
+        bidDate: "May 20, 2024",
+        bidTime: "01:25:28 PM",
+        bidType: "Manual Bid",
+        status: "Active"
+      },
+      {
+        id: 2,
+        bidderName: "John Smith",
+        isYou: false,
+        totalBids: 11,
+        bidAmount: "$28,000",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:22:34 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 3,
+        bidderName: "Sarah Johnson",
+        isYou: false,
+        totalBids: 10,
+        bidAmount: "$27,250",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:18:45 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 4,
+        bidderName: "David Lee",
+        isYou: false,
+        totalBids: 9,
+        bidAmount: "$26,500",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:15:09 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 6,
+        rank: 6,
+        bidderName: "Robert Johnson",
+        isYou: false,
+        totalBids: 7,
+        bidAmount: "$25,000",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:10:30 PM",
+        bidType: "Proxy Bid",
+        status: "Outbid"
+      },
+    ],
+    timeline: [
+      { label: "Auction Created", date: "May 18, 2024", time: "09:00 AM", state: "completed" },
+      { label: "Auction Started", date: "May 20, 2024", time: "10:00 AM", state: "completed" },
+      { label: "Live Now", date: "May 20, 2024", time: "01:25 PM", state: "active" },
+      { label: "Auction Ends", date: "May 20, 2024", time: "01:30 PM", state: "future" },
+    ]
+  },
+  {
+    id: "AUC-2024-00047",
+    imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg",
+    title: "2020 Mercedes-Benz C300",
+    vin: "WDDWF8EB3LR123456",
+    specs: {
+      body: "SUV",
+      color: "White",
+      transmission: "Automatic",
+      make: "Not Applicable",
+      model: "xDrive40i",
+      year: "2023",
+      doors: "Not Applicable",
+      seats: "Not Applicable",
+      vehicleType: "Luxury SUV",
+      engine: "Turbocharged Inline-6",
+      engineSize: "3.0L",
+      fuelType: "Petrol",
+      cylinder: "6",
+      driveType: "AWD",
+      mileage: "14,500 km",
+    },
+    type: "Reserve",
+    startTime: "10:00 AM",
+    startDate: "May 20, 2024 ",
+    endTime: "07:00 PM",
+    endDate: "May 20, 2024 ",
+    currentBid: "$19,750",
+    reserve: "$20,000",
+    bids: 15,
+    bidders: 8,
+    status: "Upcoming",
+
+    startsIn: "Starts in 2 days",
+    description: "Very clean BMW X5 xDrive30i with low mileage. Full service history available. Single owner, accident free and ready to drive.",
+    features: [
+      "Panoramic sunroof",
+      "Leather seats",
+      "Navigation system",
+      "360° camera",
+      "Parking sensors",
+    ],
+    images: [
+      "https://5.imimg.com/data5/SELLER/Default/2024/8/444303282/EO/TR/EQ/3199782/car-carrier-trailer-500x500.jpg",
+      "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&q=80&w=600",
+    ],
+    documents: [
+      {
+        id: 1,
+        name: "Registration Certificate.pdf",
+        type: "Registration",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:15 AM",
+        size: "245 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 2,
+        name: "Insurance Document.pdf",
+        type: "Insurance",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:16 AM",
+        size: "320 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+      {
+        id: 3,
+        name: "Inspection Report.pdf",
+        type: "Inspection Report",
+        uploadedBy: "Seller",
+        company: "John Motors FZ LLC",
+        date: "May 18, 2024",
+        time: "09:17 AM",
+        size: "512 KB",
+        status: "Verified",
+        fileType: "pdf",
+      },
+    ],
+    participants: [
+      {
+        name: "Michael Davis",
+        isYou: true,
+        email: "michael.davis@email.com",
+        phone: "+1 (408) 555-1234",
+        date: "May 20, 2024",
+        time: "12:45:20 PM",
+        score: 12,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "John Smith",
+        isYou: false,
+        email: "john.smith@email.com",
+        phone: "+1 (415) 555-5678",
+        date: "May 20, 2024",
+        time: "12:42:10 PM",
+        score: 11,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "Sarah Johnson",
+        isYou: false,
+        email: "sarah.johnson@email.com",
+        phone: "+1 (310) 555-8822",
+        date: "May 20, 2024",
+        time: "12:40:05 PM",
+        score: 10,
+        status: "Active",
+        verification: "Verified"
+      },
+      {
+        name: "David Lee",
+        isYou: false,
+        email: "david.lee@email.com",
+        phone: "+1 (214) 555-3344",
+        date: "May 20, 2024",
+        time: "12:38:50 PM",
+        score: 9,
+        status: "Active",
+        verification: "Verified"
+      },
+    ],
+    biddersData: [
+      {
+        id: 1,
+        bidderName: "Michael Davis",
+        isYou: true,
+        totalBids: 12,
+        bidAmount: "$28,500",
+        isCurrentHighest: true,
+        bidDate: "May 20, 2024",
+        bidTime: "01:25:28 PM",
+        bidType: "Manual Bid",
+        status: "Active"
+      },
+      {
+        id: 2,
+        bidderName: "John Smith",
+        isYou: false,
+        totalBids: 11,
+        bidAmount: "$28,000",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:22:34 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 3,
+        bidderName: "Sarah Johnson",
+        isYou: false,
+        totalBids: 10,
+        bidAmount: "$27,250",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:18:45 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 4,
+        bidderName: "David Lee",
+        isYou: false,
+        totalBids: 9,
+        bidAmount: "$26,500",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:15:09 PM",
+        bidType: "Manual Bid",
+        status: "Outbid"
+      },
+      {
+        id: 5,
+        bidderName: "Robert Johnson",
+        isYou: false,
+        totalBids: 7,
+        bidAmount: "$25,000",
+        isCurrentHighest: false,
+        bidDate: "May 20, 2024",
+        bidTime: "01:10:30 PM",
+        bidType: "Proxy Bid",
+        status: "Outbid"
+      },
+    ],
+    timeline: [
+      { label: "Auction Created", date: "May 10, 2024", time: "02:30 PM", state: "completed" },
+      { label: "Vehicle Approved", date: "May 12, 2024", time: "11:15 AM", state: "completed" },
+      { label: "Auction Scheduled", date: "May 15, 2024", time: "09:40 AM", state: "completed" },
+      { label: "Auction Starts", date: "May 21, 2024", time: "10:00 AM", state: "future" },
+    ]
+  },
+  {
+    id: "AUC-2024-00046",
+    imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg",
+    title: "2019 Ford F-150 XLT",
+    vin: "1FTFW1E50KFA12345",
+    specs: {
+      body: "Pickup",
+      color: "Red",
+      transmission: "Automatic"
+    },
+    type: "Standard",
+    startTime: "10:00 AM",
+    startDate: "May 20, 2024 ",
+    endTime: "07:00 PM",
+    endDate: "May 20, 2024 ",
+    currentBid: "$22,300",
+    reserve: "$18,000",
+    bids: 18,
+    bidders: 9,
+    status: "Completed",
+    images: [
+      "https://5.imimg.com/data5/SELLER/Default/2024/8/444303282/EO/TR/EQ/3199782/car-carrier-trailer-500x500.jpg",
+      "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&q=80&w=600",
+    ],
+  },
+  {
+    id: "AUC-2024-00044",
+    imageUrl: "https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg",
+    title: "2022 Toyota RAV4 LE",
+    vin: "JTMRFREV8ND123456",
+    specs: {
+      body: "SUV",
+      color: "White",
+      transmission: "Automatic"
+    },
+    type: "Standard",
+    startTime: "10:00 AM",
+    startDate: "May 20, 2024 ",
+    endTime: "07:00 PM",
+    endDate: "May 20, 2024 ",
+    currentBid: "-",
+    reserve: "$22,000",
+    bids: 0,
+    bidders: 0,
+    status: "Cancelled",
+    images: [
+      "https://5.imimg.com/data5/SELLER/Default/2024/8/444303282/EO/TR/EQ/3199782/car-carrier-trailer-500x500.jpg",
+      "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&q=80&w=600",
+    ],
+  },
+]
