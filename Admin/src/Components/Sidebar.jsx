@@ -65,6 +65,14 @@ const menuItems = [
         icon: RiBankCardLine,
         label: "Payment Management",
         active: false,
+        submenu: [
+            { id: "all-payments", label: "All Payments" },
+            { id: "payouts", label: "Payouts" },
+            { id: "refunds", label: "Refunds" },
+            { id: "transactions", label: "Transactions" },
+            { id: "disputes", label: "Disputes" },
+            { id: "payment-gateways", label: "Payment Gateways" },
+        ]
     },
     {
         id: "dispute-management",

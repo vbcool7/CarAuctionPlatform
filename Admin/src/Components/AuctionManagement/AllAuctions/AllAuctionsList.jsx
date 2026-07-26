@@ -113,7 +113,8 @@ function AllAuctionsList({ setSelectedAuction, setCurrentPage }) {
                                                 setSelectedAuction(auction);
                                                 if (auction.status === 'Live') setCurrentPage('live-auction-detail');
                                                 else if (auction.status === 'Upcoming') setCurrentPage('upcoming-auction-detail');
-                                                // else: no branch yet — see question below
+                                                else if (auction.status === 'Completed') setCurrentPage('completed-auction-detail');
+                                                else if (auction.status === 'Cancelled') setCurrentPage('cancelled-auction-detail');
                                             }}
                                             className="p-1 text-slate-400 hover:text-slate-600">
                                             <Eye size={16} />

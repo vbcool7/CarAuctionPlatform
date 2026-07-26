@@ -31,11 +31,12 @@ function VehicleOverviewTab({ vehicleDetails, status }) {
       {/* show only on rejection */}
       {status === "Rejected" && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-          <h4 className="text-[13px] font-semibold text-red-700 mb-3">
+          <h4 className="text-[12px] md:text-[13px] font-semibold text-red-700 mb-3">
             Rejection Details
           </h4>
 
-          <div className="space-y-2 text-[12px]">
+          <div className="space-y-2 text-[11px] md:text-[12px]">
+
             {/* Reason */}
             <div className="grid grid-cols-[110px_1fr]">
               <span className="text-gray-500 font-medium">Reason</span>
@@ -76,14 +77,14 @@ function VehicleOverviewTab({ vehicleDetails, status }) {
         Vehicle Information
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-4">
+      <div className="grid grid-cols-3 lg:grid-cols-3 gap-x-10 gap-y-3 md:gap-y-4">
         {overviewData.map((item, index) => (
           <div key={index}>
             <p className="text-[11px] text-gray-500">
               {item.label}
             </p>
 
-            <p className="text-[13px] font-semibold text-[#0B1E3D] leading-5">
+            <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D] leading-5">
               {item.value}
             </p>
           </div>

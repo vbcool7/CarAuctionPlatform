@@ -24,12 +24,23 @@ import LiveAuctions from './Components/AuctionManagement/LiveAuctions/LiveAuctio
 import LiveAuctionsDetail from './Components/AuctionManagement/LiveAuctions/LiveAuctionsDetail';
 import UpcomingAuctions from './Components/AuctionManagement/UpcomingAuctions/UpcomingAuctions';
 import UpcomingAuctionsDetail from './Components/AuctionManagement/UpcomingAuctions/UpcomingAuctionsDetail';
+import CancelledAuctions from './Components/AuctionManagement/CancelledAuctions/CancelledAuctions';
+import CancelledAuctionsDetail from './Components/AuctionManagement/CancelledAuctions/CancelledAuctionsDetail';
+import CompletedAuctions from './Components/AuctionManagement/CompletedAuctions/CompletedAuctions';
+import CompletedAuctionsDetail from './Components/AuctionManagement/CompletedAuctions/CompletedAuctionsDetail';
+import BidManagement from './Components/BidManagement/BidManagement';
+import Payouts from './Components/PayoutManagement/Payouts/Payouts';
+import CreatePayoutForm from './Components/PayoutManagement/Payouts/CreatePayoutForm';
+import AllPayments from './Components/PayoutManagement/AllPayments/AllPayments';
+import AllPaymentsDetail from './Components/PayoutManagement/AllPayments/AllPaymentsDetail';
+import Refunds from './Components/PayoutManagement/Refunds/Refunds';
+import Transactions from './Components/PayoutManagement/Transactions/Transactions';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState("upcoming-auctions");
+  const [currentPage, setCurrentPage] = useState('transactions');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -43,6 +54,13 @@ function App() {
 
   // auct management
   const [selectedAuction, setSelectedAuction] = useState(null);
+
+  // pay man - create payout
+  const [payoutDraft, setPayoutDraft] = useState({});
+  const [payoutStep, setPayoutStep] = useState(1);
+
+  // pay management - all pay
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -188,6 +206,71 @@ function App() {
                 {currentPage === 'upcoming-auction-detail' && (
                   <UpcomingAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
                 )}
+
+                {/* auc man - cancelled */}
+                {currentPage === 'cancelled-auctions' &&
+                  <CancelledAuctions
+                    setCurrentPage={setCurrentPage}
+                    onSelectVehicle={(auction) => {
+                      setSelectedAuction(auction);
+                      setCurrentPage('cancelled-auction-detail');
+                    }}
+                  />
+                }
+                {currentPage === 'cancelled-auction-detail' && (
+                  <CancelledAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                )}
+
+                {/* auc man - completed */}
+                {currentPage === 'completed-auctions' &&
+                  <CompletedAuctions
+                    setCurrentPage={setCurrentPage}
+                    onSelectVehicle={(auction) => {
+                      setSelectedAuction(auction);
+                      setCurrentPage('completed-auction-detail');
+                    }}
+                  />
+                }
+                {currentPage === 'completed-auction-detail' && (
+                  <CompletedAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                )}
+
+                {/* bid management */}
+                {currentPage === 'bid-management' && <BidManagement setCurrentPage={setCurrentPage} />}
+
+                {/* payout management - all payments */}
+                {currentPage === 'all-payments' &&
+                  <AllPayments
+                    setCurrentPage={setCurrentPage}
+                    setSelectedPaymentId={setSelectedPaymentId}
+                  />
+                }
+                {currentPage === 'all-payments-detail' &&
+                  <AllPaymentsDetail
+                    setCurrentPage={setCurrentPage}
+                    paymentId={selectedPaymentId}
+                  />
+                }
+
+                {/* payout management - payouts */}
+                {currentPage === 'payouts' && <Payouts setCurrentPage={setCurrentPage} />}
+
+                {/* payout management - create payout */}
+                {currentPage === 'create-payout' &&
+                  <CreatePayoutForm
+                    setCurrentPage={setCurrentPage}
+                    payoutDraft={payoutDraft}
+                    setPayoutDraft={setPayoutDraft}
+                    payoutStep={payoutStep}
+                    setPayoutStep={setPayoutStep}
+                  />
+                }
+
+                {/* payout management - refunds */}
+                {currentPage === 'refunds' && <Refunds setCurrentPage={setCurrentPage} />}
+
+                 {/* payout management - transactions */}
+                {currentPage === 'transactions' && <Transactions setCurrentPage={setCurrentPage} />}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

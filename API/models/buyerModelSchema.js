@@ -3,7 +3,10 @@ import mongoose from 'mongoose';
 
 const buyerSchema = new mongoose.Schema({
 
-    role: { type: String, default: "buyer" },
+    role: {
+        type: String,
+        default: "buyer"
+    },
 
     // Step 1
     firstName: { type: String, required: true },
@@ -11,6 +14,11 @@ const buyerSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     mobile: { type: String, required: true, unique: true },
     password: { type: String, required: true, select: false },
+    profileImageUrl: { type: String },
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'other']
+    },
 
     // Step 2
     isEmailVerified: { type: Boolean, default: false },
@@ -109,19 +117,15 @@ const buyerSchema = new mongoose.Schema({
     termsAccepted: { type: Boolean, default: false },
     submittedAt: { type: Date },
 
-    // buyer profile
-    // profilePhoto: {
-    //     type: String,
-    //     default: null
-    // },
-    // preferredLanguage: {
-    //     type: String,
-    //     default: "English"
-    // },
-    // timezone: {
-    //     type: String,
-    //     default: "Asia/Dubai"
-    // },
+    createdBy: {
+        type: String,
+        enum: ['self', 'admin'],
+        default: 'self'
+    },
+    addedByAdminId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+    },
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],

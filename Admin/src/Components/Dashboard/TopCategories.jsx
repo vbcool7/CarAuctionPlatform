@@ -27,7 +27,7 @@ function TopCategories() {
 
               <div className={`p-2 rounded-full ${cat.theme}`}>
                   <Icon className="w-4 h-4" />
-                </div>
+              </div>
               <span className="w-10 md:w-16 font-medium text-[13px] md:text-sm">
                 {cat.name}
               </span>

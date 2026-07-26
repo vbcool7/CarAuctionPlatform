@@ -1,18 +1,20 @@
-
 @import "tailwindcss";
 
-/* hide scrollbar  */
+/* hide scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 .no-scrollbar {
-  -ms-overflow-style: none; 
-  scrollbar-width: none; 
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* upcoming auct - calender (sidebar) */
-/* Calendar */
+
+/* =====================================================
+   UPCOMING AUCTION CALENDAR
+===================================================== */
+
 .biddrive-calendar {
     border: none !important;
     width: 100%;
@@ -63,7 +65,6 @@
 }
 
 /* Today */
-
 .biddrive-calendar .react-datepicker__day--today {
     font-weight: 700;
     color: #0B1E3D;
@@ -76,10 +77,108 @@
 }
 
 /* Navigation */
-
 .biddrive-calendar .react-datepicker__navigation-icon::before {
     border-color: #0B1E3D;
 }
+
+
+/* =====================================================
+   COMPLETED AUCTION CALENDAR
+===================================================== */
+
+/* Base Calendar */
+.completed-auction-calendar {
+    border: none !important;
+    width: 100%;
+    font-family: inherit;
+    border-radius: 16px;
+}
+
+/* Header */
+.completed-auction-calendar .react-datepicker__header {
+    background: #fff;
+    border-bottom: 1px solid #E2E8F0;
+    padding: 14px;
+}
+
+/* Month */
+.completed-auction-calendar .react-datepicker__current-month {
+    color: #0B1E3D;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Week Names */
+.completed-auction-calendar .react-datepicker__day-name {
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Days */
+.completed-auction-calendar .react-datepicker__day {
+    width: 1.8rem;
+    line-height: 2rem;
+    border-radius: 999px;
+    transition: .2s;
+    color: #334155;
+}
+
+/* Hover */
+.completed-auction-calendar .react-datepicker__day:hover {
+    background: #F8FAFC;
+    color: #0B1E3D;
+}
+
+/* Selected */
+.completed-auction-calendar .react-datepicker__day--selected {
+    background: #0B1E3D !important;
+    color: white !important;
+}
+
+/* Today */
+.completed-auction-calendar .react-datepicker__day--today {
+    font-weight: 700;
+    color: #0B1E3D;
+}
+
+/* Keyboard Selected */
+.completed-auction-calendar .react-datepicker__day--keyboard-selected {
+    background: #0B1E3D;
+    color: white;
+}
+
+/* Navigation */
+.completed-auction-calendar .react-datepicker__navigation-icon::before {
+    border-color: #0B1E3D;
+}
+
+
+/* =====================================================
+   COMPLETED AUCTION HIGHLIGHTS
+===================================================== */
+
+/* High Sales */
+.completed-auction-calendar
+.react-datepicker__day--highlighted-high-sales {
+    background-color: #EFF6FF;
+    color: #2563EB;
+}
+
+/* Completed */
+.completed-auction-calendar
+.react-datepicker__day--highlighted-completed {
+    background-color: #ECFDF5;
+    color: #16A34A;
+}
+
+/* Unsold */
+.completed-auction-calendar
+.react-datepicker__day--highlighted-unsold {
+    background-color: #FFFBEB;
+    color: #D97706;
+}
+
 
 /* Remove triangle */
 .react-datepicker__triangle {

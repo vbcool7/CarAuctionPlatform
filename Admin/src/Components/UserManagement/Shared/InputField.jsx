@@ -44,7 +44,7 @@ function InputField({ label, name, value, onChange, type = 'text', options = [],
                         onChange={(e) => onChange(name, e.target.value)}
                         disabled={disabled}
                         placeholder={`Enter ${label}`}
-                        className="w-full px-4 py-2.5 text-sm text-[#0B1E3D] placeholder:text-slate-400 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2.5 text-sm text-[#0B1E3D] placeholder:text-slate-400 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-50 focus:border-[#D97706] transition-all disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed truncate"
                     />
                     {isPasswordField && (
                         <button

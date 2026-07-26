@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import VehicleOverviewTab from './VehicleOverviewTab';
-import OwnerInformation from './OwnerInformation';
 import VehicleDocumentTab from './VehicleDocumentTab';
 import NotesSection from '../SharedComponents/NotesSection';
 import VehicleHistoryTab from './VehicleHistoryTab';
@@ -22,21 +21,25 @@ function VehicleApprovalsDetail({ selectedVehicle }) {
 
     const status = statusConfig[vehicleStatus] || statusConfig["Pending"];
 
+    // owner card
+    // const { ownerSeller } = selectedVehicle;
+
     return (
         <>
             <div className="w-full overflow-y-auto h-[calc(100vh-180px)] bg-white border border-gray-200 rounded-lg p-4">
 
                 {/* Header */}
                 <div className="">
+
                     {/* Top Row */}
                     <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <h3 className="text-[15px] font-semibold text-[#0B1E3D]">
+                            <h3 className="text-[12px] md:text-[15px] font-semibold text-[#0B1E3D]">
                                 Vehicle Details
                             </h3>
 
                             <span
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold ${status.bg} ${status.text}`}
+                                className={`px-2.5 py-1 rounded-md text-[10px] md:text-[11px] font-semibold ${status.bg} ${status.text}`}
                             >
                                 {status.label}
                             </span>
@@ -52,20 +55,20 @@ function VehicleApprovalsDetail({ selectedVehicle }) {
                         <img
                             src={vehicleDetails.imageUrl}
                             alt={vehicleDetails.name}
-                            className="w-24 h-16 rounded-lg object-cover border border-gray-100 shrink-0"
+                            className="w-22 h-14 md:w-24 md:h-16 rounded-lg object-cover border border-gray-100 shrink-0"
                         />
 
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-[13px] font-bold text-[#1E2B5E] leading-tight">
+                            <h4 className="text-[12px] md:text-[13px] font-bold text-[#1E2B5E] leading-tight">
                                 {vehicleDetails.name || "---"}
                             </h4>
 
-                            <p className="mt-1 text-[12px] text-[#4F63A3]">
+                            <p className="mt-1 text-[11px] md:text-[12px] text-[#4F63A3]">
                                 <span className="font-semibold text-gray-600">VIN:</span>{" "}
                                 {vehicleDetails.vin || "---"}
                             </p>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-gray-500">
+                            <div className="mt-1 flex flex-wrap items-center gap-1 md:gap-2 text-[11px] md:text-[12px] text-gray-500">
                                 <span>{vehicleDetails.type || "---"}</span>
                                 <span>•</span>
                                 <span>{vehicleDetails.color || "---"}</span>
@@ -82,8 +85,8 @@ function VehicleApprovalsDetail({ selectedVehicle }) {
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`pb-3 text-sm font-medium transition-all whitespace-nowrap capitalize
-                        ${activeTab === tab
+                            className={`pb-3 text-[13px] md:text-sm font-medium transition-all whitespace-nowrap capitalize
+                                ${activeTab === tab
                                     ? "border-b-2 border-[#D97706] text-[#D97706]"
                                     : "text-slate-500 hover:text-[#0B1E3D]"
                                 }`}
@@ -113,9 +116,72 @@ function VehicleApprovalsDetail({ selectedVehicle }) {
             </div>
 
             {/* owner info */}
-            <OwnerInformation selectedVehicle={selectedVehicle}
-                status={vehicleStatus}
-            />
+            <div className="w-full bg-white border border-gray-200 rounded-xl p-4">
+            <h3 className="text-[13px] md:text-[15px] font-semibold text-[#0B1E3D] mb-4">
+                Owner Information
+            </h3>
+
+            {/* Owner */}
+            <div className="flex items-start gap-3">
+                <img
+                    src={selectedVehicle?.ownerSeller.avatarUrl}
+                    alt={selectedVehicle?.ownerSeller.name}
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border border-gray-200"
+                />
+
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-[12px] md:text-[14px] font-semibold text-[#0B1E3D]">
+                            {selectedVehicle?.ownerSeller.name}
+                        </h4>
+
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-emerald-50 text-emerald-600">
+                            Verified
+                        </span>
+                    </div>
+
+                    <div className="mt-2 space-y-1 text-[12px] text-gray-600">
+                        <p>{selectedVehicle?.ownerSeller.bid}</p>
+                        <p>{selectedVehicle?.ownerSeller.email}</p>
+                        <p>+971 50 234 5678</p>
+                        <p className="text-gray-500">
+                            Member Since: <span className="font-medium">Apr 10, 2023</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Approval Information */}
+            {status === "Approved" && (
+                <div className="mt-5 pt-5 border-t border-gray-100">
+                    <h4 className="text-[13px] md:text-[14px] font-semibold text-[#0B1E3D] mb-3">
+                        Approval Information
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-[11px] text-gray-500 mb-1">
+                                Approved By
+                            </p>
+
+                            <p className="text-[13px] font-medium text-[#0B1E3D]">
+                                {selectedVehicle.approvedBy}
+                            </p>
+                        </div>
+
+                        <div>
+                            <p className="text-[11px] text-gray-500 mb-1">
+                                Approved On
+                            </p>
+
+                            <p className="text-[13px] font-medium text-[#0B1E3D]">
+                                {selectedVehicle.approvedOn} • {selectedVehicle.approvedDate}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
 
             {/* notes info */}
             {activeTab === "overview" && (

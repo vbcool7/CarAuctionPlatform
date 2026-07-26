@@ -29,12 +29,12 @@ function VehicleNotesTab({ notes }) {
               <img
                 src={note.avatarUrl}
                 className="w-6 h-6 rounded-full" />
-              <span className="text-[12px] font-semibold">{note.author}</span>
+              <span className="text-[11px] md:text-[12px] font-semibold">{note.author}</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full 
                 ${note.role === "Admin" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}>
                 {note.role}
               </span>
-              <span className="text-[10px] text-gray-400 ml-auto">
+              <span className="text-[9px] md:text-[10px] text-gray-400 ml-auto">
                 {note.date}, {note.time}
               </span>
             </div>

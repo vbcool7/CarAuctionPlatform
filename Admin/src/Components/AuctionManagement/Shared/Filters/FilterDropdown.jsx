@@ -41,7 +41,8 @@ function FilterDropdown({ label, options, value, onChange }) {
                 onChange(opt.value);
                 setIsOpen(false);
               }}
-              className={`px-4 py-2 text-sm cursor-pointer hover:bg-amber-50 hover:text-amber-700 ${value === opt.value ? "bg-amber-50 text-amber-700 font-medium" : "text-slate-600"}`}
+              className={`px-4 py-2 text-sm cursor-pointer hover:bg-amber-50 hover:text-amber-700 
+                ${value === opt.value ? "bg-amber-50 text-amber-700 font-medium" : "text-slate-600"}`}
             >
               {opt.label}
             </div>

@@ -26,7 +26,9 @@ function Step2_VerifyContact({ onBack, onNext }) {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  // send otp
   const handleSendOtp = () => {
+    console.log('handleSendOtp called', formData.email);
     if (resendTimer > 0) return;
     sendOtpMutation.mutate(
       { email: formData.email, role: 'buyer' },
@@ -56,6 +58,7 @@ function Step2_VerifyContact({ onBack, onNext }) {
     }
   };
 
+  // verify otp
   const handleVerify = () => {
     const otp = otpDigits.join('');
     if (otp.length !== 6) {

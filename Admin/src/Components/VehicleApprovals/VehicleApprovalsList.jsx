@@ -60,49 +60,6 @@ function VehicleApprovalsList({ activeTab, onSelectVehicle }) {
 
     return (
         <div>
-            {/* search bar/filter */}
-            <div className="mb-5 flex flex-wrap items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
-
-                {/* Search Input */}
-                <div className="grow min-w-58 relative">
-                    <input
-                        type="text"
-                        placeholder="Search by vehicle, user or VIN..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                </div>
-
-                {/* Select Filters */}
-                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
-                    <span>All Vehicle Types</span>
-                    <ChevronDown className="w-4 h-4" />
-                </div>
-
-                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
-                    <span>All Makes</span>
-                    <ChevronDown className="w-4 h-4" />
-                </div>
-
-                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 cursor-pointer hover:bg-gray-50">
-                    <span>All Status</span>
-                    <ChevronDown className="w-4 h-4" />
-                </div>
-
-                {/* Date Filter */}
-                <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>May 01, 2024 - May 31, 2024</span>
-                    <ChevronDown className="w-4 h-4" />
-                </div>
-
-                {/* Clear Filters */}
-                <button className="text-sm text-[#D97706] font-medium hover:underline ml-auto flex items-center gap-1">
-                    <Filter className="w-4 h-4" />
-                    Clear Filters
-                </button>
-            </div>
-
             {/* table */}
             <div className="w-full overflow-x-auto bg-white border border-gray-200 rounded-lg">
                 <table className="w-full text-left border-collapse">
@@ -139,9 +96,9 @@ function VehicleApprovalsList({ activeTab, onSelectVehicle }) {
                                                     />
 
                                                     <div className="flex flex-col">
-                                                        <span className="text-gray-700 font-bold text-sm">{item.vehicleDetails.name}</span>
-                                                        <span className="text-[11px] pt-1 text-gray-500 font-medium">VIN: {item.vehicleDetails.vin}</span>
-                                                        <div className="text-xs text-gray-400 mt-1 flex gap-2">
+                                                        <span className="text-gray-700 font-bold text-[12px] md:text-sm">{item.vehicleDetails.name}</span>
+                                                        <span className="text-[10px] md:text-[11px] pt-1 text-gray-500 font-medium">VIN: {item.vehicleDetails.vin}</span>
+                                                        <div className="text-[10px] md:text-xs text-gray-400 mt-1 flex gap-2">
                                                             <span>{item.vehicleDetails.type}</span>
                                                             <span>•</span>
                                                             <span>{item.vehicleDetails.color}</span>

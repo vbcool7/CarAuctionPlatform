@@ -1,11 +1,36 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, Search, Heart, Bell, ChevronDown, User, LogOut, Settings, Mail } from 'lucide-react';
+
+import { useAdminGet, useAdminLogout } from '../hooks/useAdmin';
+import useAdminAuthStore from '../store/useAdminAuthStore';
+import toast from 'react-hot-toast';
 
 function Header({ onToggleSideBar, setCurrentPage }) {
 
+    const navigate = useNavigate();
+
+    const { data: getAdmin, isError } = useAdminGet();
+    const { mutate: logoutAdmin, isPending } = useAdminLogout();
+
+    const clearStore = useAdminAuthStore((state) => state.logout);
+
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
+
+    const handleLogout = () => {
+        logoutAdmin(null, {
+            onSuccess: (res) => {
+                clearStore();
+                navigate('/admin-login');
+                toast.success(res.message || "Logout successful!")
+            },
+            onError: (error) => {
+                clearStore();
+            }
+        });
+    };
 
     // close dropdown on outside click
     useEffect(() => {
@@ -18,7 +43,7 @@ function Header({ onToggleSideBar, setCurrentPage }) {
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-     return (
+    return (
         <div className='bg-white shadow-sm border-b border-amber-100 px-3 lg:px-6 py-5 sticky top-0 z-40'>
             <div className='flex items-center justify-between gap-2 lg:gap-4'>
 
@@ -74,17 +99,25 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                             className='flex items-center gap-1 sm:gap-2 hover:bg-amber-50 px-1 sm:px-2 py-1 rounded-lg transition-all'
                         >
                             <div className='w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-slate-200 bg-amber-100 overflow-hidden shrink-0'>
-                                <img
-                                    src="https://i.pravatar.cc/32"
-                                    alt="User"
-                                    className='w-full h-full object-cover'
-                                />
+                                {getAdmin?.profilePhoto ? (
+                                    <img
+                                        src={getAdmin.profilePhoto}
+                                        alt="User"
+                                        className='w-full h-full object-cover'
+                                    />
+                                ) : (
+                                    <User className='w-7 h-7 sm:w-8 sm:h-8 text-white' />
+                                )}
                             </div>
 
                             {/* Name hidden on very small screens, visible on sm */}
                             <div className='text-left hidden sm:block'>
-                                <p className='text-xs font-semibold text-[#0B1E3D] leading-tight'>John Doe</p>
-                                <p className='text-[10px] text-slate-400 leading-tight'>Admin</p>
+                                <p className='text-xs font-semibold text-[#0B1E3D] leading-tight'>
+                                    {getAdmin?.name || "Loading..."}
+                                </p>
+                                <p className='text-[10px] text-slate-400 leading-tight capitalize'>
+                                    {getAdmin?.role || "System"}
+                                </p>
                             </div>
 
                             <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
@@ -95,17 +128,20 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                             <div className='absolute right-0 top-full mt-2 w-30 md:w-40 sm:w-48 bg-white border border-slate-100 rounded-xl shadow-xl overflow-hidden z-50'>
                                 {/* Dropdown content remains same */}
                                 <div className='px-3 md:px-4 py-2 md:py-3 border-b border-slate-100'>
-                                    <p className='text-[14px] md:text-sm font-semibold text-[#0B1E3D]'>John Doe</p>
+                                    <p className='text-[14px] md:text-sm font-semibold text-[#0B1E3D]'>
+                                        {getAdmin?.name || "Loading..."}
+                                    </p>
                                 </div>
 
                                 <div className='border-t border-slate-100 py-1'>
-
                                     <button
-
+                                        onClick={handleLogout}
                                         className='w-full flex items-center gap-3 px-3 md:px-4 py-2 md:py-2.5 text-[14px] md:text-sm text-red-500 hover:bg-red-50 transition-colors'
                                     >
-                                        <LogOut size={16} />
-                                        Log Out
+                                        <LogOut className="h-4 w-4 shrink-0" />
+                                        <span className="wrap-break-words">
+                                            {isPending ? "LoggingOut..." : "Logout"}
+                                        </span>
                                     </button>
 
                                 </div>

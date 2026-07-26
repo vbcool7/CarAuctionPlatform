@@ -4,8 +4,8 @@ import { useState, useRef } from "react";
 const STATUS_BADGE_CONFIG = {
     live: { label: "LIVE", className: "bg-[#DC2626]", pulse: true },
     upcoming: { label: "UPCOMING", className: "bg-[#2563EB]", pulse: false },
-    // add more here as new statuses need a gallery badge —
-    // do not hardcode a new status check elsewhere in this file
+    cancelled: { label: "CANCELLED", className: "bg-[#DC2626]", pulse: false },
+    completed: { label: "COMPLETED", className: "bg-[#16A34A]", pulse: false },
 };
 
 function AuctionsGallery({ images = [], video = null, status = null }) {

@@ -152,7 +152,10 @@ export const buyerRegistration = async (req, res) => {
     } catch (err) {
         if (req.files) await deleteCloudinaryFiles(req.files);
         console.error(err);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({ 
+            success: false, 
+            message: "Server error" 
+        });
     }
 };
 

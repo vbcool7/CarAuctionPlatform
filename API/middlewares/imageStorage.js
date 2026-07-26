@@ -9,16 +9,18 @@ const storage = new CloudinaryStorage({
         let folderName = 'CarAuction/Others';
 
         if (req.baseUrl.includes('buyer')) {
-            folderName = 'CarAuction/buyer';
+            folderName = 'CarAuction/Buyer';
         } else if (req.baseUrl.includes('seller')) {
-            folderName = 'CarAuction/seller';
+            folderName = 'CarAuction/Seller';
+        } else if (req.baseUrl.includes('admin')) {
+            folderName = 'CarAuction/Admin';
         }
 
         const isPdf = file.mimetype === 'application/pdf';
 
         return {
             folder: folderName,
-            allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
+            allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'pdf'],
             resource_type: isPdf ? 'raw' : 'image',
             public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
             transformation: isPdf ? undefined : [

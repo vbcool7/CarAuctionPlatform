@@ -4,7 +4,7 @@ import { Headphones } from 'lucide-react';
 
 function ContactSupport() {
     return (
-        <div className="bg-gray-50 border border-[#E3EBFF] rounded-xl p-5">
+        <div className="bg-gray-50 border border-[#E3EBFF] rounded-xl p-5 shadow-sm">
             <h3 className="text-[15px] font-semibold text-[#D97706]">
                 Need Help?
             </h3>
