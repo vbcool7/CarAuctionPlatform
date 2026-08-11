@@ -35,12 +35,33 @@ import AllPayments from './Components/PayoutManagement/AllPayments/AllPayments';
 import AllPaymentsDetail from './Components/PayoutManagement/AllPayments/AllPaymentsDetail';
 import Refunds from './Components/PayoutManagement/Refunds/Refunds';
 import Transactions from './Components/PayoutManagement/Transactions/Transactions';
+import PaymentGateway from './Components/PayoutManagement/PaymentGateway/PaymentGateway';
+import AddNewPaymentGatewayForm from './Components/PayoutManagement/PaymentGateway/AddNewPaymentGatewayForm';
+import PaymentGatewayDetails from './Components/PayoutManagement/PaymentGateway/PaymentGatewayDetails';
+import AllDisputes from './Components/DisputeManagement/AllDisputes/AllDisputes';
+import DisputeCategories from './Components/DisputeManagement/DisputeCategories/DisputeCategories';
+import AddNewCategory from './Components/DisputeManagement/DisputeCategories/AddNewCategory';
+import EditDisputeCategory from './Components/DisputeManagement/DisputeCategories/EditDisputeCategory';
+import AllDisputesDetail from './Components/DisputeManagement/AllDisputes/AllDisputesDetail';
+import EditAllDisputes from './Components/DisputeManagement/AllDisputes/EditAllDisputes';
+import ReportAndAnalytics from './Components/ReportAndAnalytics/ReportAndAnalytics';
+import CreateCustomPage from './Components/CmsManagement/CreateCustomPage';
+import CreateBlogPost from './Components/CmsManagement/CreateBlogPost';
+import AllPages from './Components/CmsManagement/AllPages';
+import BlogList from './Components/CmsManagement/BlogList';
+import KycVerification from './Components/KycVerification/KycVerification';
+import KycVerificationDetails from './Components/KycVerification/KycVerificationDetails';
+import SystemSetting from './Components/SystemSetting/SystemSetting';
+import AdvancedFeatures from './Components/AdvancedFeatures/AdvancedFeatures';
+import PayoutsDetail from './Components/PayoutManagement/Payouts/PayoutsDetail';
+import RefundsDetail from './Components/PayoutManagement/Refunds/RefundsDetail';
+import TransactionsDetail from './Components/PayoutManagement/Transactions/TransactionsDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('transactions');
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -59,8 +80,22 @@ function App() {
   const [payoutDraft, setPayoutDraft] = useState({});
   const [payoutStep, setPayoutStep] = useState(1);
 
-  // pay management - all pay
+  // pay management 
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
+  const [selectedPayoutId, setSelectedPayoutId] = useState(null);
+  const [selectedRefundId, setSelectedRefundId] = useState(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState(null);
+  const [selectedGatewayId, setSelectedGatewayId] = useState(null);
+
+  // dis man
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [selectedAllDisputeId, setSelectedAllDisputeId] = useState(null);
+
+  // cms man
+  const [editingBlog, setEditingBlog] = useState(null);
+
+  // kyc
+  const [selectedKycId, setSelectedKycId] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -253,7 +288,8 @@ function App() {
                 }
 
                 {/* payout management - payouts */}
-                {currentPage === 'payouts' && <Payouts setCurrentPage={setCurrentPage} />}
+                {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'payouts-detail' && <PayoutsDetail payoutId={selectedPayoutId} setCurrentPage={setCurrentPage} />}
 
                 {/* payout management - create payout */}
                 {currentPage === 'create-payout' &&
@@ -267,10 +303,73 @@ function App() {
                 }
 
                 {/* payout management - refunds */}
-                {currentPage === 'refunds' && <Refunds setCurrentPage={setCurrentPage} />}
+                {currentPage === 'refunds' && <Refunds setSelectedRefundId={setSelectedRefundId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'refunds-detail' && <RefundsDetail refundId={selectedRefundId} setCurrentPage={setCurrentPage} />}
 
-                 {/* payout management - transactions */}
-                {currentPage === 'transactions' && <Transactions setCurrentPage={setCurrentPage} />}
+                {/* payout management - transactions */}
+                {currentPage === 'transactions' && <Transactions setSelectedTransactionId={setSelectedTransactionId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'transactions-detail' && <TransactionsDetail transactionId={selectedTransactionId} setCurrentPage={setCurrentPage} />}
+
+                {/* payout management - pay gateway */}
+                {currentPage === 'payment-gateways' &&
+                  <PaymentGateway setSelectedGatewayId={setSelectedGatewayId} setCurrentPage={setCurrentPage} />}
+
+                {currentPage === 'payment-gateways-detail' &&
+                  <PaymentGatewayDetails
+                    setCurrentPage={setCurrentPage}
+                    gatewayId={selectedGatewayId}
+                  />
+                }
+
+                {/* payout management - add new gateway */}
+                {currentPage === 'add-new-payment-gateway' &&
+                  <AddNewPaymentGatewayForm
+                    setCurrentPage={setCurrentPage}
+                  />
+                }
+
+                {/* dispute management - all dispute */}
+                {currentPage === 'all-disputes' && <AllDisputes setSelectedAllDisputeId={setSelectedAllDisputeId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'all-disputes-detail' &&
+                  <AllDisputesDetail
+                    allDisputeId={selectedAllDisputeId}
+                    setCurrentPage={setCurrentPage}
+                  />
+                }
+                {currentPage === 'edit-all-dispute' &&
+                  <EditAllDisputes
+                    allDisputeId={selectedAllDisputeId}
+                    setCurrentPage={setCurrentPage}
+                  />
+                }
+
+                {/* dispute management - dispute cat */}
+                {currentPage === 'dispute-categories' && <DisputeCategories setSelectedCategoryId={setSelectedCategoryId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'add-new-category' && <AddNewCategory setCurrentPage={setCurrentPage} />}
+                {currentPage === 'edit-dispute-category' && <EditDisputeCategory categoryId={selectedCategoryId} setCurrentPage={setCurrentPage} />}
+
+                {/* report & analytics */}
+                {currentPage === 'reports-analytics' && <ReportAndAnalytics setCurrentPage={setCurrentPage} />}
+
+                {/* cms management */}
+                {currentPage === 'all-pages' && <AllPages setCurrentPage={setCurrentPage} />}
+                {currentPage === 'create-custom-page' && <CreateCustomPage setCurrentPage={setCurrentPage} />}
+
+                {currentPage === 'all-blogs' && <BlogList setCurrentPage={setCurrentPage} setEditingBlog={setEditingBlog} />}
+                {currentPage === 'create-blog-post' && <CreateBlogPost key="new" setCurrentPage={setCurrentPage} />}
+                {currentPage === 'edit-blog-post' && (
+                  <CreateBlogPost setCurrentPage={setCurrentPage} initialData={editingBlog} key={editingBlog?.id} />
+                )}
+
+                {/* kyc verification */}
+                {currentPage === 'kyc-verification' && <KycVerification setSelectedKycId={setSelectedKycId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'kyc-verification-detail' && <KycVerificationDetails kycId={selectedKycId} setCurrentPage={setCurrentPage} />}
+
+                {/* system setting */}
+                {currentPage === 'system-settings' && <SystemSetting setCurrentPage={setCurrentPage} />}
+
+                {/* advance feature */}
+                {currentPage === 'ai-features' && <AdvancedFeatures setCurrentPage={setCurrentPage} />}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

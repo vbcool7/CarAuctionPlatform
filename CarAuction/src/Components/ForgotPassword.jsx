@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { HiOutlineCheckCircle } from "react-icons/hi2";
 import { Lock } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 import { useBuyerForgotPassword } from '../hook/useBuyer';
 

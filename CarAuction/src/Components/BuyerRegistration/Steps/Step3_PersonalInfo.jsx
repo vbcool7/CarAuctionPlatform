@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { Calendar, MapPin, User, Building2, Briefcase, ArrowLeft, ArrowRight, Bookmark, ChevronDown, Lock } from 'lucide-react';
 
 import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';

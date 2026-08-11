@@ -523,17 +523,9 @@ function AllPaymentsDetail({ setCurrentPage, paymentId }) {
                                     <div className="flex justify-between"><span className="text-slate-500">Processing Fee</span><span className="font-semibold text-slate-800">{payment.processingFee || '---'}</span></div>
                                     <div className="flex justify-between"><span className="text-slate-500">Captured Amount</span><span className="font-semibold text-slate-800">{payment.capturedAmount || '---'}</span></div>
                                 </div>
-                            )}                        </div>
-
-                        {/* 7th card */}
-                        <div className="w-full bg-white rounded-xl border border-slate-100 p-4 md:p-5 shadow-sm">
-                            <h3 className="font-bold text-slate-900 text-sm md:text-base mb-4">
-                                7. Activity Log
-                            </h3>
+                            )}
                         </div>
                     </div>
-
-
                 </div>
 
                 {/* right side */}

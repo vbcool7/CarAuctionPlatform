@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Calendar, Check, CheckCircle, Clock, Download, FileText, RefreshCw, RotateCcw, X, XCircle } from 'lucide-react';
 import { FaUniversity, FaPaypal, FaWallet } from "react-icons/fa";
 import { FaCcVisa, FaCcMastercard } from "react-icons/fa6";
-import SearchBar from '../../AuctionManagement/Shared/Filters/SearchBar';
-import FilterDropdown from '../../AuctionManagement/Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import AllPaymentsList from './AllPaymentsList';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 

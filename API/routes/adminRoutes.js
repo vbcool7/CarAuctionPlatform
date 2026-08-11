@@ -17,7 +17,7 @@ const identityDocsUpload = upload.fields([
 
 router.post('/admin-signup', upload.single('profilePhoto'), adminSignup);
 router.post('/admin-login', adminLogin);
-router.get('/admin-get', authMiddleware(['admin']), adminGet)
+router.get('/admin-get', authMiddleware(['admin']), adminGet);
 router.post('/admin-logout', adminLogout);
 
 router.post('/add-new-buyer', authMiddleware(['admin']), identityDocsUpload, addNewBuyer);

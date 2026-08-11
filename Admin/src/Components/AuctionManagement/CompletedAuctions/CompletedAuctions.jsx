@@ -4,8 +4,8 @@ import DatePicker from 'react-datepicker';
 import { DollarSign, Gavel, Wallet, TrendingUp } from 'lucide-react';
 import AuctionsHeader from '../Shared/AuctionsHeader';
 import CompletedAuctionsStats from './CompletedAuctionsStats';
-import SearchBar from '../Shared/Filters/SearchBar';
-import FilterDropdown from '../Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import CompletedAuctionsList from './CompletedAuctionsList';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 

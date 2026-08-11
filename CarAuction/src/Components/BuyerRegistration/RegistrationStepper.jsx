@@ -1,6 +1,6 @@
 
-import { User, Mail, IdCard, ShieldCheck, CreditCard, ClipboardCheck, Check, ChevronRight} from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { User, Mail, IdCard, ShieldCheck, CreditCard, ClipboardCheck, Check, ChevronRight} from 'lucide-react';
 
 const steps = [
     { icon: User, label: "Create Account", sub: "Basic Information" },

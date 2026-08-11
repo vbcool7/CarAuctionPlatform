@@ -2,8 +2,8 @@
 import React, { useState } from 'react'
 import AuctionsHeader from '../Shared/AuctionsHeader';
 import CancelledAuctionsStats from './CancelledAuctionsStats';
-import SearchBar from '../Shared/Filters/SearchBar';
-import FilterDropdown from '../Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import CancelledAuctionsList from './CancelledAuctionsList';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import ContactSupport from '../../SharedComponents/ContactSupport';

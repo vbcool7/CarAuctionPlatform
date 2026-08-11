@@ -20,7 +20,7 @@ API.interceptors.request.use((config) => {
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        const isAuthEndpoint = error.config?.url?.includes('/buyer-login');
+        const isAuthEndpoint = error.config?.url?.includes('/buyer-login') || error.config?.url?.includes('/seller-login');
         if (error.response?.status === 401 && !isAuthEndpoint) {
             useAuthStore.getState().logout();
             window.location.href = '/login';

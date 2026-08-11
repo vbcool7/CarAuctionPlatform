@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Key } from 'lucide-react';
 import { HiOutlineCheckCircle } from "react-icons/hi2";
 import { useBuyerResetpassword } from '../hook/useBuyer';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 function ResetPassword() {
 

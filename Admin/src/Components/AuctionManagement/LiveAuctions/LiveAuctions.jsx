@@ -3,8 +3,8 @@ import React, { useState } from 'react'
 import AuctionsHeader from '../Shared/AuctionsHeader';
 import LiveAuctionsList from './LiveAuctionsList';
 import LiveAuctionsStats from './LiveAuctionsStats';
-import SearchBar from '../Shared/Filters/SearchBar';
-import FilterDropdown from '../Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import LiveAuctionsSidebar from './LiveAuctionsSidebar';
 
 function LiveAuctions({ setCurrentPage, onSelectVehicle }) {

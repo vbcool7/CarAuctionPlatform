@@ -33,13 +33,11 @@ function BuyerPanelPage() {
     const [currentPage, setCurrentPage] = useState("dashboard");
     const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     const [selectedVehicleId, setSelectedVehicleId] = useState(null);
-
     const [selectedSellerId, setSelectedSellerId] = useState(null);
     const [previousPage, setPreviousPage] = useState(null);
-
-    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     // bid placed
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);

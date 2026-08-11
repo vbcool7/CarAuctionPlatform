@@ -21,7 +21,7 @@ import RegistrationSuccessModal from '../Components/BuyerRegistration/Registrati
 import { useBuyerRegistration } from '../hook/useBuyer';
 import useBuyerRegFormStore from '../store/useBuyerRegFormStore';
 import { buildFormData } from '../utils/buildFormData';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 const header = [
   { id: 1, heading: "Create Your Buyer Account", subHeading: "Join thousands of verified bidders and buy your dream car." },

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { CreditCard, Landmark, Palette, MoreHorizontal, ShieldCheck, RefreshCcw, ArrowLeft, ArrowRight, Lock } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';
 
 const DEPOSIT_AMOUNT = 5000;

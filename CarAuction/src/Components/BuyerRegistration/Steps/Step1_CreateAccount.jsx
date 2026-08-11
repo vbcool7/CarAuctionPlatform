@@ -1,12 +1,15 @@
 
 import React from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Lock, Eye, CheckCircle2, EyeOff } from 'lucide-react';
 
 import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';
-import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { toast } from "react-toastify";
 
 function Step1_CreateAccount({ onNext }) {
+
+    const navigate = useNavigate();
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -225,7 +228,12 @@ function Step1_CreateAccount({ onNext }) {
 
                 {/* Footer Link */}
                 <p className="text-center text-sm text-gray-500 mt-6">
-                    Already have an account? <span className="text-[#D97706] font-bold cursor-pointer">Login</span>
+                    Already have an account?
+                    <span
+                    onClick={() => navigate('/login')}
+                        className="text-[#D97706] font-bold cursor-pointer">
+                        Login
+                    </span>
                 </p>
             </div>
         </section>

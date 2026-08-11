@@ -2,7 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import API from '../api/axiosInstance';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 export const useBuyerRegistration = () => {
     return useMutation({

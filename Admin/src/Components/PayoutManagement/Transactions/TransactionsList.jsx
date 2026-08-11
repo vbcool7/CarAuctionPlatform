@@ -5,7 +5,7 @@ import { FaPaypal, FaUniversity } from "react-icons/fa";
 import { SiWise } from "react-icons/si";
 import { allTransactions } from '../../Data';
 
-function TransactionsList({ setCurrentPage }) {
+function TransactionsList({ setCurrentPage, setSelectedTransactionId }) {
 
     const [activeTab, setActiveTab] = useState("all");
 
@@ -184,6 +184,10 @@ function TransactionsList({ setCurrentPage }) {
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <button
+                                        onClick={() => {
+                                            setSelectedTransactionId(transaction.transactionId)
+                                            setCurrentPage('transactions-detail')
+                                        }}
                                             className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
                                             title="View Transaction"
                                         >

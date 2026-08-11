@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { UploadCloud, ShieldCheck, FileText, CheckCircle2, X, ArrowLeft, ArrowRight, ChevronDown, Upload } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';
 

@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History } from 'lucide-react';
 import { bidsList } from '../Data';
-import SearchBar from '../AuctionManagement/Shared/Filters/SearchBar';
-import FilterDropdown from '../AuctionManagement/Shared/Filters/FilterDropDown';
+import SearchBar from '../SharedComponents/SearchBar';
+import FilterDropdown from '../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 import BidManagementList from './BidManagementList';
 

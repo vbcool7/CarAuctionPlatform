@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Wallet, CheckSquare, Clock, X, Download, Calendar, Plus, ArrowUpRight, History, Check, FilePlus, ClipboardCheck } from "lucide-react";
 import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
 import { SiWise } from "react-icons/si";
-import SearchBar from '../../AuctionManagement/Shared/Filters/SearchBar';
-import FilterDropdown from '../../AuctionManagement/Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import PayoutsList from './PayoutsList';
 
@@ -62,7 +62,7 @@ const recentActivity = [
     { title: "Payout completed", desc: "PAYOUT-2024-0231 to Sarah Williams", amount: "$24,750.00", time: "09:45 AM", icon: Check, iconBg: "bg-green-500" },
 ];
 
-function Payouts({ setCurrentPage }) {
+function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
 
     const [selectedPayoutType, setSelectedPayoutType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
@@ -216,7 +216,7 @@ function Payouts({ setCurrentPage }) {
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    <PayoutsList />
+                    <PayoutsList  setSelectedPayoutId={ setSelectedPayoutId} setCurrentPage={setCurrentPage}/>
                 </div>
 
                 {/* right side - section */}

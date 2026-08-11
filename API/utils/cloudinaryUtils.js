@@ -6,22 +6,19 @@ export const deleteCloudinaryFiles = async (fileData) => {
     try {
         if (!fileData) return;
 
-        let publicIds = [];
+        let files = [];
 
-        // Case 1: if single upload
         if (fileData.filename) {
-            publicIds.push(fileData.filename);
-        }
-        // Case 2: multiple fields
-        else {
-            const allFiles = Object.values(fileData).flat();
-            publicIds = allFiles.map(f => f.filename).filter(id => id);
+            files.push(fileData);
+        } else {
+            files = Object.values(fileData).flat();
         }
 
-        // dlt all id's
-        for (const id of publicIds) {
-            await cloudinary.uploader.destroy(id);
-            console.log(`Cleanup Done: Deleted ${id} from Cloudinary`);
+        for (const file of files) {
+            if (!file.filename) continue;
+            const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+            await cloudinary.uploader.destroy(file.filename, { resource_type: resourceType });
+            console.log(`Cleanup Done: Deleted ${file.filename} (${resourceType}) from Cloudinary`);
         }
     } catch (error) {
         console.error("Cloudinary Cleanup Error:", error);

@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Calendar, Check, CheckCircle, Clock, DollarSign, Download, RotateCcw, XCircle, X } from 'lucide-react';
 import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
 import { SiWise } from "react-icons/si";
-import SearchBar from '../../AuctionManagement/Shared/Filters/SearchBar';
-import FilterDropdown from '../../AuctionManagement/Shared/Filters/FilterDropDown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import TransactionsList from './TransactionsList';
 
@@ -99,7 +99,7 @@ const recentActivity = [
     },
 ];
 
-function Transactions({ setCurrentPage }) {
+function Transactions({ setCurrentPage, setSelectedTransactionId }) {
 
     const [selectedTransactionType, setSelectedTransactionType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
@@ -251,7 +251,7 @@ function Transactions({ setCurrentPage }) {
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    <TransactionsList setCurrentPage={setCurrentPage} />
+                    <TransactionsList setCurrentPage={setCurrentPage} setSelectedTransactionId={setSelectedTransactionId}/>
                 </div>
 
                 {/* right side - section */}

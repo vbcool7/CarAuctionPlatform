@@ -6,8 +6,8 @@ import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 import QuickActionsCard from '../SharedComponents/QuickActionsCard';
 import NotesSection from '../SharedComponents/NotesSection';
 import VehicleApprovalsDetail from './VehicleApprovalsDetail';
-import SearchBar from '../AuctionManagement/Shared/Filters/SearchBar';
-import FilterDropdown from '../AuctionManagement/Shared/Filters/FilterDropDown';
+import SearchBar from '../SharedComponents/SearchBar';
+import FilterDropdown from '../SharedComponents/FilterDropdown';
 
 function VehicleApprovals({ setCurrentPage }) {
 

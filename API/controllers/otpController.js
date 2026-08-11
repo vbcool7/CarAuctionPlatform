@@ -2,28 +2,40 @@
 import OTP from '../models/otpModelSchema.js';
 import sendEmail from '../utils/sendEmail.js';
 import Buyer from '../models/buyerModelSchema.js';
+import Seller from '../models/sellerModelSchema.js';
+
+const getModel = (role) => (role === 'seller' ? Seller : role === 'buyer' ? Buyer : null);
 
 export const sentOTP = async (req, res) => {
     try {
-        const { email, role } = req.body;
+        const { email } = req.body;
+        // Default to 'buyer' when role isn't sent — preserves old behavior
+        // for any existing buyer frontend calls that never passed role.
+        const role = req.body.role || 'buyer';
 
-        if (!email || !role) {
+        if (!email) {
             return res.status(400).json({
                 success: false,
-                message: "Email and Role are required"
+                message: "Email is required"
             });
         }
 
-        const Model = Buyer;
+        const Model = getModel(role);
 
-        if (role !== "buyer") {
+        if (!Model) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid role"
             });
         }
 
-        const existingAccount = await Model.findOne({ email });
+        // Seller can already have a draft (incomplete) record from step-by-step
+        // registration — only block if a COMPLETE account already exists.
+        const existingAccountQuery = role === 'seller'
+            ? { email, isComplete: true }
+            : { email };
+
+        const existingAccount = await Model.findOne(existingAccountQuery);
         if (existingAccount) {
             return res.status(400).json({
                 success: false,
@@ -64,9 +76,20 @@ export const sentOTP = async (req, res) => {
 
 export const verifyOTP = async (req, res) => {
     try {
-        const { email, otp, role } = req.body;
+        const { email, otp } = req.body;
+        // Same fallback as sentOTP — old buyer calls without role still work.
+        const role = req.body.role || 'buyer';
 
-        const storedOtpDetails = await OTP.findOne({ email }).sort({ createdAt: -1 });
+        const Model = getModel(role);
+
+        if (!Model) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid role"
+            });
+        }
+
+        const storedOtpDetails = await OTP.findOne({ email, role }).sort({ createdAt: -1 });
 
         if (!storedOtpDetails) {
             return res.status(400).json({
@@ -84,6 +107,14 @@ export const verifyOTP = async (req, res) => {
 
         storedOtpDetails.verified = true;
         await storedOtpDetails.save();
+
+        // NOTE: phone is verified via the same email OTP for now (no SMS
+        // gateway yet). When real SMS/phone OTP is added later, decouple
+        // isPhoneVerified from this flow.
+        await Model.findOneAndUpdate(
+            { email },
+            { isEmailVerified: true, isPhoneVerified: true }
+        );
 
         res.status(200).json({
             success: true,

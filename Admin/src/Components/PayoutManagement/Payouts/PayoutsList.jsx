@@ -5,7 +5,7 @@ import { FaPaypal, FaUniversity } from "react-icons/fa";
 import { SiWise } from "react-icons/si";
 import { payoutsList } from '../../Data';
 
-function PayoutsList() {
+function PayoutsList({ setCurrentPage, setSelectedPayoutId }) {
 
     const [activeTab, setActiveTab] = useState("all-payouts");
 
@@ -89,7 +89,7 @@ function PayoutsList() {
                                 {/* amt */}
                                 <td className='px-6 py-4'>
                                     <span className="text-[13px] font-bold text-green-600">
-                                        {payout.amount}
+                                        ${(payout.breakdown.winningAmount - payout.breakdown.platformFee - payout.breakdown.paymentProcessingFee - payout.breakdown.otherDeductions).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </span>
                                 </td>
 
@@ -109,9 +109,9 @@ function PayoutsList() {
 
                                 {/* acc detail */}
                                 <td className="px-6 py-4 text-[13px] leading-tight">
-                                    <div className="font-semibold text-slate-800">{payout.accountInfo}</div>
-                                    {payout.bankName && (
-                                        <div className="text-[11px] text-slate-400 mt-0.5">{payout.bankName}</div>
+                                    <div className="font-semibold text-slate-800">{payout.bankDetails.accountNumber}</div>
+                                    {payout.bankDetails.bankName && (
+                                        <div className="text-[11px] text-slate-400 mt-0.5">{payout.bankDetails.bankName}</div>
                                     )}
                                 </td>
 
@@ -140,6 +140,10 @@ function PayoutsList() {
                                 <td className="px-6 py-4">
                                     <div className="flex gap-4">
                                         <button
+                                            onClick={() => {
+                                                setSelectedPayoutId(payout.payoutId)
+                                                setCurrentPage('payouts-detail')
+                                            }}
                                             className="p-1 text-slate-400 hover:text-slate-600">
                                             <Eye size={16} />
                                         </button>

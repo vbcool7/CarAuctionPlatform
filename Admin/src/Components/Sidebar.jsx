@@ -2,21 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut, CarFront } from 'lucide-react';
-import {
-    RiDashboardLine,
-    RiUserLine,
-    RiCarLine,
-    RiAuctionLine,
-    RiHandCoinLine,
-    RiBankCardLine,
-    RiShieldCheckLine,
-    RiFileList3Line,
-    RiBarChartGroupedLine,
-    RiSparklingLine,
-    RiSettings3Line,
-    RiVerifiedBadgeLine,
-    RiMessage2Line,
-} from "react-icons/ri";
+import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line } from "react-icons/ri";
 
 const menuItems = [
     {
@@ -70,7 +56,6 @@ const menuItems = [
             { id: "payouts", label: "Payouts" },
             { id: "refunds", label: "Refunds" },
             { id: "transactions", label: "Transactions" },
-            { id: "disputes", label: "Disputes" },
             { id: "payment-gateways", label: "Payment Gateways" },
         ]
     },
@@ -79,12 +64,20 @@ const menuItems = [
         icon: RiShieldCheckLine,
         label: "Dispute Management",
         active: false,
+        submenu: [
+            { id: "all-disputes", label: "All Disputes" },
+            { id: "dispute-categories", label: "Dispute Categories" },
+        ]
     },
     {
         id: "cms-management",
         icon: RiFileList3Line,
         label: "CMS Management",
         active: false,
+        submenu: [
+            { id: "all-pages", label: "All Pages" },
+            { id: "all-blogs", label: "Blog post" },
+        ]
     },
     {
         id: "reports-analytics",
@@ -255,7 +248,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                                             >
                                                 <div className="flex items-center gap-5">
                                                     {subitem.label}
-                                                    
+
                                                     {/* sub menu badge */}
                                                     {subitem.badge && (
                                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors

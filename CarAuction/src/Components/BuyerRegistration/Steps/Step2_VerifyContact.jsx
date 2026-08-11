@@ -5,7 +5,7 @@ import { Mail, ShieldCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useSendOtp, useVerifyOtp } from '../../../hook/useOtp';
 import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';
 
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 
 function Step2_VerifyContact({ onBack, onNext }) {
 

@@ -97,201 +97,329 @@ function VehicleAuctionPanel({
   const auctionEnded = !timeLeft;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="h-full flex flex-col">
 
-      {/* Vehicle Summary */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      {/* =========================
+          Vehicle Summary
+      ========================== */}
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col">
 
-        <h2 className="text-slate-900 text-lg font-bold leading-snug">
-          {vehicle.name}
-        </h2>
-        {vehicle.model && (
-          <p className="text-slate-500 text-sm mt-0.5">
-            {vehicle.model}
-          </p>
-        )}
+        {/* Vehicle Name */}
+        <div>
+          <h2 className="text-slate-900 text-lg font-bold leading-snug">
+            {vehicle.name}
+          </h2>
 
-        <div className="mt-4 flex flex-col gap-3 text-sm">
-          <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-            <span className="text-slate-500">VIN</span>
-            <span className="text-slate-900 font-mono text-xs font-medium">
+          {vehicle.model && (
+            <p className="text-slate-500 text-sm mt-0.5">
+              {vehicle.model}
+            </p>
+          )}
+        </div>
+
+        {/* Vehicle Details */}
+        <div className="mt-4 flex flex-col text-sm">
+
+          {/* VIN */}
+          <div className="flex justify-between items-center border-b border-slate-100 pb-0.5">
+            <span className="text-slate-500">
+              VIN
+            </span>
+
+            <span className="text-slate-900 font-mono text-[10px] font-medium">
               {vehicle.vin}
             </span>
           </div>
 
-          <div className="flex justify-between items-center border-b border-slate-50 pb-2">
-            <span className="text-slate-500">Location</span>
-            <span className="text-slate-900 font-medium">{vehicle.location}</span>
+          {/* Location */}
+          <div className="flex justify-between items-center border-b border-slate-100 py-0.5">
+            <span className="text-slate-500">
+              Location
+            </span>
+
+            <span className="text-slate-900 font-medium">
+              {vehicle.location}
+            </span>
           </div>
 
-          <div className="flex justify-between items-center">
-            <span className="text-slate-500">Seller</span>
+          {/* Seller */}
+          <div className="flex justify-between items-center pt-1">
+            <span className="text-slate-500">
+              Seller
+            </span>
+
             <span className="text-slate-900 font-medium">
               {vehicle.sellerName || "—"}
             </span>
           </div>
+
         </div>
 
-         {/* Current Bid */}
-        <p className="font-semibold text-md text-slate-700 mb-1 pt-4">Current Bid</p>
+        {/* =========================
+            Current Bid
+        ========================== */}
+        <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
 
-        <p className="text-3xl font-bold text-slate-900">
-          {/* {formatAED(currentBid)} */}
-          {vehicle.bid}
-        </p>
+          <div className="flex items-center justify-between">
 
-        <p className="text-slate-500 text-xs mt-1">
-          {totalBids} bid{totalBids !== 1 ? "s" : ""} placed
-        </p>
+            {/* Bid Amount */}
+            <div>
+              <p className="text-xs font-medium text-slate-500">
+                Current Bid
+              </p>
 
-        {/* Timer */}
+              <div className="mt-1 flex items-baseline gap-1.5">
+
+                <span className="text-sm font-semibold text-slate-500">
+                  AED
+                </span>
+
+                <p className="text-2xl font-bold tracking-tight text-slate-900">
+                  {vehicle.bid}
+                </p>
+
+              </div>
+            </div>
+
+            {/* Total Bids */}
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400">
+                Bids
+              </p>
+
+              <p className="mt-1 text-xs font-semibold text-slate-700">
+                {totalBids} placed
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* =========================
+            Timer
+        ========================== */}
         <div className="mt-4">
+
           {auctionEnded ? (
+
             <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+
               <span className="w-2 h-2 rounded-full bg-red-500" />
+
               <span className="text-red-600 text-sm font-medium">
                 Auction Ended
               </span>
+
             </div>
+
           ) : (
+
             <>
+              {/* Ending Soon */}
               {isSnipe && (
                 <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-3">
+
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+
                   <span className="text-red-600 text-xs font-medium">
                     Ending soon — bids extend timer by 2 min
                   </span>
+
                 </div>
               )}
 
+              {/* Countdown */}
               <div className="flex items-center gap-2">
-                <TimerBlock value={timeLeft.h} label="hr" />
-                <span className="text-slate-400 text-xl font-light mb-1">:</span>
 
-                <TimerBlock value={timeLeft.m} label="min" />
-                <span className="text-slate-400 text-xl font-light mb-1">:</span>
+                <TimerBlock
+                  value={timeLeft.h}
+                  label="hr"
+                />
 
-                <TimerBlock value={timeLeft.s} label="sec" />
+                <span className="text-slate-400 text-xl font-light mb-1">
+                  :
+                </span>
+
+                <TimerBlock
+                  value={timeLeft.m}
+                  label="min"
+                />
+
+                <span className="text-slate-400 text-xl font-light mb-1">
+                  :
+                </span>
+
+                <TimerBlock
+                  value={timeLeft.s}
+                  label="sec"
+                />
+
               </div>
             </>
           )}
+
         </div>
+
       </div>
 
-      {/* Bid Increment Info */}
+      {/* =========================
+          Bottom Action Area
+          mt-auto keeps this section
+          at the bottom
+      ========================== */}
       {!auctionEnded && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm">
-          <span className="text-slate-600">
-            Minimum next bid
-          </span>
+        <div className="mt-auto pt-3">
 
-          <span className="text-[#D97706] font-semibold">
-            {formatAED(minBid)}
-          </span>
-        </div>
-      )}
+          {/* Minimum Next Bid */}
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm">
 
-      {/* Action Buttons */}
-      {!auctionEnded && (
-        <div className="flex flex-col gap-2">
+            <span className="text-slate-600">
+              Minimum next bid
+            </span>
 
-          {!showBidInput ? (
-            <button
-              onClick={() => setShowBidInput(true)}
-              className="w-full bg-[#D97706] hover:bg-[#B45309] hover:-translate-y-0.5 text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:shadow-lg text-base"
-            >
-              Place Bid
-            </button>
-          ) : (
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+            <span className="text-[#D97706] font-semibold">
+              {formatAED(minBid)}
+            </span>
 
-              <p className="text-slate-900 text-sm font-medium">
-                Enter your bid
-              </p>
+          </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500 text-sm">AED</span>
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 mt-3">
 
-                <input
-                  type="number"
-                  value={bidAmount}
-                  min={minBid}
-                  step={bidIncrement}
-                  onChange={(e) => setBidAmount(Number(e.target.value))}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/20 transition-all"
-                />
-              </div>
+            {/* =========================
+                Place Bid / Bid Form
+            ========================== */}
+            {!showBidInput ? (
 
-              {bidError && (
-                <p className="text-red-500 text-xs">
-                  {bidError}
+              <button
+                onClick={() => setShowBidInput(true)}
+                className="w-full bg-[#D97706] hover:bg-[#B45309] text-white font-semibold py-2.5 rounded-xl transition-all duration-200 text-sm"
+              >
+                Place Bid
+              </button>
+
+            ) : (
+
+              <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col gap-3 shadow-sm">
+
+                <p className="text-slate-900 text-xs font-semibold">
+                  Enter your bid
                 </p>
-              )}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={handleBidSubmit}
-                  disabled={isSubmitting}
-                  className="flex-1 bg-[#D97706] hover:bg-[#B45309] disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition-all text-sm"
-                >
-                  {isSubmitting
-                    ? "Submitting..."
-                    : `Confirm ${formatAED(bidAmount)}`}
-                </button>
+                {/* Bid Input */}
+                <div className="flex items-center gap-2">
 
-                <button
-                  onClick={() => {
-                    setShowBidInput(false);
-                    setBidError("");
-                  }}
-                  className="px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-colors text-sm border border-slate-200"
-                >
-                  Cancel
-                </button>
+                  <span className="text-slate-500 text-xs">
+                    AED
+                  </span>
+
+                  <input
+                    type="number"
+                    value={bidAmount}
+                    min={minBid}
+                    step={bidIncrement}
+                    onChange={(e) =>
+                      setBidAmount(Number(e.target.value))
+                    }
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 text-sm focus:outline-none focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/20 transition-all"
+                  />
+
+                </div>
+
+                {/* Bid Error */}
+                {bidError && (
+                  <p className="text-red-500 text-xs">
+                    {bidError}
+                  </p>
+                )}
+
+                {/* Confirm / Cancel */}
+                <div className="flex gap-2">
+
+                  <button
+                    onClick={handleBidSubmit}
+                    disabled={isSubmitting}
+                    className="flex-1 bg-[#D97706] hover:bg-[#B45309] disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition-all text-xs"
+                  >
+                    {isSubmitting
+                      ? "Submitting..."
+                      : `Confirm ${formatAED(bidAmount)}`}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowBidInput(false);
+                      setBidError("");
+                    }}
+                    className="px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors text-xs border border-slate-200"
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
               </div>
+            )}
 
-            </div>
-          )}
-          
-          {/* buy now btn */}
-          <button
-              className="w-full border-2 border-[#D97706] hover:border-[#B45309] hover:-translate-y-0.5 text-[#D97706] font-semibold py-3 rounded-xl transition-all duration-300 hover:shadow-lg text-base"
+            {/* =========================
+                Buy Now
+            ========================== */}
+            <button
+              className="w-full border border-[#D97706] hover:bg-amber-50 text-[#D97706] font-semibold py-2.5 rounded-xl transition-all text-sm"
             >
               Buy Now For AED 32,000
             </button>
-          
-          {/* watchlist and share btn */}
-          <div className="flex gap-2">
 
-            <button
-              onClick={onWatchlist}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all text-sm font-medium ${isWatchlisted
-                ? "bg-amber-50 border-[#D97706] text-[#D97706]"
-                : "bg-white border-slate-200 text-slate-600 hover:border-[#D97706] hover:text-[#D97706]"
-                }`}
-            >
-              <span>
+            {/* =========================
+                Watchlist / Share
+            ========================== */}
+            <div className="flex gap-2">
+
+              {/* Watchlist */}
+              <button
+                onClick={onWatchlist}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-all text-xs font-medium ${isWatchlisted
+                    ? "bg-amber-50 border-[#D97706] text-[#D97706]"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-[#D97706] hover:text-[#D97706]"
+                  }`}
+              >
+
                 {isWatchlisted ? (
                   <GoHeartFill className="w-4 h-4" />
                 ) : (
                   <GoHeart className="w-4 h-4" />
                 )}
-              </span>
 
-              <span>{isWatchlisted ? "Watching" : "Watchlist"}</span>
-            </button>
+                <span>
+                  {isWatchlisted
+                    ? "Watching"
+                    : "Watchlist"}
+                </span>
 
-            <button
-              onClick={handleShare}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-[#D97706] hover:text-[#D97706] transition-all text-sm font-medium"
-            >
-              <span>
-                {copied ? <IoCheckmark className="w-5 h-5" /> : <IoIosShareAlt className="w-5 h-5" />}
-              </span>
-              <span>{copied ? "Copied!" : "Share"}</span>
-            </button>
+              </button>
+
+              {/* Share */}
+              <button
+                onClick={handleShare}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-[#D97706] hover:text-[#D97706] transition-all text-xs font-medium"
+              >
+
+                {copied ? (
+                  <IoCheckmark className="w-4 h-4" />
+                ) : (
+                  <IoIosShareAlt className="w-4 h-4" />
+                )}
+
+                <span>
+                  {copied ? "Copied!" : "Share"}
+                </span>
+
+              </button>
+
+            </div>
 
           </div>
+
         </div>
       )}
 

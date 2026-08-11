@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Download, Wallet, CheckCircle, Clock, XCircle, RotateCcw, Calendar, Check, X, Circle, FilePlus, ClipboardCheck } from 'lucide-react';
 import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
 import { SiWise } from "react-icons/si";
-import FilterDropdown from '../../AuctionManagement/Shared/Filters/FilterDropDown';
-import SearchBar from '../../AuctionManagement/Shared/Filters/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
+import SearchBar from '../../SharedComponents/SearchBar';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import RefundsList from './RefundsList';
 
@@ -99,7 +99,7 @@ const recentActivity = [
     },
 ];
 
-function Refunds({ setCurrentPage }) {
+function Refunds({ setCurrentPage, setSelectedRefundId }) {
 
     const [selectedRefundType, setSelectedRefundType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
@@ -251,7 +251,7 @@ function Refunds({ setCurrentPage }) {
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    <RefundsList setCurrentPage={setCurrentPage} />
+                    <RefundsList setCurrentPage={setCurrentPage} setSelectedRefundId={setSelectedRefundId} />
                 </div>
 
                 {/* right side - section */}

@@ -5,6 +5,7 @@ import { RowData } from "./DetailTabs";
 function AuctionDetailsTab({ vehicle }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
       {/* Financial Section */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6">
         <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">

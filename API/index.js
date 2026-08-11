@@ -2,7 +2,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import http from 'http'; 
+import http from 'http';
 import connectDb from './config/connectDb.js';
 import rootRouter from './routes/mainRoutes.js';
 
@@ -15,6 +15,7 @@ const server = http.createServer(app);
 app.use(cors({
     origin: [
         "https://codezens.com",
+        "https://www.codezens.com",
         "http://localhost:5173",
         "http://localhost:5174"
     ],

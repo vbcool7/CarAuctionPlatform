@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import LoginCarImg from '../assets/Images/LoginCarImg.jpg';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
 import { useBuyerLogin } from '../hook/useBuyer';
 import useAuthStore from '../store/useAuthStore';
+import { useSellerLogin } from '../hook/useSeller';
 
 function LoginForm() {
 
@@ -13,13 +14,19 @@ function LoginForm() {
     const [role, setRole] = useState('buyer');
     const [formData, setFormData] = useState({ email: '', password: '' });
 
-    const { mutate: loginBuyer, isPending: isLogging } = useBuyerLogin();
+    const { mutate: loginBuyer, isPending: isBuyerLogging } = useBuyerLogin();
+    const { mutate: loginSeller, isPending: isSellerLogging } = useSellerLogin();
+
+    const isLogging = role === "buyer" ? isBuyerLogging : isSellerLogging;
+
     const login = useAuthStore((state) => state.login);
 
     // i/p handler
     const handleInputChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     }
+
+    const loginMutation = role === 'buyer' ? loginBuyer : loginSeller;
 
     // submit
     const handleSubmit = (e) => {
@@ -28,18 +35,23 @@ function LoginForm() {
         if (!formData.email) return toast.error("Email is required");
         if (!formData.password) return toast.error("Password is required");
 
-        loginBuyer({ ...formData }, {
+        console.log("Login attempt:", {
+            selectedRole: role,
+            email: formData.email
+        });
+
+        loginMutation(formData, {
             onSuccess: async (res) => {
                 toast.success(res.message || "Login Successful");
 
-                const buyerData = res.buyer;
+                const userData = role === 'buyer' ? res.buyer : res.seller;
 
-                if (buyerData && res.token) {
-                    login(res.token, buyerData);
+                if (userData && res.token) {
+                    login(res.token, userData);
 
                     // redirect
                     const targetPath =
-                        buyerData.role === 'buyer'
+                        userData.role === 'buyer'
                             ? "/buyer-dashboard"
                             : "/seller-dashboard";
                     navigate(targetPath);
@@ -149,7 +161,7 @@ function LoginForm() {
                         </div>
 
                         {/* Form Layout */}
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} type='button' className="space-y-4">
                             {/* Email Input */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">

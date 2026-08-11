@@ -2,7 +2,11 @@
 import {
   LayoutDashboard, User, Users, Briefcase, Car, Truck,
   Gavel, HandCoins, ShieldAlert, FileText,
-  BarChart3, Settings, Fingerprint, Cpu, MessageSquare
+  BarChart3, Settings, Fingerprint, Cpu, MessageSquare,
+  Megaphone,
+  AlertTriangle,
+  CreditCard,
+  Key
 } from 'lucide-react';
 
 export const dummyBuyers = [
@@ -1236,7 +1240,7 @@ export const allAuctionData = [
       }
     ]
   },
-]
+];
 
 // bids man
 export const bidsList = [
@@ -1321,113 +1325,149 @@ export const payoutsList = [
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     userName: "Michael Johnson",
     userEmail: "michael.j@email.com",
+    userPhone: "+971 50 123 4567",
+    userType: "Seller",
+    businessName: "Michael Motors LLC",
+    tradeLicenseNo: "MM-123456",
+    joinedOn: "Apr 22, 2023",
     payoutType: "Winning Payout",
-    amount: "$45,500.00",
     method: "Bank Transfer",
-    accountInfo: "**** 4242",
-    bankName: "Chase Bank",
     status: "Completed",
     date: "Jun 19, 2024",
     time: "10:30 AM",
-  },
-  {
-    payoutId: "PAYOUT-2024-0242",
-    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "Sarah Williams",
-    userEmail: "sarah.w@email.com",
-    payoutType: "Winning Payout",
-    amount: "$24,750.00",
-    method: "Wire Transfer",
-    accountInfo: "**** 8888",
-    bankName: "Wells Fargo",
-    status: "Completed",
-    date: "Jun 19, 2024",
-    time: "09:45 AM",
+    completedDate: "Jun 19, 2024",
+    completedTime: "10:45 AM",
+    referenceId: "BT-20240619-00124",
+    bankDetails: {
+      accountHolderName: "Michael Motors LLC",
+      bankName: "Emirates NBD",
+      accountNumber: "**** 4242",
+      iban: "AE020260751234567890123",
+      swiftCode: "EBILAEAD",
+      currency: "USD - US Dollar"
+    },
+    breakdown: {
+      winningAmount: 50000.00,
+      platformFeePercent: 5,
+      platformFee: 2500.00,
+      paymentProcessingFee: 1200.00,
+      otherDeductions: 800.00
+    },
+    notes: "Payout for winning vehicle BMW X5 2021 (AUCTION-2024-567)",
+    createdBy: "Admin User",
+    document: { name: "Payout Receipt", type: "PDF", size: "245 KB" }
   },
   {
     payoutId: "PAYOUT-2024-0241",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     userName: "David Brown",
     userEmail: "david.b@email.com",
+    userPhone: "+971 50 987 6543",
+    userType: "Seller",
+    businessName: "Brown Auto Traders",
+    tradeLicenseNo: "BAT-778901",
+    joinedOn: "Jan 10, 2023",
     payoutType: "Seller Payout",
-    amount: "$18,200.00",
-    method: "PayPal",
-    accountInfo: "david.b@email.com",
-    bankName: null,
+    method: "Wire Transfer",
     status: "Pending",
     date: "Jun 19, 2024",
     time: "11:20 AM",
-  },
-  {
-    payoutId: "PAYOUT-2024-0240",
-    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "John Motors FZ LLC",
-    userEmail: "john.motors@email.com",
-    payoutType: "Seller Payout",
-    amount: "$41,160.00",
-    method: "Bank Transfer",
-    accountInfo: "**** 3566",
-    bankName: "Emirates NBD",
-    status: "Completed",
-    date: "Jun 18, 2024",
-    time: "03:15 PM",
-  },
-  {
-    payoutId: "PAYOUT-2024-0239",
-    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "Auto World LLC",
-    userEmail: "finance@autoworld.com",
-    payoutType: "Seller Payout",
-    amount: "$22,275.00",
-    method: "Bank Transfer",
-    accountInfo: "**** 7890",
-    bankName: "ADCB",
-    status: "Completed",
-    date: "Jun 18, 2024",
-    time: "02:50 PM",
+    completedDate: null,
+    completedTime: null,
+    referenceId: "WT-20240619-00119",
+    bankDetails: {
+      accountHolderName: "David Brown",
+      bankName: null,
+      accountNumber: "david.b@email.com",
+      iban: null,
+      swiftCode: null,
+      currency: "USD - US Dollar"
+    },
+    breakdown: {
+      winningAmount: 20000.00,
+      platformFeePercent: 5,
+      platformFee: 1000.00,
+      paymentProcessingFee: 600.00,
+      otherDeductions: 200.00
+    },
+    notes: "Payout for sold vehicle Toyota Camry 2022 (AUCTION-2024-559)",
+    createdBy: "Admin User",
+    document: { name: "Payout Receipt", type: "PDF", size: "0 KB" }
   },
   {
     payoutId: "PAYOUT-2024-0238",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     userName: "James Wilson",
     userEmail: "james.w@email.com",
-    payoutType: "Winning Payout",
-    amount: "$16,800.00",
+    userPhone: "+971 50 456 7890",
+    userType: "Buyer",
+    businessName: null,
+    tradeLicenseNo: null,
+    joinedOn: "Mar 5, 2024",
+    payoutType: "Refund Payout",
     method: "PayPal",
-    accountInfo: "james.w@email.com",
-    bankName: null,
     status: "Processing",
     date: "Jun 18, 2024",
     time: "01:35 PM",
+    completedDate: null,
+    completedTime: null,
+    referenceId: "PP-20240618-00087",
+    bankDetails: {
+      accountHolderName: "James Wilson",
+      bankName: null,
+      accountNumber: "james.w@email.com",
+      iban: null,
+      swiftCode: null,
+      currency: "USD - US Dollar"
+    },
+    breakdown: {
+      winningAmount: 18000.00,
+      platformFeePercent: 5,
+      platformFee: 900.00,
+      paymentProcessingFee: 250.00,
+      otherDeductions: 50.00
+    },
+    notes: "Deposit refund — auction lost (AUCTION-2024-541)",
+    createdBy: "System",
+    document: { name: "Payout Receipt", type: "PDF", size: "0 KB" }
   },
   {
     payoutId: "PAYOUT-2024-0237",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     userName: "Robert Taylor",
     userEmail: "robert.t@email.com",
+    userPhone: "+971 50 321 6547",
+    userType: "Seller",
+    businessName: "Taylor Motors",
+    tradeLicenseNo: "TM-445210",
+    joinedOn: "Nov 18, 2022",
     payoutType: "Winning Payout",
-    amount: "$9,750.00",
     method: "Wise",
-    accountInfo: "robert.t@email.com",
-    bankName: null,
     status: "Failed",
     date: "Jun 17, 2024",
     time: "12:10 PM",
-  },
-  {
-    payoutId: "PAYOUT-2024-0236",
-    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "Linda Martinez",
-    userEmail: "linda.m@email.com",
-    payoutType: "Refund Payout",
-    amount: "$500.00",
-    method: "Bank Transfer",
-    accountInfo: "**** 4242",
-    bankName: "Chase Bank",
-    status: "Completed",
-    date: "Jun 17, 2024",
-    time: "11:05 AM",
-  },
+    completedDate: null,
+    completedTime: null,
+    referenceId: "WS-20240617-00073",
+    bankDetails: {
+      accountHolderName: "Robert Taylor",
+      bankName: null,
+      accountNumber: "robert.t@email.com",
+      iban: null,
+      swiftCode: null,
+      currency: "USD - US Dollar"
+    },
+    breakdown: {
+      winningAmount: 10500.00,
+      platformFeePercent: 5,
+      platformFee: 525.00,
+      paymentProcessingFee: 200.00,
+      otherDeductions: 25.00
+    },
+    notes: "Payout for sold vehicle Honda Civic 2021 (AUCTION-2024-533)",
+    createdBy: "Admin User",
+    document: { name: "Payout Receipt", type: "PDF", size: "0 KB" }
+  }
 ];
 
 export const allPayments = [
@@ -1546,70 +1586,123 @@ export const allPayments = [
 
 export const allRefunds = [
   {
-    refundId: "REFUND-2024-0184",
+    refundId: "REFUND-2024-0186",
+    payoutId: "PAYOUT-2024-0241",
+    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    userName: "David Brown",
+    userEmail: "david.b@email.com",
+    userPhone: "+971 50 123 4567",
+    userId: "USER-2024-00128",
+    userType: "Seller",
+    businessName: "David Motors FZ LLC",
+    tradeLicenseNo: "DM-123456",
+    joinedOn: "Mar 12, 2023",
+    refundType: "Seller Refund",
+    method: "PayPal",
+    transactionId: "7H5905932A123456L",
+    status: "Completed",
+    date: "Jun 18, 2024", time: "03:45 PM",
+    completedDate: "Jun 19, 2024", completedTime: "11:20 AM",
+    stoppedAtStep: null,
+    timeline: [
+      { step: "Refund Requested", date: "Jun 18, 2024", time: "03:45 PM" },
+      { step: "Under Review", date: "Jun 18, 2024", time: "04:00 PM" },
+      { step: "Approved", date: "Jun 19, 2024", time: "10:45 AM" },
+      { step: "Refund Processed", date: "Jun 19, 2024", time: "11:15 AM" },
+      { step: "Completed", date: "Jun 19, 2024", time: "11:20 AM" }
+    ],
+    breakdown: { winningAmount: 20000, platformFeePercent: 5, platformFee: 1000, paymentProcessingFee: 800, otherDeductions: 2000 },
+    reason: "Seller requested refund",
+    details: "Seller requested refund due to vehicle not as described.",
+    notes: "Vehicle had multiple undisclosed damages.",
+    document: { name: "Refund Receipt", type: "PDF", size: "245 KB" }
+  },
+  {
+    refundId: "REFUND-2024-0187",
     payoutId: "PAYOUT-2024-0234",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
     userName: "Daniel Anderson",
     userEmail: "daniel.a@email.com",
-    payoutType: "Buyer Refund",
-    amount: "$19,500.00",
-    method: "PayPal",
-    accountInfo: "daniel.a@email.com",
-    bankName: "PayPal",
-    status: "Completed",
-    date: "Jun 18, 2024",
-    time: "04:20 PM",
-    reason: "NA"
-  },
-  {
-    refundId: "REFUND-2024-0183",
-    payoutId: "PAYOUT-2024-0232",
-    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "Auto World LLC",
-    userEmail: "finance@autoworld.com",
-    payoutType: "Seller Refund",
-    amount: "$22,275.00",
+    userPhone: "+971 55 987 6543",
+    userId: "USER-2024-00131",
+    userType: "Buyer",
+    businessName: null,
+    tradeLicenseNo: null,
+    joinedOn: "Jan 05, 2024",
+    refundType: "Buyer Refund",
     method: "Bank Transfer",
-    accountInfo: "**** 4242",
-    bankName: "Chase Bank",
+    transactionId: null,
     status: "Pending",
-    date: "Jun 18, 2024",
-    time: "02:30 PM",
-    reason: "NA"
+    date: "Aug 01, 2026", time: "10:10 AM",
+    completedDate: null, completedTime: null,
+    stoppedAtStep: null,
+    timeline: [
+      { step: "Refund Requested", date: "Aug 01, 2026", time: "10:10 AM" }
+    ],
+    breakdown: { winningAmount: 19500, platformFeePercent: 5, platformFee: 975, paymentProcessingFee: 600, otherDeductions: 0 },
+    reason: "Buyer lost auction, deposit refund",
+    details: "Auction closed without buyer winning; deposit hold released.",
+    notes: "NA",
+    document: { name: "Refund Receipt", type: "PDF", size: "0 KB" }
   },
   {
-    refundId: "REFUND-2024-0181",
-    payoutId: "PAYOUT-2024-0228",
+    refundId: "REFUND-2024-0188",
+    payoutId: "PAYOUT-2024-0219",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "James Wilson",
-    userEmail: "james.w@email.com",
-    payoutType: "Buyer Refund",
-    amount: "$16,800.00",
-    method: "PayPal",
-    accountInfo: "james.w@email.com",
-    bankName: "PayPal",
+    userName: "Fatima Al Sayed",
+    userEmail: "fatima.s@email.com",
+    userPhone: "+971 52 222 3344",
+    userId: "USER-2024-00119",
+    userType: "Seller",
+    businessName: "Al Sayed Auto Trading",
+    tradeLicenseNo: "AS-778899",
+    joinedOn: "Nov 20, 2022",
+    refundType: "Seller Refund",
+    method: "Wire Transfer",
+    transactionId: null,
     status: "Failed",
-    date: "Jun 17, 2024",
-    time: "12:25 PM",
-    reason: "NA"
+    date: "Jul 28, 2026", time: "02:00 PM",
+    completedDate: null, completedTime: null,
+    stoppedAtStep: 1,
+    timeline: [
+      { step: "Refund Requested", date: "Jul 28, 2026", time: "02:00 PM" },
+      { step: "Under Review", date: "Jul 28, 2026", time: "02:30 PM" }
+    ],
+    breakdown: { winningAmount: 15000, platformFeePercent: 5, platformFee: 750, paymentProcessingFee: 500, otherDeductions: 0 },
+    reason: "Bank details invalid",
+    details: "Wire transfer rejected — IBAN mismatch with account holder name.",
+    notes: "Waiting on seller to resubmit correct bank details.",
+    document: { name: "Refund Receipt", type: "PDF", size: "0 KB" }
   },
   {
-    refundId: "REFUND-2024-0180",
-    payoutId: "PAYOUT-2024-0225",
+    refundId: "REFUND-2024-0189",
+    payoutId: "PAYOUT-2024-0205",
     avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
-    userName: "Linda Martinez",
-    userEmail: "linda.m@email.com",
-    payoutType: "Buyer Refund",
-    amount: "$500.00",
-    method: "Bank Transfer",
-    accountInfo: "**** 4242",
-    bankName: "Chase Bank",
+    userName: "Omar Khalid",
+    userEmail: "omar.k@email.com",
+    userPhone: "+971 50 444 1122",
+    userId: "USER-2024-00104",
+    userType: "Buyer",
+    businessName: null,
+    tradeLicenseNo: null,
+    joinedOn: "Feb 14, 2023",
+    refundType: "Buyer Refund",
+    method: "Wise",
+    transactionId: null,
     status: "Cancelled",
-    date: "Jun 17, 2024",
-    time: "11:35 AM",
-    reason: "NA"
+    date: "Jul 15, 2026", time: "09:00 AM",
+    completedDate: null, completedTime: null,
+    stoppedAtStep: 0,
+    timeline: [
+      { step: "Refund Requested", date: "Jul 15, 2026", time: "09:00 AM" }
+    ],
+    breakdown: { winningAmount: 8000, platformFeePercent: 5, platformFee: 400, paymentProcessingFee: 250, otherDeductions: 0 },
+    reason: "Buyer cancelled request",
+    details: "Buyer withdrew the refund request voluntarily.",
+    notes: "NA",
+    document: { name: "Refund Receipt", type: "PDF", size: "0 KB" }
   }
-]
+];
 
 export const allTransactions = [
   {
@@ -1624,6 +1717,30 @@ export const allTransactions = [
     date: "Jun 18, 2024",
     time: "02:50 PM",
     referenceId: "REF-1234567886",
+
+     amountValue: 22275,
+    fees: 0,
+    tax: 0,
+    initiatedBy: {
+      name: "Michael Johnson",
+      email: "michael.j@email.com",
+    },
+    userRole: "Seller",
+    completedDate: "Jun 18, 2024",
+    completedTime: "02:50 PM",
+    stoppedAtStep: null,
+    bankDetails: {
+      accountType: "Bank Account",
+      bankName: "State Bank of India",
+      accountNumber: "**** **** 4567",
+      accountHolderName: "John Motors",
+      ifscCode: "SBIN0001234",
+      branch: "Indore Main Branch",
+    },
+    description: "Seller payout for completed vehicle auction.",
+    linkedAuctionLabel: "AUC-2024-00567 - Toyota Fortuner 2022",
+    notes: [],
+    relatedInfo: null,
   },
   {
     transactionId: "TXN-2024-001021",
@@ -1637,6 +1754,23 @@ export const allTransactions = [
     date: "Jun 18, 2024",
     time: "01:35 PM",
     referenceId: "REF-1234567885",
+
+    amountValue: 16800,
+    fees: 0,
+    tax: 0,
+    initiatedBy: {
+      name: "Michael Johnson",
+      email: "michael.j@email.com",
+    },
+    userRole: "Buyer",
+    completedDate: null,
+    completedTime: null,
+    stoppedAtStep: null,
+    bankDetails: null,
+    description: "Winning amount payout for auction.",
+    linkedAuctionLabel: "AUC-2024-00543 - BMW X5 2021",
+    notes: [],
+    relatedInfo: null,
   },
   {
     transactionId: "TXN-2024-001020",
@@ -1650,6 +1784,23 @@ export const allTransactions = [
     date: "Jun 17, 2024",
     time: "12:10 PM",
     referenceId: "REF-1234567884",
+
+    amountValue: 9750,
+    fees: 0,
+    tax: 0,
+    initiatedBy: {
+      name: "Michael Johnson",
+      email: "michael.j@email.com",
+    },
+    userRole: "Buyer",
+    completedDate: null,
+    completedTime: null,
+    stoppedAtStep: "Payment Verification",
+    bankDetails: null,
+    description: "Winning amount payout for auction.",
+    linkedAuctionLabel: "AUC-2024-00531 - Audi A6 2020",
+    notes: [],
+    relatedInfo: null,
   },
   {
     transactionId: "TXN-2024-001019",
@@ -1663,6 +1814,30 @@ export const allTransactions = [
     date: "Jun 17, 2024",
     time: "11:05 AM",
     referenceId: "REF-1234567883",
+
+    amountValue: 500,
+    fees: 0,
+    tax: 0,
+    initiatedBy: {
+      name: "Michael Johnson",
+      email: "michael.j@email.com",
+    },
+    userRole: "Buyer",
+    completedDate: "Jun 17, 2024",
+    completedTime: "11:05 AM",
+    stoppedAtStep: null,
+    bankDetails: {
+      accountType: "Bank Account",
+      bankName: "State Bank of India",
+      accountNumber: "**** **** 8745",
+      accountHolderName: "Linda Martinez",
+      ifscCode: "SBIN0001234",
+      branch: "Indore Main Branch",
+    },
+    description: "Refund processed for cancelled auction.",
+    linkedAuctionLabel: "AUC-2024-00498 - Honda Civic 2020",
+    notes: [],
+    relatedInfo: null,
   },
   {
     transactionId: "TXN-2024-001018",
@@ -1676,5 +1851,858 @@ export const allTransactions = [
     date: "Jun 17, 2024",
     time: "10:40 AM",
     referenceId: "REF-1234567882",
+
+    amountValue: 21000,
+    fees: 0,
+    tax: 0,
+    initiatedBy: {
+      name: "Michael Johnson",
+      email: "michael.j@email.com",
+    },
+    userRole: "Buyer",
+    completedDate: null,
+    completedTime: null,
+    stoppedAtStep: null,
+    bankDetails: {
+      accountType: "Bank Account",
+      bankName: "State Bank of India",
+      accountNumber: "**** **** 6632",
+      accountHolderName: "Christopher Lee",
+      ifscCode: "SBIN0001234",
+      branch: "Indore Main Branch",
+    },
+    description: "Winning amount payout for auction.",
+    linkedAuctionLabel: "AUC-2024-00512 - Mercedes C-Class 2022",
+    notes: [],
+    relatedInfo: null,
   },
+];
+
+export const allPaymentGateways = [
+  {
+    name: "Stripe",
+    id: "gw_stripe_001",
+    company: "Stripe, Inc.",
+    status: "Active",
+    environment: "Live",
+    currencies: "AED",
+    transactions: "8,245",
+    successRate: "98.6%",
+    date: "Jun 19, 2024",
+    time: "10:30 AM",
+
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+    description: "Stripe payment gateway for global online transactions.",
+    website: "https://stripe.com",
+    customerSupport: "support@stripe.com",
+    phone: "+1 888-926-2289",
+    apiKey: "XXXXXXXXXXXXX",
+    publishableKey: "XXXXXXXXXXXXXX",
+    webhookUrl: "https://api.yourdomain.com/webhooks/stripe",
+    webhookStatus: "Active",
+    webhookEvents: "payment_intent.succeeded, charge.refunded, customer.created, etc.",
+    testMode: "Disabled",
+
+    transactionHistory: [
+      { id: "txn_1P9KJ2h3e8", dateTime: "Jun 19, 2024 10:15 AM", type: "Payment", amount: "$2,450.00", currency: "USD", status: "Succeeded", customer: "john.doe@example.com", desc: "Payment for Auction #1256" },
+      { id: "txn_1P9KJ2h3eA", dateTime: "Jun 18, 2024 04:20 PM", type: "Refund", amount: "-$350.00", currency: "USD", status: "Refunded", customer: "bob.jones@example.com", desc: "Refund for Auction #1248" },
+      { id: "txn_1P9KJ2h3eC", dateTime: "Jun 17, 2024 11:05 AM", type: "Failed", amount: "$980.00", currency: "USD", status: "Failed", customer: "sarah.wilson@example.com", desc: "Payment failed - card declined" },
+    ],
+    payouts: [
+      {
+        id: "PO_2024_0619_001",
+        dateTime: "Jun 19, 2024 10:30 AM",
+        recipientName: "John Doe",
+        recipientEmail: "john.doe@example.com",
+        method: "VISA",
+        methodDetails: "•••• 4242",
+        amount: "$15,750.00",
+        fee: "$78.75",
+        netAmount: "$15,671.25",
+        status: "Completed",
+        description: "Payout for Auction #1256"
+      },
+      {
+        id: "PO_2024_0618_002",
+        dateTime: "Jun 18, 2024 04:20 PM",
+        recipientName: "Bob Jones",
+        recipientEmail: "bob.jones@example.com",
+        method: "Wells Fargo Bank",
+        methodDetails: "•••• 1248",
+        amount: "$12,500.00",
+        fee: "$62.50",
+        netAmount: "$12,437.50",
+        status: "Completed",
+        description: "Payout for Auction #1248"
+      },
+      {
+        id: "PO_2024_0617_003",
+        dateTime: "Jun 17, 2024 11:05 AM",
+        recipientName: "Michael Brown",
+        recipientEmail: "michael.brown@example.com",
+        method: "PayPal",
+        methodDetails: "michael.brown@paypal.com",
+        amount: "$6,750.00",
+        fee: "$33.75",
+        netAmount: "$6,716.25",
+        status: "Pending",
+        description: "Payout for Auction #1249"
+      }
+    ],
+    refunds: [
+      {
+        id: "RF_2024_0618_002",
+        dateTime: "Jun 18, 2024 04:20 PM",
+        originalPaymentId: "PO_2024_0618_003",
+        customerName: "Bob Jones",
+        customerEmail: "bob.jones@example.com",
+        reason: "Requested by customer",
+        amount: "$350.00",
+        fee: "$5.25",
+        netAmount: "$344.75",
+        status: "Refunded",
+        description: "Refund for Auction #1248"
+      },
+      {
+        id: "RF_2024_0617_001",
+        dateTime: "Jun 17, 2024 09:30 AM",
+        originalPaymentId: "PO_2024_0617_006",
+        customerName: "David Lee",
+        customerEmail: "david.lee@example.com",
+        reason: "Item not as described",
+        amount: "$980.00",
+        fee: "$14.70",
+        netAmount: "$965.30",
+        status: "Refunded",
+        description: "Refund for Auction #1250"
+      }
+    ],
+    webhookHistory: [
+      {
+        id: "evt_1N3K6XL2eZxKYr1o2C0x1A",
+        eventType: "payment_intent.succeeded",
+        status: "Success",
+        response: "200 OK",
+        attempts: 1,
+        receivedAt: "Jun 19, 2024 10:30 AM",
+        processedAt: "Jun 19, 2024 10:30 AM",
+        description: "Payment intent succeeded for PI_3N6XXL2eZx."
+      },
+      {
+        id: "evt_1N3K6VJ2eZxKYr1o2C0x1C",
+        eventType: "payment_intent.payment_failed",
+        status: "Failed",
+        response: "500 Error",
+        attempts: 3,
+        receivedAt: "Jun 17, 2024 09:30 AM",
+        processedAt: "Jun 17, 2024 09:31 AM",
+        description: "Payment failed for PI_3N6XXL2eZx."
+      },
+    ],
+    configurationHistory: [
+      {
+        changedAt: "Jun 19, 2024 10:30 AM",
+        changedBy: "Admin User",
+        fieldChanged: "Webhook Events",
+        oldValue: "payment_intent.succeeded, ...",
+        newValue: "payment_intent.succeeded, charge.refunded, customer.created, ...",
+        reason: "Added charge.refunded and customer.created events."
+      },
+      {
+        changedAt: "Jun 18, 2024 04:15 PM",
+        changedBy: "Admin User",
+        fieldChanged: "Webhook URL",
+        oldValue: "https://api.autobid.com/webhooks/stripe_old",
+        newValue: "https://api.autobid.com/webhooks/stripe",
+        reason: "Updated webhook endpoint URL."
+      },
+      {
+        changedAt: "Jun 15, 2024 11:05 AM",
+        changedBy: "Admin User",
+        fieldChanged: "Test Mode",
+        oldValue: "Enabled",
+        newValue: "Disabled",
+        reason: "Disabled test mode for live transactions."
+      },
+      {
+        changedAt: "Jun 12, 2024 09:30 AM",
+        changedBy: "Admin User",
+        fieldChanged: "API Key",
+        oldValue: "••••••••••••••••••••a1b2",
+        newValue: "••••••••••••••••••••c3d4",
+        reason: "Rotated API key."
+      },
+      {
+        changedAt: "Jun 12, 2024 09:30 AM",
+        changedBy: "Admin User",
+        fieldChanged: "Publishable Key",
+        oldValue: "••••••••••••••••••••x9y8",
+        newValue: "••••••••••••••••••••z7w6",
+        reason: "Rotated publishable key."
+      }
+    ]
+  },
+  {
+    name: "PayPal",
+    id: "gw_paypal_001",
+    company: "PayPal Inc.",
+    status: "Active",
+    environment: "Live",
+    currencies: "AED",
+    additionalCurrenciesCount: 25,
+    transactions: "5,621",
+    successRate: "97.2%",
+    date: "Jun 19, 2024",
+    time: "09:45 AM",
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+    description: "Stripe payment gateway for global online transactions.",
+    website: "https://stripe.com",
+    customerSupport: "support@stripe.com",
+    phone: "+1 888-926-2289",
+    apiKey: "XXXXXXXXXXXXX",
+    publishableKey: "XXXXXXXXXXXXXX",
+    webhookUrl: "https://api.yourdomain.com/webhooks/stripe",
+    webhookStatus: "Active",
+    webhookEvents: "payment_intent.succeeded, charge.refunded, customer.created, etc.",
+    testMode: "Disabled",
+  },
+  {
+    name: "Razorpay",
+    id: "gw_razorpay_001",
+    company: "Razorpay",
+    status: "Active",
+    environment: "Live",
+    currencies: "AED",
+    additionalCurrenciesCount: 10,
+    transactions: "2,345",
+    successRate: "99.1%",
+    date: "Jun 18, 2024",
+    time: "04:20 PM",
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+    description: "Stripe payment gateway for global online transactions.",
+    website: "https://stripe.com",
+    customerSupport: "support@stripe.com",
+    phone: "+1 888-926-2289",
+    apiKey: "XXXXXXXXXXXXX",
+    publishableKey: "XXXXXXXXXXXXXX",
+    webhookUrl: "https://api.yourdomain.com/webhooks/stripe",
+    webhookStatus: "Active",
+    webhookEvents: "payment_intent.succeeded, charge.refunded, customer.created, etc.",
+    testMode: "Disabled",
+  },
+  {
+    name: "Paystack",
+    id: "gw_paystack_001",
+    company: "Paystack Ltd.",
+    status: "Inactive",
+    environment: "Test",
+    currencies: "AED",
+    additionalCurrenciesCount: 5,
+    transactions: "345",
+    successRate: "—",
+    date: "Jun 17, 2024",
+    time: "01:15 PM",
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+  },
+  {
+    name: "Square",
+    id: "gw_square_001",
+    company: "Block, Inc.",
+    status: "Error",
+    environment: "Live",
+    currencies: "AED",
+    additionalCurrenciesCount: 15,
+    transactions: "89",
+    successRate: "45.6%",
+    date: "Jun 16, 2024",
+    time: "11:05 AM",
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+  },
+  {
+    name: "Wise",
+    id: "gw_wise_001",
+    company: "Wise Ltd.",
+    status: "Active",
+    environment: "Live",
+    currencies: "AED",
+    additionalCurrenciesCount: 40,
+    transactions: "1,145",
+    successRate: "98.3%",
+    date: "Jun 16, 2024",
+    time: "10:40 AM",
+    createdAt: "May 12, 2024",
+    updatedAt: "Jun 19, 2024 10:30 AM",
+  },
+];
+
+// dis manag
+export const disputesData = [
+  {
+    disputeId: "DSP-2024-0612-089",
+    orderId: "ORD-2024-0612-7890",
+    disputeType: "Payment Not Received",
+    amount: "$1,350.00 USD",
+    priority: "High",
+    status: "Open",
+    date: "Jun 12, 2024",
+    time: "02:25 PM",
+
+    payoutId: "PAYOUT-2024-0231",
+    description: "I was charged twice.",
+    raisedOn: "Jun 18, 2024 09:45 AM",
+    resolveOn: "Jun 18, 2024 09:45 AM",
+    transactionId: "txn_1P9KJ2h3e8",
+    buyer: { name: 'John Doe', email: 'john.doe@example.com', phone: '+1 555-123-4567' },
+    seller: { name: 'Sarah Brown', email: 'sarah.brown@example.com', phone: '+1 555-987-6543' },
+    summary: "Buyer has reported that the payment was made for the vehicle on May 28, 2024 but the seller has not received the amount in their bank account. Buyer has provided payment confirmation and transaction details.",
+    auctionId: "AUC-2024-0528-4567",
+    vehicle: "2021 BMW X5 xDrive40i",
+    finalBidAmount: "$1,350.00 USD",
+    paymentMethod: "Credit Card (Visa **** 4242)",
+    paymentDate: "May 28, 2024 11:42 AM",
+    refundRequested: "No",
+    department: "Payment Team",
+    assignedTo: { name: "Michael Johnson", avatarUrl: "..." },
+    slaDeadline: "Jun 15, 2024 02:25 PM",
+    messages: [
+      {
+        id: 'msg1',
+        senderType: 'buyer',        // 'buyer' | 'seller' | 'support'
+        senderName: 'John Doe',
+        timestamp: 'Jun 19, 2024 10:30 AM',
+        text: 'I have not received the item'
+      },
+      {
+        id: 'msg2',
+        senderType: 'support',
+        senderName: 'Support Agent',
+        timestamp: 'Jun 19, 2024 11:15 AM',
+        text: 'We have received your dispute'
+      },
+      {
+        id: 'msg3',
+        senderType: 'seller',
+        senderName: 'Support Agent',
+        timestamp: 'Jun 19, 2024 11:15 AM',
+        text: 'We have received your dispute'
+      },
+    ],
+    evidence: {
+      buyer: [
+        { id: 'e1', name: 'payment_receipt.pdf', uploadedOn: 'Jun 12, 2024 02:25 PM', size: '245 KB' },
+        { id: 'e2', name: 'bank_statement_may.pdf', uploadedOn: 'Jun 12, 2024 02:26 PM', size: '312 KB' },
+        { id: 'e3', name: 'chat_with_seller.png', uploadedOn: 'Jun 12, 2024 02:27 PM', size: '180 KB' },
+      ],
+      seller: [
+        { id: 'e4', name: 'account_statement.pdf', uploadedOn: 'Jun 12, 2024 02:40 PM', size: '298 KB' },
+        { id: 'e5', name: 'refund_policy.png', uploadedOn: 'Jun 12, 2024 02:41 PM', size: '150 KB' },
+      ],
+      admin: [
+        { id: 'e6', name: 'transaction_log.pdf', uploadedOn: 'Jun 12, 2024 03:15 PM', size: '210 KB' },
+      ],
+    },
+    activityLog: [
+      {
+        id: 'log1',
+        type: 'created', // maps to icon
+        title: 'Dispute Created',
+        description: 'Dispute has been created by John Doe regarding payment not received.',
+        timestamp: 'Jun 12, 2024 02:25 PM',
+        actor: 'John Doe (Buyer)',
+      },
+      {
+        id: 'log2',
+        type: 'under_review',
+        title: 'Under Review',
+        description: 'Dispute is being reviewed by payment team.',
+        timestamp: 'Jun 12, 2024 02:30 PM',
+        actor: 'Payment Team',
+      },
+      {
+        id: 'log3',
+        type: 'evidence_requested',
+        title: 'Evidence Requested',
+        description: 'Additional evidence has been requested from both parties.',
+        timestamp: 'Jun 12, 2024 03:15 PM',
+        actor: 'Payment Team',
+      },
+      {
+        id: 'log4',
+        type: 'evidence_submitted',
+        title: 'Evidence Submitted by Buyer',
+        description: 'Buyer has submitted payment receipt and bank statement.',
+        timestamp: 'Jun 12, 2024 03:20 PM',
+        actor: 'John Doe (Buyer)',
+      },
+      {
+        id: 'log5',
+        type: 'evidence_submitted',
+        title: 'Evidence Submitted by Seller',
+        description: 'Seller has submitted account statement and transaction proof.',
+        timestamp: 'Jun 12, 2024 04:10 PM',
+        actor: 'Sarah Brown (Seller)',
+      },
+      {
+        id: 'log6',
+        type: 'under_review',
+        title: 'Under Review',
+        description: 'Payment team is reviewing the submitted evidence.',
+        timestamp: 'Jun 12, 2024 04:15 PM',
+        actor: 'Payment Team',
+      },
+      {
+        id: 'log7',
+        type: 'awaiting_response',
+        title: 'Awaiting Response',
+        description: 'Waiting for seller response to additional clarification.',
+        timestamp: 'Jun 12, 2024 04:30 PM',
+        actor: 'Payment Team',
+      },
+      {
+        id: 'log8',
+        type: 'status_updated',
+        title: 'Status Updated',
+        description: 'Dispute status updated to Open.',
+        timestamp: 'Jun 12, 2024 04:30 PM',
+        actor: 'System',
+      },
+    ],
+  },
+  {
+    disputeId: "DSP-2024-0607-045",
+    orderId: "ORD-2024-0607-3342",
+    disputeType: "Item Not as Described",
+    buyer: { name: "Michael Johnson", },
+    seller: { name: "Sarah Brown", },
+    amount: "$850.00 USD",
+    priority: "Medium",
+    status: "Under Review",
+    date: "Jun 12, 2024",
+    time: "02:25 PM"
+  },
+  {
+    disputeId: "DSP-2024-0603-021",
+    orderId: "ORD-2024-0603-5561",
+    disputeType: "Damaged Item",
+    buyer: { name: "Ahmed Hassan", },
+    seller: { name: "William Taylor", },
+    amount: "$2,250.00 USD",
+    priority: "High",
+    status: "Under Review",
+    date: "Jun 12, 2024",
+    time: "02:25 PM"
+  },
+  {
+    disputeId: "DSP-2024-0530-078",
+    orderId: "ORD-2024-0530-8890",
+    disputeType: "Payment Not Received",
+    buyer: { name: "Sofia Martinez", },
+    seller: { name: "Robert Brown", },
+    amount: "$1,100.00 USD",
+    priority: "Medium",
+    status: "Resolved",
+    date: "Jun 12, 2024",
+    time: "02:25 PM"
+  },
+  {
+    disputeId: "DSP-2024-0528-014",
+    orderId: "ORD-2024-0528-2256",
+    disputeType: "Item Not as Described",
+    buyer: { name: "Daniel Lee", },
+    seller: { name: "William Taylor", },
+    amount: "$950.00 USD",
+    priority: "Low",
+    status: "Resolved",
+    date: "Jun 12, 2024",
+    time: "02:25 PM"
+  },
+  {
+    disputeId: "DSP-2024-0525-033",
+    orderId: "ORD-2024-0525-4457",
+    disputeType: "Wrong Item Delivered",
+    buyer: { name: "Priya Rao", },
+    seller: { name: "Sarah Brown", },
+    amount: "$1,750.00 USD",
+    priority: "Medium",
+    status: "Closed",
+    date: "Jun 12, 2024",
+    time: "02:25 PM"
+  }
+];
+
+export const disputeCategoriesData = [
+  {
+    id: 1,
+    title: "Payment Not Received",
+    description: "Buyer claims payment was debited but not received.",
+    priority: "High",
+    autoClose: true,
+    autoCloseLabel: "Yes",
+    sla: "7 Days",
+    status: "Active",
+    date: "May 20, 2024",
+    time: "10:30 AM",
+  },
+  {
+    id: 2,
+    title: "Item Not as Described",
+    description: "Item received is different from the description provided.",
+    priority: "Medium",
+    autoClose: true,
+    autoCloseLabel: "Yes",
+    sla: "5 Days",
+    status: "Active",
+    date: "May 18, 2024",
+    time: "02:15 PM",
+  },
+  {
+    id: 3,
+    title: "Damaged Item",
+    description: "Item received is damaged or broken.",
+    priority: "Low",
+    autoClose: true,
+    autoCloseLabel: "Yes",
+    sla: "7 Days",
+    status: "Inactive",
+    date: "May 16, 2024",
+    time: "11:45 AM",
+  },
+  {
+    id: 4,
+    title: "Payment Fraud",
+    description: "Unauthorized or suspicious payment activity.",
+    priority: "High",
+    autoClose: false,
+    autoCloseLabel: "No",
+    sla: "—",
+    status: "Inactive",
+    date: "May 12, 2024",
+    time: "04:05 PM",
+  },
+];
+
+// cms man
+export const cmsPagesList = [
+  {
+    id: 1,
+    title: "Home Page",
+    path: "/",
+    status: "Published",
+    date: "May 20, 2024 10:30 AM",
+    author: "Admin User"
+  },
+  {
+    id: 2,
+    title: "About Us",
+    path: "/about-us",
+    status: "Published",
+    date: "May 18, 2024 02:15 PM",
+    author: "Admin User"
+  },
+  {
+    id: 3,
+    title: "How It Works",
+    path: "/how-it-works",
+    status: "Published",
+    date: "May 17, 2024 11:45 AM",
+    author: "Admin User"
+  },
+  {
+    id: 4,
+    title: "Terms & Conditions",
+    path: "/terms-conditions",
+    status: "Published",
+    date: "May 16, 2024 04:20 PM",
+    author: "Admin User"
+  },
+  {
+    id: 5,
+    title: "Privacy Policy",
+    path: "/privacy-policy",
+    status: "Published",
+    date: "May 15, 2024 09:10 AM",
+    author: "Admin User"
+  },
+  {
+    id: 6,
+    title: "FAQs",
+    path: "/faqs",
+    status: "Draft",
+    date: "May 19, 2024 01:05 PM",
+    author: "Editor"
+  },
+  {
+    id: 7,
+    title: "Contact Us",
+    path: "/contact-us",
+    status: "Published",
+    date: "May 14, 2024 03:30 PM",
+    author: "Admin User"
+  },
+  {
+    id: 8,
+    title: "Refund Policy",
+    path: "/refund-policy",
+    status: "Draft",
+    date: "May 13, 2024 10:20 AM",
+    author: "Editor"
+  }
+];
+
+export const blogPosts = [
+  {
+    id: 1,
+    featureImage: "https://picsum.photos/seed/blog1/80/80",
+    title: "10 Essential Tips Before Buying an Auction Car",
+    category: "Auction Tips",
+    author: "Admin User",
+    status: "Published",
+    publishedDate: "02 Aug 2026",
+    visibility: 'public',
+  },
+  {
+    id: 2,
+    featureImage: "https://picsum.photos/seed/blog2/80/80",
+    title: "How to Inspect a Used Vehicle Before Bidding",
+    category: "Buying Guide",
+    author: "Sarah Johnson",
+    status: "Draft",
+    publishedDate: "-",
+  },
+  {
+    id: 3,
+    featureImage: "https://picsum.photos/seed/blog3/80/80",
+    title: "Top 7 Luxury Cars Sold This Month",
+    category: "Industry News",
+    author: "Michael Brown",
+    status: "Published",
+    publishedDate: "30 Jul 2026",
+  },
+  {
+    id: 4,
+    featureImage: "https://picsum.photos/seed/blog4/80/80",
+    title: "Electric Vehicles Dominating Online Auctions",
+    category: "Market Trends",
+    author: "Admin User",
+    status: "Published",
+    publishedDate: "28 Jul 2026",
+  },
+  {
+    id: 5,
+    featureImage: "https://picsum.photos/seed/blog5/80/80",
+    title: "Complete Guide to Vehicle Auction Fees",
+    category: "Guides",
+    author: "Emily Davis",
+    status: "Scheduled",
+    publishedDate: "05 Aug 2026",
+  },
+  {
+    id: 6,
+    featureImage: "https://picsum.photos/seed/blog6/80/80",
+    title: "Understanding Vehicle History Reports",
+    category: "Buying Guide",
+    author: "James Wilson",
+    status: "Draft",
+    publishedDate: "24 Jul 2026",
+  },
+  {
+    id: 7,
+    featureImage: "https://picsum.photos/seed/blog7/80/80",
+    title: "Best SUVs to Buy at Online Auctions",
+    category: "Auction Tips",
+    author: "Admin User",
+    status: "Published",
+    publishedDate: "24 Jul 2026",
+  },
+  {
+    id: 8,
+    featureImage: "https://picsum.photos/seed/blog8/80/80",
+    title: "BidDrive Announces New Seller Features",
+    category: "Company Updates",
+    author: "Marketing Team",
+    status: "Published",
+    publishedDate: "20 Jul 2026",
+  },
+];
+
+// kyc ver.
+export const verificationData = [
+  {
+    id: 1,
+    role: "buyer",
+    firstName: "Sohan",
+    lastName: "Verma",
+    email: "sohan.test@gmail.com",
+    mobile: "1234567890",
+    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    buyerType: "dealer", // "individual" | "dealer" — not yet used in UI, flagged in gap #3
+    identityVerification: {
+      documentType: "--",
+      frontImageUrl: "--",
+      selfieImageUrl: "--",
+      status: "pending" // "pending" | "verified" | "rejected"
+    },
+    addressVerification: {
+      documentType: "--",
+      documentUrl: "--",
+      status: "pending"
+    },
+    registrationStatus: "submitted",
+    status: "pending", // app-level status — still unclear vs registrationStatus, not resolving that now since it doesn't block KYC UI
+    submittedAt: "2026-07-06T06:19:48.196Z"
+  },
+  {
+    id: 2,
+    role: "buyer",
+    firstName: "Sara",
+    lastName: "Ahmed",
+    email: "sara.ahmed@email.com",
+    mobile: "+971 52 *** ****",
+    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    buyerType: "individual",
+    identityVerification: {
+      documentType: "ID Proof",
+      frontImageUrl: "--",
+      selfieImageUrl: "--",
+      status: "verified"
+    },
+    addressVerification: {
+      documentType: "Address Proof",
+      documentUrl: "--",
+      status: "verified"
+    },
+    registrationStatus: "submitted",
+    status: "pending",
+    submittedAt: "2026-07-05T16:15:00.000Z"
+  },
+  {
+    id: 3,
+    role: "seller",
+    firstName: "David",
+    lastName: "Wilson",
+    email: "david.wilson@email.com",
+    mobile: "+971 55 *** ****",
+    avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    buyerType: null, // Not applicable for sellers
+    identityVerification: {
+      documentType: "ID Proof",
+      frontImageUrl: "--",
+      selfieImageUrl: "--",
+      status: "verified"
+    },
+    addressVerification: {
+      documentType: "Address Proof",
+      documentUrl: "--",
+      status: "rejected"
+    },
+    registrationStatus: "submitted",
+    status: "pending",
+    submittedAt: "2026-07-05T11:20:00.000Z"
+  }
+];
+
+// system setting - notification tab
+export const notificationPrefrences = [
+  {
+    id: 'user-registration',
+    label: 'User Registration',
+    description: 'Notify when a new user registers.',
+    icon: <User size={16} className="text-blue-600 bg-blue-50" />,
+    channels: { email: true, sms: true, push: true, inApp: true }
+  },
+  {
+    id: 'vehicle-approval',
+    label: 'Vehicle Approval',
+    description: 'Notify when a vehicle is submitted or approved.',
+    icon: <Car size={16} className="text-emerald-600 bg-emerald-50" />,
+    channels: { email: true, sms: true, push: true, inApp: true }
+  },
+  {
+    id: 'auction-updates',
+    label: 'Auction Updates',
+    description: 'Notify about auction creation, updates and status.',
+    icon: <Gavel size={16} className="text-purple-600 bg-purple-50" />,
+    channels: { email: true, sms: false, push: true, inApp: true }
+  },
+  {
+    id: 'bid-activity',
+    label: 'Bid Activity',
+    description: 'Notify on new bids and outbids.',
+    icon: <Key size={16} className="text-amber-600 bg-amber-50" />,
+    channels: { email: false, sms: true, push: true, inApp: true }
+  },
+  {
+    id: 'payment-alerts',
+    label: 'Payment Alerts',
+    description: 'Notify for successful/failed payments and refunds.',
+    icon: <CreditCard size={16} className="text-emerald-600 bg-emerald-50" />,
+    channels: { email: true, sms: true, push: false, inApp: true }
+  },
+  {
+    id: 'dispute-updates',
+    label: 'Dispute Updates',
+    description: 'Notify about new disputes and status changes.',
+    icon: <AlertTriangle size={16} className="text-rose-600 bg-rose-50" />,
+    channels: { email: true, sms: false, push: true, inApp: true }
+  },
+  {
+    id: 'system-announcements',
+    label: 'System Announcements',
+    description: 'Send important updates and announcements.',
+    icon: <Megaphone size={16} className="text-blue-600 bg-blue-50" />,
+    channels: { email: true, sms: false, push: true, inApp: true }
+  }
+];
+
+export const auditLogsData = [
+  {
+    id: 1,
+    date: "May 20, 2024",
+    time: "09:58:11 AM",
+    user: {
+      name: "Michael Johnson",
+      role: "Moderator",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    },
+    category: "Vehicle Approvals",
+    action: "Approved Vehicle",
+    description: "Approved vehicle\nToyota Camry 2020",
+    ipAddress: "192.168.1.105",
+    status: "Success"
+  },
+  {
+    id: 2,
+    date: "May 20, 2024",
+    time: "09:41:33 AM",
+    user: {
+      name: "Admin User",
+      role: "Super Administrator",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    },
+    category: "Payment Management",
+    action: "Processed Payment",
+    description: "Payment processed for\nPAYOUT-7890",
+    ipAddress: "192.168.1.101",
+    status: "Success"
+  },
+  {
+    id: 3,
+    date: "May 20, 2024",
+    time: "09:25:07 AM",
+    user: {
+      name: "Emma Brown",
+      role: "Administrator",
+      avatarUrl: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png",
+    },
+    category: "KYC Verification",
+    action: "Rejected Document",
+    description: "Rejected document for\nUser ID: USR-1003",
+    ipAddress: "192.168.1.103",
+    status: "Failed"
+  }
 ];

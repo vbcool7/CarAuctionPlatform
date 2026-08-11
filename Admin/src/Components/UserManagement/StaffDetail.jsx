@@ -221,7 +221,7 @@ function StaffDetail({ staff, setCurrentPage }) {
 
                         </div>
 
-                        {/* Tab Bar */}
+                        {/* Tabs */}
                         <div className="flex gap-10 border-b border-slate-100 mb-6 overflow-x-auto no-scrollbar">
                             {tabs.map((tab) => (
                                 <button

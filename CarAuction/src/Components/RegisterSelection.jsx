@@ -34,7 +34,7 @@ function RegisterSelection() {
 
                     {/* Seller Option */}
                     <div
-                        onClick={() => navigate('/seller-register')}
+                        onClick={() => navigate('/seller-registration')}
                         className="bg-white p-8 rounded-3xl border-2 border-transparent hover:border-[#D97706] shadow-lg transition-all cursor-pointer group">
                         <div className="w-16 h-16 bg-orange-50 text-[#D97706] rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-[#D97706] group-hover:text-white transition-all">
                             <Store size={32} />
