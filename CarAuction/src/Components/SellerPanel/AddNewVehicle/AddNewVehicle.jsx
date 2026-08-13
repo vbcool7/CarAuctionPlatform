@@ -1,13 +1,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Car, CarFront, Check, Gauge, Images, Info, MapPin, Settings, SlidersHorizontal, Tag, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Car, CarFront, Check, CheckCircle2, ClipboardCheck, Gauge, ImagePlus, Images, Info, LockKeyhole, Mail, MapPin, Pencil, Settings, ShieldCheck, SlidersHorizontal, Tag, Upload, X, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
+import confetti from 'canvas-confetti';
 import FormInputFields from '../../SellerRegistration/FormInputFields';
+import { useAddVehicle, useDecodeVin } from '../../../hook/useVehicle';
 
 const steps = [
     { label: "Vehicle Details", },
     { label: "Condition & Details", },
     { label: "Images", },
+    { label: "Vehicle Documents", },
     { label: "Pricing & Auction", },
     { label: "Review & Submit", },
 ];
@@ -15,9 +18,15 @@ const steps = [
 function AddNewVehicle({ setCurrentPage }) {
 
     const stepRefs = useRef([]);
+
+    const { mutate: addVehicle, isPending: isContinue } = useAddVehicle();
+    const { mutate: decodeVin, isPending: isDecoding } = useDecodeVin();
+
     const [currentStep, setCurrentStep] = useState(1);
 
     const [images, setImages] = useState([]);
+    const [documents, setDocuments] = useState([]);
+    const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         vehicleType: "",
@@ -32,12 +41,14 @@ function AddNewVehicle({ setCurrentPage }) {
         fuelType: "",
         drivetrain: "",
         exteriorColor: "",
-        country: "united-rab-emirates",
-        state: "",
+        country: "united_arab_emirates",
+        emirate: "",
         city: "",
         zipCode: "",
         titleStatus: "",
         accidentHistory: "",
+        vehicleDescription: "",
+        // step - 2
         overallCondition: "",
         mechanicalCondition: "",
         interiorCondition: "",
@@ -49,9 +60,37 @@ function AddNewVehicle({ setCurrentPage }) {
         driveType: "",
         keyType: "",
         additionalFeatures: "",
-        bidPrice: "",
-        buyPrice: "",
+        numberOfKeys: "",
+        repainted: "",
+        smokeOdor: "",
+        petFriendly: "",
+        paintType: "",
+        glassCondition: "",
+        tiresCondition: "",
+        tireBrand: "",
+        tireSize: "",
+        seatMaterial: "",
+        interiorColor: "",
+        sunroof: "",
+        acHeater: "",
+        audioSystem: "",
+        navigation: "",
+        powerWindows: "",
+        powerLocks: "",
+        additionalNotes: "",
+        // step - 3
+        startingBidPrice: "",
+        buyNowPrice: "",
         reservePrice: "",
+        priceType: "",
+        auctionType: "live",
+        auctionStartDate: "",
+        auctionStartTime: "",
+        auctionDuration: "7_days",
+        allowBiddersToSave: true,
+        shareOnSocialMedia: true,
+        featuredListing: false,
+        autoRelist: false,
     });
 
     // stepper
@@ -76,10 +115,41 @@ function AddNewVehicle({ setCurrentPage }) {
         }));
     };
 
+    const makeOptions = [
+        { label: "Toyota", value: "toyota" },
+        { label: "Nissan", value: "nissan" },
+        { label: "Honda", value: "honda" },
+        { label: "Mercedes-Benz", value: "mercedes" },
+        { label: "BMW", value: "bmw" },
+        { label: "Land Rover", value: "land_rover" },
+        { label: "Lexus", value: "lexus" },
+        { label: "Mitsubishi", value: "mitsubishi" },
+        { label: "Hyundai", value: "hyundai" },
+        { label: "Kia", value: "kia" },
+        { label: "Audi", value: "audi" },
+        { label: "Ford", value: "ford" },
+        { label: "Chevrolet", value: "chevrolet" },
+        { label: "Porsche", value: "porsche" },
+        { label: "Volkswagen", value: "volkswagen" },
+        { label: "GMC", value: "gmc" },
+        { label: "Jeep", value: "jeep" },
+        { label: "Other", value: "other" },
+    ];
+
     // images handler
     const handleFileSelect = (e) => {
         const files = Array.from(e.target.files);
         addImages(files);
+    };
+
+    const formatTo12Hour = (time) => {
+        if (!time) return "";
+
+        const [hours, minutes] = time.split(":").map(Number);
+        const period = hours >= 12 ? "PM" : "AM";
+        const twelveHour = hours % 12 || 12;
+
+        return `${String(twelveHour).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
     };
 
     const handleDrop = (e) => {
@@ -108,6 +178,47 @@ function AddNewVehicle({ setCurrentPage }) {
         });
     };
 
+    // doc upload
+    const handleDocFileSelect = (e) => {
+        const files = Array.from(e.target.files);
+        addDocuments(files);
+    };
+
+    const handleDocDrop = (e) => {
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files);
+        addDocuments(files);
+    };
+
+    const addDocuments = (files) => {
+        const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+        const validFiles = files.filter((f) => allowedTypes.includes(f.type));
+        const remainingSlots = 10 - documents.length; // adjust cap as needed
+        const filesToAdd = validFiles.slice(0, remainingSlots);
+
+        const newDocs = filesToAdd.map((file) => ({
+            file,
+            previewUrl: URL.createObjectURL(file),
+            name: file.name,
+            docType: "",
+        }));
+
+        setDocuments((prev) => [...prev, ...newDocs]);
+    };
+
+    const removeDocument = (index) => {
+        setDocuments((prev) => {
+            URL.revokeObjectURL(prev[index].previewUrl);
+            return prev.filter((_, i) => i !== index);
+        });
+    };
+
+    const handleDocNameChange = (index, value) => {
+        setDocuments((prev) =>
+            prev.map((doc, i) => (i === index ? { ...doc, name: value } : doc))
+        );
+    };
+
     //     const MAX_SIZE = 10 * 1024 * 1024; // 10MB
     // const validFiles = imageFiles.filter((f) => {
     //     if (f.size > MAX_SIZE) {
@@ -116,6 +227,12 @@ function AddNewVehicle({ setCurrentPage }) {
     //     }
     //     return true;
     // });
+
+    const handlePriceChange = (e) => {
+        const { name, value } = e.target;
+        const digitsOnly = value.replace(/\D/g, '');
+        setFormData({ ...formData, [name]: digitsOnly });
+    };
 
     // btns control
     const handleBack = () => {
@@ -131,6 +248,160 @@ function AddNewVehicle({ setCurrentPage }) {
             setCurrentStep((prev) => prev + 1);
         }
     }
+
+    {/* ======== Vehicle Summary (sidebar, Steps 2-5) ======== */ }
+    const VehicleSummaryCard = ({ formData, images, onEdit, compact = false }) => {
+        const coverImage = images?.[0];
+
+        return (
+            <div className="border border-slate-200 rounded-xl p-5 bg-white shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-[#0B1E3D]">Vehicle Summary</h3>
+                    {onEdit && (
+                        <button type="button" onClick={onEdit} className="text-xs font-medium text-[#D97706] hover:underline flex items-center gap-1">
+                            <Pencil size={12} /> Edit
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-3 mb-6">
+                    <img
+                        src={coverImage?.preview || coverImage?.url || coverImage || "/placeholder-car.png"}
+                        alt="Vehicle"
+                        className="w-18 h-16 object-cover rounded-lg bg-slate-100"
+                    />
+                    <div>
+                        <p className="text-sm font-bold text-[#0B1E3D]">
+                            {formData.year || "2024"} {formData.make || "Toyota"} {formData.model || "Land Cruiser"}
+                        </p>
+                        <p className="text-xs text-slate-400">VIN: {formData.vin || "JTMHV05J8M1234567"}</p>
+                    </div>
+                </div>
+
+                <div className="mb-4">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                        <CheckCircle2 size={12} /> All details saved
+                    </span>
+                </div>
+
+                {!compact && (
+                    <div className="space-y-4 text-[13px]">
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Vehicle Type</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.vehicleType || "NA"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Make / Model</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.make} / {formData.model}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Year</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.year}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Body Type</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.bodyType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Mileage</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.mileage} miles</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Fuel Type</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.fuelType}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Transmission</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.transmission}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Drivetrain</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.drivetrain}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Exterior Color</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.exteriorColor}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Location</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.city}, {formData.emirate}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const handleVinBlur = () => {
+        const vin = formData.vin.trim().toUpperCase();
+
+        if (!vin) return;
+
+        decodeVin(vin, {
+            onSuccess: (res) => {
+
+                const decodedMake = res?.data?.make || res?.make || "";
+                const decodedModel = res?.data?.model || res?.model || "";
+
+                const normalizedMake = decodedMake
+                    .toLowerCase()
+                    .trim()
+                    .replace(/mercedes[-\s]?benz/, "mercedes")
+                    .replace(/land[-\s]?rover/, "land_rover");
+
+                const matchedMake = makeOptions.find(
+                    (make) => make.value === normalizedMake
+                );
+
+                setFormData((prev) => ({
+                    ...prev,
+                    make: matchedMake ? matchedMake.value : "other",
+                    model: decodedModel || prev.model,
+                }));
+                if (!matchedMake) {
+                    toast.info("VIN decoded, but make is not in the list. Please select Other or choose manually.");
+                }
+            },
+            onError: () => {
+                toast.error("VIN could not be decoded. Please select make and enter model manually.");
+            }
+        })
+    }
+
+    const handleSubmit = () => {
+        const payload = new FormData();
+
+        Object.entries(formData).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+
+            payload.append(
+                key,
+                key === "auctionStartTime" ? formatTo12Hour(value) : String(value)
+            );
+        });
+
+        images.forEach(({ file }) => {
+            payload.append("images", file);
+        });
+
+        documents.forEach(({ file }) => {
+            payload.append("documents", file);
+        });
+
+        addVehicle(payload, {
+            onSuccess: () => setIsSubmitModalOpen(true),
+        });
+    }
+
+    useEffect(() => {
+        if (isSubmitModalOpen) {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+    }, [isSubmitModalOpen]);
 
     return (
         <div className='pb-6'>
@@ -259,6 +530,18 @@ function AddNewVehicle({ setCurrentPage }) {
                                         ]}
                                     />
 
+                                    {/* vin */}
+                                    <FormInputFields
+                                        label="VIN"
+                                        name="vin"
+                                        value={formData.vin}
+                                        onChange={handleChange}
+                                        onBlur={handleVinBlur}
+                                        disabled={isDecoding}
+                                        required
+                                        placeholder="Enter VIN Number"
+                                    />
+
                                     {/* Make */}
                                     <FormInputFields
                                         label="Make"
@@ -267,33 +550,17 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.make}
                                         onChange={handleChange}
                                         required
-                                        options={[
-                                            { label: "Toyota", value: "toyota" },
-                                            { label: "Honda", value: "honda" },
-                                            { label: "BMW", value: "bmw" },
-                                            { label: "Mercedes-Benz", value: "mercedes" },
-                                            { label: "Audi", value: "audi" },
-                                            { label: "Ford", value: "ford" },
-                                            { label: "Other", value: "other" },
-                                        ]}
+                                        options={makeOptions}
                                     />
 
                                     {/* Model */}
                                     <FormInputFields
                                         label="Model"
-                                        type="select"
                                         name="model"
                                         value={formData.model}
                                         onChange={handleChange}
                                         required
-                                        options={[
-                                            { label: "Camry", value: "camry" },
-                                            { label: "Civic", value: "civic" },
-                                            { label: "Corolla", value: "corolla" },
-                                            { label: "3 Series", value: "3-series" },
-                                            { label: "C-Class", value: "c-class" },
-                                            { label: "Other", value: "other" },
-                                        ]}
+                                        placeholder="Enter Model"
                                     />
 
                                     {/* Year */}
@@ -344,17 +611,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                             { label: "Wagon", value: "wagon" },
                                             { label: "Truck", value: "truck" },
                                         ]}
-                                    />
-
-                                    {/* VIN */}
-                                    <FormInputFields
-                                        label="VIN"
-                                        name="vin"
-                                        value={formData.vin}
-                                        onChange={handleChange}
-                                        required
-                                        placeholder="Enter VIN Number"
-                                        helperText="Enter 17-digit VIN number"
                                     />
 
                                     {/* Mileage */}
@@ -437,6 +693,26 @@ function AddNewVehicle({ setCurrentPage }) {
                                     />
 
                                 </div>
+
+                                {/* vehicle description */}
+                                <div className="mt-5">
+                                    <FormInputFields
+                                        label="Vehicle Description"
+                                        type="textarea"
+                                        name="vehicleDescription"
+                                        value={formData.vehicleDescription}
+                                        onChange={handleChange}
+                                        placeholder="Enter description about vehicles"
+                                        rows={4}
+                                        required
+                                    />
+
+                                    <div className="flex justify-end mt-1">
+                                        <span className="text-[10px] text-slate-400">
+                                            {formData.additionalFeatures?.length || 0}/300
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* ======== Location ======== */}
@@ -456,40 +732,37 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "United Arab Emirates", value: "united-rab-emirates" },
+                                            { label: "United Arab Emirates", value: "united_arab_emirates" },
                                         ]}
                                     />
 
-                                    {/* State */}
+                                    {/* emirate */}
                                     <FormInputFields
-                                        label="State"
+                                        label="Emirate"
                                         type="select"
-                                        name="state"
-                                        value={formData.state}
+                                        name="emirate"
+                                        value={formData.emirate}
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "California", value: "california" },
-                                            { label: "Texas", value: "texas" },
-                                            { label: "Florida", value: "florida" },
-                                            { label: "New York", value: "new-york" },
+                                            { label: "Abu Dhabi", value: "abu_dhabi" },
+                                            { label: "Dubai", value: "dubai" },
+                                            { label: "Sharjah", value: "sharjah" },
+                                            { label: "Ajman", value: "ajman" },
+                                            { label: "Umm Al Quwain", value: "umm_al_quwain" },
+                                            { label: "Ras Al Khaimah", value: "ras_al_khaimah" },
+                                            { label: "Fujairah", value: "fujairah" },
                                         ]}
                                     />
 
                                     {/* City */}
                                     <FormInputFields
                                         label="City"
-                                        type="select"
                                         name="city"
                                         value={formData.city}
                                         onChange={handleChange}
                                         required
-                                        options={[
-                                            { label: "Los Angeles", value: "los-angeles" },
-                                            { label: "Houston", value: "houston" },
-                                            { label: "Miami", value: "miami" },
-                                            { label: "New York City", value: "new-york-city" },
-                                        ]}
+                                        placeholder="Enter City"
                                     />
 
                                     {/* Zip Code */}
@@ -797,6 +1070,241 @@ function AddNewVehicle({ setCurrentPage }) {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* ======== Additional Info ======== */}
+                            <div className="mt-8">
+                                <h2 className="mt-2 mb-5 flex items-center gap-2 text-md font-bold text-[#0B1E3D]">
+                                    <SlidersHorizontal size={18} className="text-[#D97706]" />
+                                    Additional Info
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                                    {/* Number of Keys */}
+                                    <FormInputFields
+                                        label="Number of Keys"
+                                        type="number"
+                                        name="numberOfKeys"
+                                        value={formData.numberOfKeys}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 2"
+                                    />
+
+                                    {/* Repainted */}
+                                    <FormInputFields
+                                        label="Repainted"
+                                        type="select"
+                                        name="repainted"
+                                        value={formData.repainted}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* Smoke Odor */}
+                                    <FormInputFields
+                                        label="Smoke Odor"
+                                        type="select"
+                                        name="smokeOdor"
+                                        value={formData.smokeOdor}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* Pet Friendly */}
+                                    <FormInputFields
+                                        label="Pet Friendly"
+                                        type="select"
+                                        name="petFriendly"
+                                        value={formData.petFriendly}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* Paint Type */}
+                                    <FormInputFields
+                                        label="Paint Type"
+                                        type="select"
+                                        name="paintType"
+                                        value={formData.paintType}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Factory Original", value: "factory-original" },
+                                            { label: "Repainted", value: "repainted" },
+                                        ]}
+                                    />
+
+                                    {/* Glass Condition */}
+                                    <FormInputFields
+                                        label="Glass Condition"
+                                        type="select"
+                                        name="glassCondition"
+                                        value={formData.glassCondition}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "No Cracks", value: "no-cracks" },
+                                            { label: "Minor Cracks", value: "minor-cracks" },
+                                            { label: "Major Cracks", value: "major-cracks" },
+                                        ]}
+                                    />
+
+                                    {/* Tires Condition */}
+                                    <FormInputFields
+                                        label="Tires Condition"
+                                        name="tiresCondition"
+                                        value={formData.tiresCondition}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 90%"
+                                    />
+
+                                    {/* Tire Brand */}
+                                    <FormInputFields
+                                        label="Tire Brand"
+                                        name="tireBrand"
+                                        value={formData.tireBrand}
+                                        onChange={handleChange}
+                                        placeholder="e.g. Michelin"
+                                    />
+
+                                    {/* Tire Size */}
+                                    <FormInputFields
+                                        label="Tire Size"
+                                        name="tireSize"
+                                        value={formData.tireSize}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 255/50 R19"
+                                    />
+
+                                    {/* Seat Material */}
+                                    <FormInputFields
+                                        label="Seat Material"
+                                        type="select"
+                                        name="seatMaterial"
+                                        value={formData.seatMaterial}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Leather", value: "leather" },
+                                            { label: "Fabric", value: "fabric" },
+                                            { label: "Synthetic", value: "synthetic" },
+                                        ]}
+                                    />
+
+                                    {/* Interior Color */}
+                                    <FormInputFields
+                                        label="Interior Color"
+                                        name="interiorColor"
+                                        value={formData.interiorColor}
+                                        onChange={handleChange}
+                                        placeholder="e.g. Beige"
+                                    />
+
+                                    {/* Sunroof */}
+                                    <FormInputFields
+                                        label="Sunroof"
+                                        type="select"
+                                        name="sunroof"
+                                        value={formData.sunroof}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* AC/Heater */}
+                                    <FormInputFields
+                                        label="AC/Heater"
+                                        name="acHeater"
+                                        value={formData.acHeater}
+                                        onChange={handleChange}
+                                        placeholder="e.g. AC Dual Zone"
+                                    />
+
+                                    {/* Audio System */}
+                                    <FormInputFields
+                                        label="Audio System"
+                                        name="audioSystem"
+                                        value={formData.audioSystem}
+                                        onChange={handleChange}
+                                        placeholder="e.g. Harman Kardon"
+                                    />
+
+                                    {/* Navigation */}
+                                    <FormInputFields
+                                        label="Navigation"
+                                        type="select"
+                                        name="navigation"
+                                        value={formData.navigation}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* Power Windows */}
+                                    <FormInputFields
+                                        label="Power Windows"
+                                        type="select"
+                                        name="powerWindows"
+                                        value={formData.powerWindows}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                    {/* Power Locks */}
+                                    <FormInputFields
+                                        label="Power Locks"
+                                        type="select"
+                                        name="powerLocks"
+                                        value={formData.powerLocks}
+                                        onChange={handleChange}
+                                        options={[
+                                            { label: "Select", value: "" },
+                                            { label: "Yes", value: "yes" },
+                                            { label: "No", value: "no" },
+                                        ]}
+                                    />
+
+                                </div>
+
+                                {/* Additional Notes */}
+                                <div className="mt-5">
+                                    <FormInputFields
+                                        label="Additional Notes"
+                                        type="textarea"
+                                        name="additionalNotes"
+                                        value={formData.additionalNotes}
+                                        onChange={handleChange}
+                                        placeholder="Any additional notes about the vehicle's condition"
+                                        rows={4}
+                                    />
+                                    <div className="flex justify-end mt-1">
+                                        <span className="text-[10px] text-slate-400">
+                                            {formData.additionalNotes?.length || 0}/300
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -907,6 +1415,82 @@ function AddNewVehicle({ setCurrentPage }) {
 
                     {currentStep === 4 && (
                         <div className='space-y-8'>
+                            <h2 className="mt-2 mb-5 flex items-center gap-2 text-md font-bold text-[#0B1E3D]">
+                                <FileText size={18} className="text-[#D97706]" />
+                                Vehicle Documents
+                            </h2>
+
+                            {/* guideline */}
+                            <div className="w-full flex items-start gap-3 p-4 bg-blue-50/60 border border-blue-200 rounded-lg">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 border border-blue-300 flex items-center justify-center shrink-0">
+                                    <Info className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-xs sm:text-sm font-semibold text-blue-700">Document Guidelines</h3>
+                                    <p className="mt-1 text-xs sm:text-sm text-slate-600">Upload supporting documents like Title Certificate, Service History, Inspection Report.</p>
+                                    <p className="mt-1 text-xs sm:text-sm text-slate-600">Accepted formats: PDF, JPG, PNG. Max size: 10MB per document.</p>
+                                </div>
+                            </div>
+
+                            {/* Dropzone */}
+                            <label
+                                onDrop={handleDocDrop}
+                                onDragOver={(e) => e.preventDefault()}
+                                className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center cursor-pointer hover:border-[#D97706] transition-colors"
+                            >
+                                <Upload size={28} className="text-slate-400" />
+                                <p className="text-sm font-medium text-slate-600">Upload Documents</p>
+                                <p className="text-xs text-slate-400">Drag & drop files here or</p>
+                                <span className="mt-1 inline-flex items-center rounded-lg bg-[#D97706] px-4 py-2 text-xs font-semibold text-white">
+                                    Choose Files
+                                </span>
+                                <input
+                                    type="file"
+                                    accept=".pdf,image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleDocFileSelect}
+                                />
+                            </label>
+
+                            {/* Uploaded docs list */}
+                            {documents.length > 0 && (
+                                <div className="space-y-3">
+                                    {documents.map((doc, index) => (
+                                        <div key={doc.previewUrl} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
+                                                <FileText size={18} className="text-red-500" />
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <input
+                                                    type="text"
+                                                    value={doc.name}
+                                                    onChange={(e) => handleDocNameChange(index, e.target.value)}
+                                                    placeholder="e.g. Title Certificate"
+                                                    className="w-full text-sm font-medium text-[#0B1E3D] border-none focus:outline-none focus:ring-1 focus:ring-[#D97706] rounded px-1"
+                                                />
+                                                <p className="text-xs text-slate-400">
+                                                    {doc.file?.type?.includes("pdf") ? "PDF" : "Image"} • {(doc.file?.size / (1024 * 1024)).toFixed(1)} MB
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDocument(index)}
+                                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {currentStep === 5 && (
+                        <div className='space-y-8'>
 
                             {/* ======== Pricing info ======== */}
                             <div className=''>
@@ -917,63 +1501,81 @@ function AddNewVehicle({ setCurrentPage }) {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                                     {/* starting bid price */}
-                                    <div className="space-y-2">
-                                        <label className="block text-[13px] font-medium text-[#0B1E3D]">
-                                            Starting Bid Price <span className="text-red-500">*</span>
-                                        </label>
-
-                                        <div className="flex">
-                                            <div className="flex py-2.5 w-12 items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 text-sm font-medium text-[#0B1E3D]">
-                                                $
-                                            </div>
-                                            <input
-                                                name="bidPrice"
-                                                value={formData.bidPrice}
-                                                onChange={handleChange}
-                                                placeholder="28,500"
-                                                className="py-2.5 flex-1 rounded-r-lg border border-slate-300 px-4 text-sm text-[#0B1E3D] outline-none transition-all focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/15"
-                                            />
-                                        </div>
-                                    </div>
+                                    <FormInputFields
+                                        label="Starting Bid Price"
+                                        name="startingBid"
+                                        type="text"
+                                        prefix="$"
+                                        maxLength={9}
+                                        value={formData.startingBid}
+                                        onChange={handlePriceChange}
+                                        placeholder="28500"
+                                    />
 
                                     {/* buy now price */}
-                                    <div className="">
-                                        <label className="mb-2 block text-[13px] font-medium text-[#0B1E3D]">
-                                            Buy Now Price (Optional) <span className="text-red-500">*</span>
-                                        </label>
-
-                                        <div className="flex">
-                                            <div className="flex py-2.5 w-12 items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 text-sm font-medium text-[#0B1E3D]">
-                                                $
-                                            </div>
-                                            <input
-                                                name="buyPrice"
-                                                value={formData.buyPrice}
-                                                onChange={handleChange}
-                                                placeholder="28,500"
-                                                className="py-2.5 flex-1 rounded-r-lg border border-slate-300 px-4 text-sm text-[#0B1E3D] outline-none transition-all focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/15"
-                                            />
-                                        </div>
-                                        <span className='text-[12px] text-gray-600'>Buyers can purchase immediately at this price</span>
-                                    </div>
+                                    <FormInputFields
+                                        label="Buy Now Price"
+                                        name="buyNowPrice"
+                                        type="text"
+                                        prefix="$"
+                                        maxLength={9}
+                                        value={formData.buyNowPrice}
+                                        onChange={handlePriceChange}
+                                        placeholder="28500"
+                                    />
 
                                     {/* reserve price */}
-                                    <div className="space-y-2">
-                                        <label className="block text-[13px] font-medium text-[#0B1E3D]">
-                                            Reserve Price (Optional) <span className="text-red-500">*</span>
+                                    <FormInputFields
+                                        label="Reserve Price (Optional)"
+                                        name="reservePrice"
+                                        type="text"
+                                        prefix="$"
+                                        maxLength={9}
+                                        value={formData.reservePrice}
+                                        onChange={handlePriceChange}
+                                        placeholder="28500"
+                                    />
+
+                                    {/* Price Type */}
+                                    <div>
+                                        <label className="block text-[13px] font-medium text-[#0B1E3D] mb-2">
+                                            Price Type <span className="text-red-500">*</span>
                                         </label>
 
-                                        <div className="flex">
-                                            <div className="flex py-2.5 w-12 items-center justify-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 text-sm font-medium text-[#0B1E3D]">
-                                                $
-                                            </div>
-                                            <input
-                                                name="reservePrice"
-                                                value={formData.reservePrice}
-                                                onChange={handleChange}
-                                                placeholder="28,500"
-                                                className="py-2.5 flex-1 rounded-r-lg border border-slate-300 px-4 text-sm text-[#0B1E3D] outline-none transition-all focus:border-[#D97706] focus:ring-2 focus:ring-[#D97706]/15"
-                                            />
+                                        <div className="flex flex-wrap items-center gap-2">
+
+                                            {/* Fixed Price */}
+                                            <label className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                                                <input
+                                                    type="radio"
+                                                    name="priceType"
+                                                    value="fixed"
+                                                    checked={formData.priceType === "fixed"}
+                                                    onChange={handleChange}
+                                                    className="accent-[#D97706]"
+                                                />
+
+                                                <span className="text-[13px] text-slate-600">
+                                                    Fixed Price
+                                                </span>
+                                            </label>
+
+                                            {/* Reserve Price */}
+                                            <label className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                                                <input
+                                                    type="radio"
+                                                    name="priceType"
+                                                    value="reserve"
+                                                    checked={formData.priceType === "reserve"}
+                                                    onChange={handleChange}
+                                                    className="accent-[#D97706]"
+                                                />
+
+                                                <span className="text-[13px] text-slate-600">
+                                                    Reserve Price
+                                                </span>
+                                            </label>
+
                                         </div>
                                     </div>
                                 </div>
@@ -985,7 +1587,88 @@ function AddNewVehicle({ setCurrentPage }) {
                                     <Settings size={18} className="text-[#D97706]" />
                                     Auction Settings
                                 </h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                                    {/* Auction Type */}
+                                    <div>
+                                        <FormInputFields
+                                            label="Auction Type"
+                                            type="select"
+                                            name="auctionType"
+                                            value={formData.auctionType}
+                                            onChange={handleChange}
+                                            required
+                                            options={[
+                                                { label: "Live Auction", value: "live" },
+                                                { label: "Timed Auction", value: "timed" },
+                                            ]}
+                                        />
+                                        <p className="mt-1 text-[12px] text-slate-500">Bidders compete in real-time</p>
+                                    </div>
+
+                                    {/* auction start */}
+                                    <div>
+                                        <label className="block text-[13px] font-medium text-[#0B1E3D] mb-2">
+                                            Auction Starts <span className="text-red-500">*</span>
+                                        </label>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <FormInputFields
+                                                type="date"
+                                                name="auctionStartDate"
+                                                value={formData.auctionStartDate}
+                                                onChange={handleChange}
+                                                required
+                                            />
+
+                                            <FormInputFields
+                                                type="time"
+                                                name="auctionStartTime"
+                                                value={formData.auctionStartTime}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Auction Duration */}
+                                    <div>
+                                        <FormInputFields
+                                            label="Auction Duration"
+                                            type="select"
+                                            name="auctionDuration"
+                                            value={formData.auctionDuration}
+                                            onChange={handleChange}
+                                            required
+                                            options={[
+                                                { label: "1 Day", value: "1_day" },
+                                                { label: "3 Days", value: "3_days" },
+                                                { label: "5 Days", value: "5_days" },
+                                                { label: "7 Days", value: "7_days" },
+                                                { label: "14 Days", value: "14_days" },
+                                            ]}
+                                        />
+                                        <p className="mt-1 text-[12px] text-slate-500">Duration of the auction</p>
+                                    </div>
+
+                                    {/* Time Extension */}
+                                    {/* <div>
+
+                                        <FormInputFields
+                                            label="Time Extension"
+                                            type="select"
+                                            name="timeExtension"
+                                            value={formData.timeExtension}
+                                            onChange={handleChange}
+                                            options={[
+                                                { label: "No Extension", value: "none" },
+                                                { label: "1 Minute", value: "1-minute" },
+                                                { label: "2 Minutes", value: "2-minutes" },
+                                                { label: "5 Minutes", value: "5-minutes" },
+                                            ]}
+                                        />
+                                        <p className="mt-1 text-[12px] text-slate-500">If a bid is placed in the last 2 minutes, the auction will be extended</p>
+                                    </div> */}
+
                                 </div>
                             </div>
 
@@ -995,12 +1678,136 @@ function AddNewVehicle({ setCurrentPage }) {
                                     <SlidersHorizontal size={18} className="text-[#D97706]" />
                                     Additional Settings
                                 </h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    {[
+                                        { name: "allowBiddersToSave", title: "Allow Bidders to Save", desc: "Allow bidders to save this vehicle to their watchlist" },
+                                        { name: "shareOnSocialMedia", title: "Share on Social Media", desc: "Automatically share this listing on social platforms" },
+                                        { name: "featuredListing", title: "Featured Listing (Recommended)", desc: "Feature your listing for more visibility" },
+                                        { name: "autoRelist", title: "Auto Relist", desc: "Automatically relist if the vehicle doesn't sell" },
+                                    ].map((item) => (
+                                        <label key={item.name} className="flex items-start gap-3 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                name={item.name}
+                                                checked={formData[item.name] || false}
+                                                onChange={(e) => setFormData({ ...formData, [item.name]: e.target.checked })}
+                                                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#D97706] focus:ring-[#D97706]/30 accent-[#D97706]"
+                                            />
+                                            <div>
+                                                <p className="text-[13px] font-medium text-[#0B1E3D]">{item.title}</p>
+                                                <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                                            </div>
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {currentStep === 6 && (
+                        <div className='space-y-8'>
+                            <div className=''>
+                                <h2 className="mt-2 mb-5 flex items-center gap-2 text-md font-bold text-[#0B1E3D]">
+                                    <ClipboardCheck size={18} className="text-[#D97706]" />
+                                    Review Your Vehicle Listing
+                                </h2>
+                            </div>
+
+                            {/* Vehicle Details */}
+                            <div className="border border-slate-200 rounded-xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-[#0B1E3D]">Vehicle Details</h3>
+                                    <button type="button" onClick={() => setCurrentStep(1)} className="text-xs font-medium text-[#D97706] hover:underline">
+                                        Edit
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+                                    <div><span className="text-slate-500">Vehicle Type: </span><span className="text-[#0B1E3D] font-medium">{formData.vehicleType || "---"}</span></div>
+                                    <div><span className="text-slate-500">Make / Model: </span><span className="text-[#0B1E3D] font-medium">{formData.make} / {formData.model}</span></div>
+                                    <div><span className="text-slate-500">Year: </span><span className="text-[#0B1E3D] font-medium">{formData.year}</span></div>
+                                    <div><span className="text-slate-500">Body Type: </span><span className="text-[#0B1E3D] font-medium">{formData.bodyType}</span></div>
+                                    <div><span className="text-slate-500">VIN: </span><span className="text-[#0B1E3D] font-medium">{formData.vin}</span></div>
+                                    <div><span className="text-slate-500">Trim: </span><span className="text-[#0B1E3D] font-medium">{formData.trim}</span></div>
+                                    <div><span className="text-slate-500">Mileage: </span><span className="text-[#0B1E3D] font-medium">{formData.mileage}</span></div>
+                                    <div><span className="text-slate-500">Transmission: </span><span className="text-[#0B1E3D] font-medium">{formData.transmission}</span></div>
+                                    <div><span className="text-slate-500">Fuel Type: </span><span className="text-[#0B1E3D] font-medium">{formData.fuelType}</span></div>
+                                    <div><span className="text-slate-500">Drivetrain: </span><span className="text-[#0B1E3D] font-medium">{formData.drivetrain}</span></div>
+                                    <div><span className="text-slate-500">Exterior Color: </span><span className="text-[#0B1E3D] font-medium">{formData.exteriorColor}</span></div>
+                                </div>
+                            </div>
+
+                            {/* Condition & Details */}
+                            <div className="border border-slate-200 rounded-xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-[#0B1E3D]">Condition & Details</h3>
+                                    <button type="button" onClick={() => setCurrentStep(2)} className="text-xs font-medium text-[#D97706] hover:underline">
+                                        Edit
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+                                    <div><span className="text-slate-500">Overall Condition: </span><span className="text-[#0B1E3D] font-medium">{formData.overallCondition}</span></div>
+                                    <div><span className="text-slate-500">Mechanical Condition: </span><span className="text-[#0B1E3D] font-medium">{formData.mechanicalCondition}</span></div>
+                                    <div><span className="text-slate-500">Interior Condition: </span><span className="text-[#0B1E3D] font-medium">{formData.interiorCondition}</span></div>
+                                    <div><span className="text-slate-500">Exterior Condition: </span><span className="text-[#0B1E3D] font-medium">{formData.exteriorCondition}</span></div>
+                                    <div><span className="text-slate-500">Title Status: </span><span className="text-[#0B1E3D] font-medium">{formData.titleStatus}</span></div>
+                                    <div><span className="text-slate-500">Accident History: </span><span className="text-[#0B1E3D] font-medium">{formData.accidentHistory}</span></div>
+                                    <div><span className="text-slate-500">Doors: </span><span className="text-[#0B1E3D] font-medium">{formData.doors}</span></div>
+                                    <div><span className="text-slate-500">Seats: </span><span className="text-[#0B1E3D] font-medium">{formData.seats}</span></div>
+                                    <div><span className="text-slate-500">Engine Size: </span><span className="text-[#0B1E3D] font-medium">{formData.engineSize}</span></div>
+                                    <div><span className="text-slate-500">Cylinders: </span><span className="text-[#0B1E3D] font-medium">{formData.cylinders}</span></div>
+                                    <div><span className="text-slate-500">Drive Type: </span><span className="text-[#0B1E3D] font-medium">{formData.driveType}</span></div>
+                                    <div><span className="text-slate-500">Key Type: </span><span className="text-[#0B1E3D] font-medium">{formData.keyType}</span></div>
+                                    <div className="sm:col-span-3"><span className="text-slate-500">Additional Features: </span><span className="text-[#0B1E3D] font-medium">{formData.additionalFeatures}</span></div>
+                                    <div className="sm:col-span-3"><span className="text-slate-500">Location: </span><span className="text-[#0B1E3D] font-medium">{formData.city}, {formData.emirate}</span></div>
+                                </div>
+                            </div>
+
+                            {/* Images */}
+                            <div className="border border-slate-200 rounded-xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-[#0B1E3D]">Images ({images?.length || 0})</h3>
+                                    <button type="button" onClick={() => setCurrentStep(3)} className="text-xs font-medium text-[#D97706] hover:underline">
+                                        Edit
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                    {images?.slice(0, 6).map((img, i) => (
+                                        <img
+                                            key={i}
+                                            src={img.preview || img.url || img}
+                                            alt={`vehicle-${i}`}
+                                            className="w-full h-20 object-cover rounded-lg"
+                                        />
+                                    ))}
+                                    {images?.length > 6 && (
+                                        <div className="w-full h-20 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-medium text-slate-500">
+                                            +{images.length - 6} More
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Pricing & Auction */}
+                            <div className="border border-slate-200 rounded-xl p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-[#0B1E3D]">Pricing & Auction</h3>
+                                    <button type="button" onClick={() => setCurrentStep(4)} className="text-xs font-medium text-[#D97706] hover:underline">
+                                        Edit
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+                                    <div><span className="text-slate-500">Starting Bid Price: </span><span className="text-[#0B1E3D] font-medium">${formData.startingBidPrice}</span></div>
+                                    <div><span className="text-slate-500">Buy Now Price: </span><span className="text-[#0B1E3D] font-medium">${formData.buyNowPrice}</span></div>
+                                    <div><span className="text-slate-500">Reserve Price: </span><span className="text-[#0B1E3D] font-medium">${formData.reservePrice}</span></div>
+                                    <div><span className="text-slate-500">Price Type: </span><span className="text-[#0B1E3D] font-medium">{formData.priceType}</span></div>
+                                    <div><span className="text-slate-500">Auction Type: </span><span className="text-[#0B1E3D] font-medium">{formData.auctionType}</span></div>
+                                    <div><span className="text-slate-500">Auction Starts: </span><span className="text-[#0B1E3D] font-medium">{formData.auctionStartDate} at {formData.auctionStartTime}</span></div>
+                                    <div><span className="text-slate-500">Auction Duration: </span><span className="text-[#0B1E3D] font-medium">{formData.auctionDuration}</span></div>
+                                    <div><span className="text-slate-500">Time Extension: </span><span className="text-[#0B1E3D] font-medium">{formData.timeExtension}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* footer btns */}
                     <div className="mt-10 flex items-center justify-between pt-6 border-t border-slate-100">
@@ -1024,7 +1831,7 @@ function AddNewVehicle({ setCurrentPage }) {
                             </button>
                         )}
 
-                        {(currentStep >= 1 && currentStep <= 6) && (
+                        {(currentStep >= 1 && currentStep <= 5) && (
                             <button
                                 type="button"
                                 onClick={handleNext}
@@ -1034,12 +1841,16 @@ function AddNewVehicle({ setCurrentPage }) {
                             </button>
                         )}
 
-                        {currentStep === 7 && (
+                        {currentStep === 6 && (
                             <button
                                 type="button"
-                                className="inline-flex h-11 items-center gap-2 rounded-xl bg-linear-to-r from-emerald-600 to-emerald-700 px-8 text-sm font-semibold text-white shadow-md shadow-emerald-500/20 transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-lg hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => handleSubmit()}
+                                disabled={isContinue}
+                                className="inline-flex h-11 items-center gap-2 rounded-xl bg-linear-to-r from-[#D97706] to-[#B45309] px-8 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-all duration-200 hover:from-[#B45309] hover:to-[#92400E] hover:shadow-lg hover:shadow-orange-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Submit <ArrowRight size={16} />
+                                {isContinue ? "Submitting..." : "Submit for Approval"}
+                                <ArrowRight size={16} />
+
                             </button>
                         )}
 
@@ -1048,9 +1859,273 @@ function AddNewVehicle({ setCurrentPage }) {
 
                 {/* ------------------ right ------------------ */}
                 <div className='w-[35%]'>
+                    {currentStep === 1 && (
+                        <>
+                            <div className="group relative mb-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-white via-white to-amber-50/30 p-5 shadow-sm transition-all duration-300 hover:border-amber-200 hover:shadow-md">
+                                <div className="flex items-start gap-4">
 
+                                    {/* Icon with Soft Glow Effect */}
+                                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-[#D97706] ring-4 ring-amber-50/50 transition-transform duration-300 group-hover:scale-105">
+                                        <ImagePlus size={20} />
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-bold text-[#0B1E3D] tracking-tight">
+                                                Vehicle Images
+                                            </h3>
+                                            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200/60">
+                                                Up to 20 Photos
+                                            </span>
+                                        </div>
+
+                                        <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                                            Add your vehicle photos in the next step to showcase it better to buyers.
+                                        </p>
+
+                                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-medium">
+                                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">JPG</span>
+                                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">PNG</span>
+                                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">WebP</span>
+                                            <span>•</span>
+                                            <span className="text-amber-600 font-medium">First image will be cover photo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl p-5 bg-white">
+                                <h3 className="text-sm font-bold text-[#0B1E3D] mb-4">Quick Tips</h3>
+                                <ul className="space-y-3">
+                                    {[
+                                        "Add clear, high-quality images from all angles",
+                                        "Provide accurate details to attract more buyers",
+                                        "Vehicles with complete information get more views",
+                                        "You can edit details anytime before publishing",
+                                    ].map((tip, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-[13px] text-slate-600">
+                                            <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                                            {tip}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </>
+                    )}
+
+                    {(currentStep === 2 || currentStep === 3 || currentStep === 4 || currentStep === 5) && (
+                        <VehicleSummaryCard formData={formData} images={images} onEdit={() => setCurrentStep(1)} />
+                    )}
+
+                    {currentStep === 6 && (
+                        <>
+                            <VehicleSummaryCard formData={formData} images={images} compact={true} />
+
+                            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div className="flex items-start gap-2.5">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50">
+                                        <ShieldCheck
+                                            size={19}
+                                            className="text-green-600"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <h3 className="text-sm font-bold text-green-700">What's Next?</h3>
+                                        <p className="mt-1 text-[12px] leading-4 text-slate-500">
+                                            After you submit, our team will review your vehicle listing.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 space-y-3">
+                                    <div className="flex items-center gap-2.5">
+                                        <Mail
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <p className="text-[12px] text-slate-600">
+                                            You will receive an email notification.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2.5">
+                                        <CheckCircle2
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <p className="text-[12px] text-slate-600">
+                                            The vehicle will be visible to buyers once approved.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 shadow-sm rounded-xl border border-amber-200 bg-amber-50/40 p-5">
+                                <h3 className="text-sm font-bold text-[#0B1E3D]">
+                                    Ready to Submit?
+                                </h3>
+
+                                <p className="mt-1.5 text-[12px] leading-4 text-slate-500">
+                                    By submitting, you agree to our{" "}
+                                    <span className="font-medium text-[#D97706]">
+                                        Terms & Conditions
+                                    </span>{" "}
+                                    and confirm that all information provided is accurate.
+                                </p>
+                            </div>
+
+                            <div className="mt-6 shadow-sm rounded-xl border border-slate-200 bg-white p-5">
+                                <h3 className="mb-4 text-sm font-bold text-[#0B1E3D]">
+                                    Submission Checklist
+                                </h3>
+
+                                <div className="space-y-3.5">
+
+                                    {/* Vehicle Details */}
+                                    <div className="flex items-center gap-2.5">
+                                        <CheckCircle2
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <span className="text-[13px] text-slate-600">
+                                            Vehicle details added
+                                        </span>
+                                    </div>
+
+                                    {/* Condition */}
+                                    <div className="flex items-center gap-2.5">
+                                        <CheckCircle2
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <span className="text-[13px] text-slate-600">
+                                            Condition & details completed
+                                        </span>
+                                    </div>
+
+                                    {/* Images */}
+                                    <div className="flex items-center gap-2.5">
+                                        <CheckCircle2
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <span className="text-[13px] text-slate-600">
+                                            Images uploaded
+                                        </span>
+                                    </div>
+
+                                    {/* Pricing */}
+                                    <div className="flex items-center gap-2.5">
+                                        <CheckCircle2
+                                            size={14}
+                                            className="shrink-0 text-green-500"
+                                        />
+                                        <span className="text-[13px] text-slate-600">
+                                            Pricing & auction settings added
+                                        </span>
+                                    </div>
+
+                                    {/* Approval */}
+                                    <div className="mt-3 border-t border-slate-100 pt-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <LockKeyhole
+                                                size={13}
+                                                className="shrink-0 text-amber-500"
+                                            />
+                                            <span className="text-[13px] text-slate-400">
+                                                Submit for admin approval
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
+
+            {/* popup modal */}
+            {isSubmitModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md transition-all duration-300">
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+
+                        {/* Decorative Top Accent Glow */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-amber-500 via-green-500 to-blue-500" />
+
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage('dashboard')}
+                            className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-all hover:bg-slate-200 hover:text-slate-700"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <div className="px-5 py-7">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-50 ring-8 ring-green-50/50 shadow-inner">
+                                <Check
+                                    size={30}
+                                    strokeWidth={2.5}
+                                    className="text-green-600"
+                                />
+                            </div>
+
+                            {/* Heading */}
+                            <div className="mt-5 text-center">
+                                <h2 className="text-xl font-bold tracking-tight text-[#0B1E3D]">
+                                    Vehicle Submitted Successfully!
+                                </h2>
+                                <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">
+                                    Your vehicle listing has been submitted for admin approval.
+                                </p>
+                            </div>
+
+                            {/* Information Box */}
+                            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                                <div className="flex items-start gap-3.5">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                        <Info size={18} />
+                                    </div>
+
+                                    <div className="space-y-2.5 flex-1">
+                                        <p className="text-xs font-bold text-[#0B1E3D] tracking-wide uppercase">
+                                            What happens next?
+                                        </p>
+
+                                        <ul className="space-y-1.5 text-xs leading-relaxed text-slate-600">
+                                            <li className="flex items-start gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                                <span>Our team will review your vehicle listing and verify the provided information.</span>
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                                <span>You will receive an email notification once your listing has been reviewed.</span>
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                                <span>Once approved, your vehicle will be visible to buyers on BidDrive.</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Status Section */}
+                            <div className="mt-5 flex items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-xs">
+                                <span className="text-xs font-semibold text-slate-500">
+                                    Listing Status :
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-[#D97706] border border-amber-200/60">
+                                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                    Pending Approval
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

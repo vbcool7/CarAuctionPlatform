@@ -26,39 +26,12 @@ export const deleteCloudinaryFiles = async (fileData) => {
 };
 
 // for update api - dlt old files
-export const deleteOldFileFromCloudinary = async (fileUrl) => {
-    try {
-        if (!fileUrl || typeof fileUrl !== 'string') return;
-
-        // decode URL first
-        const decodedUrl = decodeURIComponent(fileUrl);
-
-        let publicId = "";
-
-        // METHOD A: Split Logic
-        const parts = fileUrl.split('/');
-        const uploadIndex = parts.indexOf('upload');
-
-        if (uploadIndex !== -1) {
-            const lastPart = parts[parts.length - 1].split('.')[0];
-            const folderParts = parts.slice(uploadIndex + 2, parts.length - 1);
-            publicId = [...folderParts, lastPart].join('/');
-        }
-
-        // METHOD B: Fallback 
-        if (!publicId) {
-            const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-z]+$/;
-            const match = fileUrl.match(regex);
-            if (match) publicId = match[1];
-        }
-
-        if (publicId) {
-            const result = await cloudinary.uploader.destroy(publicId);
-            console.log(`Cloudinary Delete [${publicId}]:`, result.result);
-        }
-    } catch (error) {
-        console.error("Error in deleteOldFileFromCloudinary:", error);
-    }
+export const deleteStoredFile = async (publicId, resourceType = 'image') => {
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+  } catch (error) {
+    console.error('Cloudinary Delete Error:', error);
+  }
 };
 
 // cleaning Cloudinary files if validation fails

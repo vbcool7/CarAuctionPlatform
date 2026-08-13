@@ -2,7 +2,7 @@
 import { ChevronDown, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-const FormInputFields = ({ label, name, value, onChange, type = "text", placeholder, required = false, disabled = false, options = [], rows = 4, className = "" }) => {
+const FormInputFields = ({ label, name, value, onChange, type = "text", placeholder, required = false, disabled = false, options = [], rows = 4, className = "", prefix = "", maxLength, onBlur }) => {
     const [showPassword, setShowPassword] = useState(false);
 
     const inputType = type === "password" ? (showPassword ? "text" : "password") : type;
@@ -15,6 +15,7 @@ const FormInputFields = ({ label, name, value, onChange, type = "text", placehol
         focus:border-[#D97706]
         focus:ring-2 focus:ring-[#D97706]/15
         disabled:bg-slate-100 disabled:cursor-not-allowed
+        ${prefix ? "pl-8" : ""}
         ${className}
     `;
 
@@ -79,10 +80,16 @@ const FormInputFields = ({ label, name, value, onChange, type = "text", placehol
                 </div>
             ) : (
                 <div className="relative">
+                    {prefix && (
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-500 pointer-events-none">
+                            {prefix}
+                        </span>
+                    )}
                     <input
                         type={inputType}
                         name={name}
                         value={value}
+                        onBlur={onBlur}
                         disabled={disabled}
                         placeholder={placeholder || `Enter ${label}`}
                         onChange={onChange}

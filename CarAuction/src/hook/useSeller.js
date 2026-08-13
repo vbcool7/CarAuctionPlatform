@@ -1,8 +1,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
-import API from '../api/axiosInstance';
 import { toast } from "react-toastify";
+import API from '../api/axiosInstance';
 import useAuthStore from '../store/useAuthStore';
 
 export const useSellerRegistrationStep1 = () => {

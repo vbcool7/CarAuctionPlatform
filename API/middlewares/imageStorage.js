@@ -14,6 +14,8 @@ const storage = new CloudinaryStorage({
             folderName = 'CarAuction/Seller';
         } else if (req.baseUrl.includes('admin')) {
             folderName = 'CarAuction/Admin';
+        } else if (req.baseUrl.includes('vehicle')) {
+            folderName = 'CarAuction/Vehicle';
         }
 
         const isPdf = file.mimetype === 'application/pdf';

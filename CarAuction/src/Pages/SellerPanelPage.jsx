@@ -10,11 +10,16 @@ import AddNewVehicle from '../Components/SellerPanel/AddNewVehicle/AddNewVehicle
 import { useSellerLogout } from '../hook/useSeller';
 import useAuthStore from '../store/useAuthStore';
 import { toast } from 'react-toastify';
+import MyVehicles from '../Components/SellerPanel/MyVehicles/MyVehicles';
+import MyVehiclesDetail from '../Components/SellerPanel/MyVehicles/MyVehiclesDetail';
+import MyAuctions from '../Components/SellerPanel/MyAuctions/MyAuctions';
+import MyAuctionsDetail from '../Components/SellerPanel/MyAuctions/MyAuctionsDetail';
+import BidsOffers from '../Components/SellerPanel/BidsOffers/BidsOffers';
 
 function SellerPanelPage() {
 
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('my-vehicles');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -22,6 +27,9 @@ function SellerPanelPage() {
 
   const { mutate: logoutSeller, isPending: isLoggingOut } = useSellerLogout();
   const clearStore = useAuthStore((state) => state.logout);
+
+  const [selectedMyVehicleId, setSelectedMyVehicleId] = useState();
+  const [selectedAuctionId, setSelectedAuctionId] = useState();
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -88,6 +96,17 @@ function SellerPanelPage() {
 
               {/* add new vehicle */}
               {currentPage === 'add-new-vehicle' && <AddNewVehicle setCurrentPage={setCurrentPage} />}
+
+              {/* my vehicles */}
+              {currentPage === 'my-vehicles' && <MyVehicles setSelectedMyVehicleId={setSelectedMyVehicleId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'my-vehicles-detail' && <MyVehiclesDetail myVehileId={selectedMyVehicleId} setCurrentPage={setCurrentPage} />}
+              
+              {/* my auctions */}
+              {currentPage === 'my-auctions' && <MyAuctions setSelectedAuctionId={setSelectedAuctionId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'my-auctions-detail' && <MyAuctionsDetail auctionId={selectedAuctionId} setCurrentPage={setCurrentPage} />}
+              
+              {/* bids offers */}
+              {currentPage === 'bids-offers' && <BidsOffers setCurrentPage={setCurrentPage} />}
 
               {/* logout */}
               {isLogoutModalOpen && (
