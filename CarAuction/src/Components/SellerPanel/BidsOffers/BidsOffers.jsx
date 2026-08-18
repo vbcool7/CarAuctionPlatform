@@ -55,7 +55,7 @@ const recentActivities = [
     },
 ];
 
-function BidsOffers({ setCurrentPage }) {
+function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
 
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
@@ -121,10 +121,10 @@ function BidsOffers({ setCurrentPage }) {
             </div>
 
             {/* content grid */}
-             <div className='grid grid-cols-1 xl:grid-cols-3 gap-6'>
+            <div className='grid grid-cols-1 xl:grid-cols-3 gap-6'>
 
                 {/* left */}
-                 <div className='xl:col-span-2 space-y-6'>
+                <div className='xl:col-span-2 space-y-6'>
 
                     {/* list */}
                     <div className="overflow-x-auto border border-slate-200/80 rounded-xl shadow-xs bg-white">
@@ -256,14 +256,16 @@ function BidsOffers({ setCurrentPage }) {
                                         <td className='px-3 py-3 pl-10'>
                                             <div className='flex items-center gap-2'>
                                                 <button
-                                                    className='whitespace-nowrap px-3 py-2 rounded-md border border-gray-200 text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50 transition-colors'
-                                                >
+                                                    onClick={() => {
+                                                        setSelectedBidsOfferId(bid.id)
+                                                        setCurrentPage('bids-offers-detail')
+                                                    }}
+                                                    className='whitespace-nowrap px-3 py-2 rounded-md border border-gray-200 text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50 transition-colors'>
                                                     {bid.action}
                                                 </button>
 
                                                 <button
-                                                    className='w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50'
-                                                >
+                                                    className='w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50'>
                                                     <MoreVertical className='w-4 h-4' />
                                                 </button>
                                             </div>

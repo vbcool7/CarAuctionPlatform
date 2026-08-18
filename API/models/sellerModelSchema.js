@@ -223,6 +223,9 @@ const sellerSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Admin'
     },
+    lastLoginAt: { 
+        type: Date 
+    },
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],

@@ -555,6 +555,13 @@ export const sellerLogin = async (req, res) => {
             });
         }
 
+        if (!seller.isEmailVerified) {
+            return res.status(403).json({
+                success: false,
+                message: "Your email address is not verified"
+            });
+        }
+
         if (seller.status === 'pending') {
             return res.status(403).json({
                 success: false,
@@ -568,6 +575,8 @@ export const sellerLogin = async (req, res) => {
                 message: "Your registration has been rejected. Please contact support."
             });
         }
+
+        seller.lastLoginAt = new Date();
 
         const token = jwt.sign({ id: seller._id, role: seller.role }, process.env.JWT_SECRET_KEY, { expiresIn: '1d' });
 

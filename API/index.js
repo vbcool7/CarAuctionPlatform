@@ -7,6 +7,7 @@ import connectDb from './config/connectDb.js';
 import rootRouter from './routes/mainRoutes.js';
 
 dotenv.config();
+
 const app = express();
 
 // Create the server instance
@@ -33,7 +34,7 @@ app.get("/", (req, res) => {
     res.send("API is running successfully 🚀");
 });
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`App & Socket running on port : ${PORT}`);

@@ -1003,7 +1003,6 @@ function SellerRegistration() {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Business Type", value: "" },
                                             { label: "Car Dealership", value: "car_dealership" },
                                             { label: "Individual Seller", value: "individual_seller" },
                                             { label: "Vehicle Importer", value: "vehicle_importer" },
@@ -1061,7 +1060,6 @@ function SellerRegistration() {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Number of Employees", value: "" },
                                             { label: "1 - 10", value: "1-10" },
                                             { label: "11 - 20", value: "11-20" },
                                             { label: "21 - 50", value: "21-50" },
@@ -1119,7 +1117,6 @@ function SellerRegistration() {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Country", value: "" },
                                             { label: "United Arab Emirates", value: "united_arab_emirates" },
                                         ]}
                                     />
@@ -1133,7 +1130,6 @@ function SellerRegistration() {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Emirate", value: "" },
                                             { label: "Abu Dhabi", value: "abu_dhabi" },
                                             { label: "Dubai", value: "dubai" },
                                             { label: "Sharjah", value: "sharjah" },
@@ -1268,7 +1264,6 @@ function SellerRegistration() {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Currency", value: "" },
                                             { label: "AED - UAE Dirham", value: "aed_uae_dirham" },
                                         ]}
                                     />

@@ -15,11 +15,16 @@ import MyVehiclesDetail from '../Components/SellerPanel/MyVehicles/MyVehiclesDet
 import MyAuctions from '../Components/SellerPanel/MyAuctions/MyAuctions';
 import MyAuctionsDetail from '../Components/SellerPanel/MyAuctions/MyAuctionsDetail';
 import BidsOffers from '../Components/SellerPanel/BidsOffers/BidsOffers';
+import BidsOffersDetail from '../Components/SellerPanel/BidsOffers/BidsOffersDetail';
+import SalesHistory from '../Components/SellerPanel/SalesHistory/SalesHistory';
+import SalesHistoryDetail from '../Components/SellerPanel/SalesHistory/SalesHistoryDetail';
+import Payouts from '../Components/SellerPanel/Payouts/Payouts';
+import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 
 function SellerPanelPage() {
 
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('my-vehicles');
+  const [currentPage, setCurrentPage] = useState('payouts');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -30,6 +35,9 @@ function SellerPanelPage() {
 
   const [selectedMyVehicleId, setSelectedMyVehicleId] = useState();
   const [selectedAuctionId, setSelectedAuctionId] = useState();
+  const [selectedBidsOfferId, setSelectedBidsOfferId] = useState();
+  const [selectedSalesId, setSelectedSalesId] = useState();
+  const [selectedPayoutId, setSelectedPayoutId] = useState();
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -100,13 +108,22 @@ function SellerPanelPage() {
               {/* my vehicles */}
               {currentPage === 'my-vehicles' && <MyVehicles setSelectedMyVehicleId={setSelectedMyVehicleId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'my-vehicles-detail' && <MyVehiclesDetail myVehileId={selectedMyVehicleId} setCurrentPage={setCurrentPage} />}
-              
+
               {/* my auctions */}
               {currentPage === 'my-auctions' && <MyAuctions setSelectedAuctionId={setSelectedAuctionId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'my-auctions-detail' && <MyAuctionsDetail auctionId={selectedAuctionId} setCurrentPage={setCurrentPage} />}
-              
+
               {/* bids offers */}
-              {currentPage === 'bids-offers' && <BidsOffers setCurrentPage={setCurrentPage} />}
+              {currentPage === 'bids-offers' && <BidsOffers setSelectedBidsOfferId={setSelectedBidsOfferId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'bids-offers-detail' && <BidsOffersDetail bidsOfferId={selectedBidsOfferId} setCurrentPage={setCurrentPage} />}
+
+              {/* sales history */}
+              {currentPage === 'sales-history' && <SalesHistory setSelectedSalesId={setSelectedSalesId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'sales-history-detail' && <SalesHistoryDetail salesId={selectedSalesId} setCurrentPage={setCurrentPage} />}
+
+              {/* payout */}
+              {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'payouts-detail' && <PayoutDetails payoutId={selectedPayoutId} setCurrentPage={setCurrentPage} />}
 
               {/* logout */}
               {isLogoutModalOpen && (
@@ -156,8 +173,8 @@ function SellerPanelPage() {
                           disabled={isLoggingOut}
                           onClick={handleLogout}
                           className={`rounded-xl bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-amber-200 transition-all ${isLoggingOut
-                              ? "cursor-not-allowed opacity-70"
-                              : "cursor-pointer hover:bg-[#B45309] hover:shadow-md active:scale-[0.98]"
+                            ? "cursor-not-allowed opacity-70"
+                            : "cursor-pointer hover:bg-[#B45309] hover:shadow-md active:scale-[0.98]"
                             }`}
                         >
                           Logout

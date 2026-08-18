@@ -31,13 +31,13 @@ export const addVehicle = async (req, res) => {
         const {
             // Step 1
             vehicleType, vin, make, model, year, trim, bodyType, mileage,
-            transmission, fuelType, drivetrain, exteriorColor, vehicleDescription,
+            transmission, fuelType, drivetrain, exteriorColor, interiorColor, vehicleDescription,
             country, emirate, city, zipCode, titleStatus, accidentHistory,
             // Step 2
             overallCondition, mechanicalCondition, interiorCondition, exteriorCondition,
-            doors, seats, engineSize, cylinders, driveType, keyType, additionalFeatures,
+            doors, seats, engineSize, cylinders, keyType, additionalFeatures,
             numberOfKeys, repainted, smokeOdor, petFriendly, paintType, glassCondition,
-            tiresCondition, tireBrand, tireSize, seatMaterial, interiorColor, sunroof,
+            tiresCondition, tireBrand, tireSize, seatMaterial, sunroof,
             acHeater, audioSystem, navigation, powerWindows, powerLocks, additionalNotes,
             // Step 5
             startingBidPrice, buyNowPrice, reservePrice, priceType, auctionType,
@@ -70,26 +70,26 @@ export const addVehicle = async (req, res) => {
             year: toNumber(year),
             trim, bodyType,
             mileage: toNumber(mileage),
-            transmission, fuelType, drivetrain, exteriorColor, vehicleDescription,
+            transmission, fuelType, drivetrain, exteriorColor, interiorColor, vehicleDescription,
             country, emirate, city, zipCode, titleStatus, accidentHistory,
 
             // Step 2
             overallCondition, mechanicalCondition, interiorCondition, exteriorCondition,
-            doors, seats, engineSize, cylinders, driveType, keyType, additionalFeatures,
-            numberOfKeys: toNumber(numberOfKeys),
-            repainted, smokeOdor, petFriendly, paintType, glassCondition,
-            tiresCondition, tireBrand, tireSize, seatMaterial, interiorColor, sunroof,
+            doors, seats, engineSize, cylinders, keyType, additionalFeatures,
+            numberOfKeys, repainted, smokeOdor, petFriendly, paintType, glassCondition,
+            tiresCondition, tireBrand, tireSize, seatMaterial, sunroof,
             acHeater, audioSystem, navigation, powerWindows, powerLocks, additionalNotes,
 
             // Step 3 & 4 — files
             images: uploadedImages,
             documents: uploadDocuments,
+
             // Step 5
             startingBidPrice: toNumber(startingBidPrice),
             buyNowPrice: toNumber(buyNowPrice),
             reservePrice: toNumber(reservePrice),
             priceType, auctionType,
-            auctionStartDate, // Date string — Mongoose casts this fine
+            auctionStartDate,
             auctionStartTime, auctionDuration,
             antiSnipingWindow: toNumber(antiSnipingWindow),
             antiSnipingExtension: toNumber(antiSnipingExtension),
@@ -166,6 +166,13 @@ export const addVehicle = async (req, res) => {
         console.log("Add vehicle error :", err);
         if (req.files) {
             await deleteCloudinaryFiles(req.files);
+        }
+        if (err.name === 'ValidationError') {
+            const messages = Object.values(err.errors).map(e => e.message);
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
+            });
         }
         return res.status(500).json({
             success: false,

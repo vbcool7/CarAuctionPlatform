@@ -1,6 +1,9 @@
 
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import sendEmail from '../utils/sendEmail.js';
+import { buildWelcomeEmail, buildPendingActivationEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 
 import Admin from '../models/adminModelSchema.js';
@@ -298,68 +301,198 @@ export const addNewBuyer = async (req, res) => {
 export const addNewSeller = async (req, res) => {
     try {
         const {
-            // Personal Info
-            fullName,
-            email,
-            mobile,
-            password,
-            confirmPassword,
-
-            dob,
-            gender,
-            nationality,
-
-            // Business Info
-            companyName,
-            businessType,
-            sellerType,
-            tradeLicense,
-            tradeLicenseExpireDate,
-            vatNumber,
-            website,
-            businessAddress,
-
-            // Additional Info
-            prefferedLanguage,
-            supportMail,
-            supportMobile,
-
-            // Admin
-            accountStatus,
+            fullName, email, phone,
+            businessName, businessType, licenseNumber, vatNumber, businessYear, employees, website, businessDescription,
+            country, emirate, city, area, streetAddress, building, poBox, zipCode,
+            accountHolderName, bankName, ibanNumber, accountNumber, swiftCode, currency,
+            status,
+            isEmailVerified, isPhoneVerified,
+            sendWelcomeEmail: shouldSendWelcomeEmail
         } = req.body;
 
-        const profilePhotoPath = req.file ? req.file.path : "";
+        const profileImage = req.files?.['profileImage']?.[0]?.path || "";
+        const tradeLicense = req.files?.['tradeLicense']?.[0]?.path;
+        const emiratesId = req.files?.['emiratesId']?.[0]?.path;
+        const bankStatement = req.files?.['bankStatement']?.[0]?.path;
+        const vatCertificate = req.files?.['vatCertificate']?.[0]?.path;
 
-        if (password !== confirmPassword) {
-            if (req.file) await deleteCloudinaryFiles(req.file);
+        const required = {
+            fullName, email, phone, businessName, businessType, licenseNumber,
+            businessYear, employees, country, emirate, city, area, streetAddress,
+            accountHolderName, bankName, ibanNumber, accountNumber, swiftCode, currency
+        };
+        const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k);
+        if (missing.length) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
-                message: "Password and Confirm Password do not match"
+                message: "Missing required fields",
+                fields: missing
             });
         }
 
-        const existingBuyer = await Buyer.findOne({ $or: [{ email }, { mobile }] });
-        if (existingBuyer) {
-            if (req.file) await deleteCloudinaryFiles(req.file);
-            return res.status(409).json({
+        const existing = await Seller.findOne({ $or: [{ email }, { phone }], isComplete: true });
+        if (existing) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
                 success: false,
-                message: "A buyer with this email or mobile already exists"
+                message: "Seller already exists with this email or phone"
             });
         }
 
-        if (!buyerType) {
-            if (req.file) await deleteCloudinaryFiles(req.file);
+        if (!tradeLicense || !emiratesId || !bankStatement) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
-                message: "Buyer Type is required"
+                message: "Please upload all required documents"
             });
+        }
+
+        if (status && !['approved', 'pending'].includes(status)) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({ success: false, message: "Invalid status value" });
+        }
+
+        const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10);
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+        const seller = await Seller.create({
+            fullName, email, phone,
+            password: hashedPassword,
+            businessName, businessType, licenseNumber, vatNumber, businessYear, employees, website, businessDescription,
+            country, emirate, city, area, streetAddress, building, poBox, zipCode,
+            accountHolderName, bankName, ibanNumber, accountNumber, swiftCode, currency,
+            profileImage: profileImage || "",
+            tradeLicense: { url: tradeLicense },
+            emiratesId: { url: emiratesId },
+            bankStatement: { url: bankStatement },
+            vatCertificate: vatCertificate ? { url: vatCertificate } : undefined,
+
+            isComplete: true,
+            status: status || 'approved',               // admin-created = active immediately, per earlier decision
+            createdBy: 'admin',
+            isEmailVerified: isEmailVerified === 'true' || isEmailVerified === true,
+            isPhoneVerified: isPhoneVerified === 'true' || isPhoneVerified === true,
+            registrationStep: 7,           // treat as fully complete; wizard doesn't apply here
+            addedByAdminId: req.admin?.id,
+        });
+
+        const isVerified = seller.isEmailVerified;
+
+        const { subject, html } = isVerified
+            ? buildWelcomeEmail(email, rawPassword)
+            : buildPendingActivationEmail(email);
+
+        res.status(201).json({
+            success: true,
+            message: isVerified
+                ? "Seller created. Login credentials sent to their email."
+                : "Seller created. Pending verification email sent.",
+            sellerId: seller._id
+        });
+
+        if (shouldSendWelcomeEmail !== 'false') {
+            try {
+                await sendEmail(seller.email, subject, html);
+            } catch (emailErr) {
+                console.error("Welcome email failed to send:", emailErr);
+            }
         }
 
     } catch (err) {
-        if (req.file) return deleteCloudinaryFiles(req.file);
+        if (req.files) await deleteCloudinaryFiles(req.files);
+        console.error("Add Seller Error:", err);
         return res.status(500).json({
             success: false,
-            message: "Server Error Occured"
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get all sellers
+export const getAllSellers = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 2;
+        const skip = (page - 1) * limit;
+
+        const filter = { isComplete: true };
+
+        const [sellers, totalCount] = await Promise.all([
+            Seller.find(filter)
+                .select('fullName profileImage email phone businessName businessType licenseNumber status lastLoginAt createdAt createdBy isEmailVerified')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Seller.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            success: true,
+            sellers,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("Fetching All Sellers Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+}
+
+// toggle email/phone verification
+export const toggleSellerVerification = async (req, res) => {
+    try {
+        const { sellerId } = req.params;
+        const { isVerified } = req.body;
+
+        const seller = await Seller.findById(sellerId);
+        if (!seller) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Seller not found" 
+            });
+        }
+
+        const wasUnverified = !seller.isEmailVerified;
+        const nowVerified = isVerified === true || isVerified === 'true';
+
+        seller.isEmailVerified = nowVerified;
+        seller.isPhoneVerified = nowVerified;
+
+        if (wasUnverified && nowVerified) {
+            const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10); // ← new password generate
+            seller.password = await bcrypt.hash(rawPassword, 10);
+            await seller.save();
+
+            const { subject, html } = buildWelcomeEmail(seller.email, rawPassword);
+            try {
+                await sendEmail(seller.email, subject, html);
+            } catch (emailErr) {
+                console.error("Verification welcome email failed:", emailErr);
+                // response abhi bhi success jayega — email fail hone se verification revert nahi honi chahiye
+            }
+        } else {
+            await seller.save();
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: nowVerified ? "Seller verified and activated" : "Seller marked unverified"
+        });
+
+    } catch (err) {
+        console.error("Toggle Verification Error:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Server Error Occurred" 
         });
     }
 };

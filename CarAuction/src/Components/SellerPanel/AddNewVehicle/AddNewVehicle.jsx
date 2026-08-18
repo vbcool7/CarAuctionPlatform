@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Car, CarFront, Check, CheckCircle2, ClipboardCheck, Gauge, ImagePlus, Images, Info, LockKeyhole, Mail, MapPin, Pencil, Settings, ShieldCheck, SlidersHorizontal, Tag, Upload, X, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Car, CarFront, Check, CheckCircle2, ClipboardCheck, Gauge, ImagePlus, Images, Info, LockKeyhole, Mail, MapPin, Pencil, Settings, ShieldCheck, SlidersHorizontal, Tag, Upload, X, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import confetti from 'canvas-confetti';
 import FormInputFields from '../../SellerRegistration/FormInputFields';
@@ -41,6 +41,7 @@ function AddNewVehicle({ setCurrentPage }) {
         fuelType: "",
         drivetrain: "",
         exteriorColor: "",
+        interiorColor: "",
         country: "united_arab_emirates",
         emirate: "",
         city: "",
@@ -56,8 +57,12 @@ function AddNewVehicle({ setCurrentPage }) {
         doors: "",
         seats: "",
         engineSize: "",
+        color: {
+            type: String,
+            enum: ['black', 'white', 'silver', 'grey', 'red', 'blue', 'green', 'brown', 'gold', 'beige', 'orange', 'yellow', 'purple', 'other'],
+            required: true
+        },
         cylinders: "",
-        driveType: "",
         keyType: "",
         additionalFeatures: "",
         numberOfKeys: "",
@@ -70,7 +75,6 @@ function AddNewVehicle({ setCurrentPage }) {
         tireBrand: "",
         tireSize: "",
         seatMaterial: "",
-        interiorColor: "",
         sunroof: "",
         acHeater: "",
         audioSystem: "",
@@ -160,7 +164,23 @@ function AddNewVehicle({ setCurrentPage }) {
 
     const addImages = (files) => {
         const imageFiles = files.filter((f) => f.type.startsWith("image/"));
-        const remainingSlots = 20 - images.length;
+        const invalidCount = files.length - imageFiles.length;
+
+        const remainingSlots = 15 - images.length;
+
+        if (remainingSlots <= 0) {
+            toast.error("Maximum 15 images allowed");
+            return;
+        }
+
+        if (imageFiles.length > remainingSlots) {
+            toast.error(`Only ${remainingSlots} more image(s) allowed (max 15 total)`);
+        }
+
+        if (invalidCount > 0) {
+            toast.error(`${invalidCount} file(s) skipped — only image files allowed`);
+        }
+
         const filesToAdd = imageFiles.slice(0, remainingSlots);
 
         const newImages = filesToAdd.map((file) => ({
@@ -190,10 +210,45 @@ function AddNewVehicle({ setCurrentPage }) {
         addDocuments(files);
     };
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
     const addDocuments = (files) => {
         const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
-        const validFiles = files.filter((f) => allowedTypes.includes(f.type));
-        const remainingSlots = 10 - documents.length; // adjust cap as needed
+
+        const validFiles = [];
+        let typeInvalidCount = 0;
+        let oversizedCount = 0;
+
+        files.forEach(f => {
+            const validType = allowedTypes.includes(f.type);
+            const validSize = f.size <= MAX_FILE_SIZE;
+            if (validType && validSize) {
+                validFiles.push(f);
+            } else {
+                if (!validType) typeInvalidCount++;
+                if (!validSize) oversizedCount++;
+            }
+        });
+
+        const remainingSlots = 5 - documents.length;
+
+        if (remainingSlots <= 0) {
+            toast.error("Maximum 5 documents allowed");
+            return;
+        }
+
+        if (validFiles.length > remainingSlots) {
+            toast.error(`Only ${remainingSlots} more document(s) allowed (max 5 total)`);
+        }
+
+        if (typeInvalidCount > 0) {
+            toast.error(`${typeInvalidCount} file(s) skipped — only PDF/JPG/PNG allowed`);
+        }
+
+        if (oversizedCount > 0) {
+            toast.error(`${oversizedCount} file(s) exceed 10MB limit`);
+        }
+
         const filesToAdd = validFiles.slice(0, remainingSlots);
 
         const newDocs = filesToAdd.map((file) => ({
@@ -219,19 +274,68 @@ function AddNewVehicle({ setCurrentPage }) {
         );
     };
 
-    //     const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    // const validFiles = imageFiles.filter((f) => {
-    //     if (f.size > MAX_SIZE) {
-    //         toast.error(`${f.name} exceeds 10MB limit`);
-    //         return false;
-    //     }
-    //     return true;
-    // });
-
     const handlePriceChange = (e) => {
         const { name, value } = e.target;
         const digitsOnly = value.replace(/\D/g, '');
         setFormData({ ...formData, [name]: digitsOnly });
+    };
+
+    // validation
+    const isStepValid = () => {
+        switch (currentStep) {
+            case 1:
+                return (
+                    formData.vehicleType &&
+                    formData.vin &&
+                    formData.make &&
+                    formData.model &&
+                    formData.year &&
+                    formData.bodyType &&
+                    formData.mileage &&
+                    formData.transmission &&
+                    formData.fuelType &&
+                    formData.drivetrain &&
+                    formData.exteriorColor &&
+                    formData.interiorColor &&
+                    formData.vehicleDescription &&
+                    formData.emirate &&
+                    formData.city &&
+                    formData.titleStatus &&
+                    formData.accidentHistory
+                );
+            case 2:
+                return (
+                    formData.overallCondition &&
+                    formData.mechanicalCondition &&
+                    formData.interiorCondition &&
+                    formData.exteriorCondition &&
+                    formData.doors &&
+                    formData.seats &&
+                    formData.engineSize
+                );
+            case 3:
+                return images.length > 0; // at least 1 image, matches backend rule
+            case 4:
+                return true; // documents optional
+            case 5:
+                const priceOk = formData.priceType === 'fixed_price'
+                    ? Number(formData.buyNowPrice) > Number(formData.startingBidPrice)
+                    : formData.priceType === 'reserve_price'
+                        ? Number(formData.reservePrice) > Number(formData.startingBidPrice)
+                        : false;
+
+                const startDateOk = formData.auctionStartDate && formData.auctionStartTime
+                    ? new Date(`${formData.auctionStartDate}T${formData.auctionStartTime}`) > new Date()
+                    : false;
+                return !!(
+                    formData.startingBidPrice &&
+                    formData.priceType &&
+                    priceOk &&
+                    formData.auctionType &&
+                    startDateOk &&
+                    formData.auctionDuration
+                );
+        }
     };
 
     // btns control
@@ -244,10 +348,39 @@ function AddNewVehicle({ setCurrentPage }) {
     };
 
     const handleNext = () => {
+        if (!isStepValid()) {
+            showStepError(currentStep);
+            return;
+        }
         if (currentStep < steps.length) {
             setCurrentStep((prev) => prev + 1);
         }
-    }
+    };
+
+    const showStepError = (step) => {
+        if (step === 5) {
+            if (!formData.priceType) {
+                toast.error("Select a price type");
+            } else if (!formData.startingBidPrice) {
+                toast.error("Enter a starting bid price");
+            } else if (formData.priceType === 'fixed_price' &&
+                !(Number(formData.buyNowPrice) > Number(formData.startingBidPrice))) {
+                toast.error("Buy Now Price must be greater than Starting Bid Price");
+            } else if (formData.priceType === 'reserve_price' &&
+                !(Number(formData.reservePrice) > Number(formData.startingBidPrice))) {
+                toast.error("Reserve Price must be greater than Starting Bid Price");
+            } else if (!formData.auctionStartDate || !formData.auctionStartTime ||
+                new Date(`${formData.auctionStartDate}T${formData.auctionStartTime}`) <= new Date()) {
+                toast.error("Auction start date/time must be in the future");
+            } else if (!formData.auctionType || !formData.auctionDuration) {
+                toast.error("Complete auction type and duration");
+            } else {
+                toast.error("Please complete all required fields");
+            }
+        } else {
+            toast.error("Please complete all required fields");
+        }
+    };
 
     {/* ======== Vehicle Summary (sidebar, Steps 2-5) ======== */ }
     const VehicleSummaryCard = ({ formData, images, onEdit, compact = false }) => {
@@ -266,7 +399,7 @@ function AddNewVehicle({ setCurrentPage }) {
 
                 <div className="flex items-center gap-3 mb-6">
                     <img
-                        src={coverImage?.preview || coverImage?.url || coverImage || "/placeholder-car.png"}
+                        src={coverImage?.previewUrl || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQbzMBAYcmRKCN_FuR1TQC0WgfQ7Ayg9M76jc2npaWppzTy7HVcqkXCuI&s=10"}
                         alt="Vehicle"
                         className="w-18 h-16 object-cover rounded-lg bg-slate-100"
                     />
@@ -320,11 +453,19 @@ function AddNewVehicle({ setCurrentPage }) {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-slate-500">Exterior Color</span>
-                            <span className="text-[#0B1E3D] font-medium">{formData.exteriorColor}</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.exteriorColor || "---"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Interior Color</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.interiorColor || "---"}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-slate-500">Location</span>
                             <span className="text-[#0B1E3D] font-medium">{formData.city}, {formData.emirate}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Title Status</span>
+                            <span className="text-[#0B1E3D] font-medium">{formData.titleStatus}</span>
                         </div>
                     </div>
                 )}
@@ -402,6 +543,14 @@ function AddNewVehicle({ setCurrentPage }) {
             });
         }
     }, [isSubmitModalOpen]);
+
+    const yearOptions = Array.from({ length: 2026 - 1980 + 1 }, (_, i) => {
+        const year = 2026 - i;
+        return {
+            label: year.toString(),
+            value: year.toString(),
+        };
+    });
 
     return (
         <div className='pb-6'>
@@ -523,24 +672,38 @@ function AddNewVehicle({ setCurrentPage }) {
                                             { label: "SUV", value: "suv" },
                                             { label: "Sedan", value: "sedan" },
                                             { label: "Hatchback", value: "hatchback" },
-                                            { label: "Truck", value: "truck" },
                                             { label: "Coupe", value: "coupe" },
                                             { label: "Convertible", value: "convertible" },
-                                            { label: "Other", value: "other" },
+                                            { label: "Wagon", value: "wagon" },
+                                            { label: "Pickup Truck", value: "pickup_truck" },
+                                            { label: "Van", value: "van" },
+                                            { label: "Minivan", value: "minivan" },
+                                            { label: "Sports Car", value: "sports_car" },
+                                            { label: "Luxury Car", value: "luxury_car" },
+                                            { label: "Electric Vehicle", value: "electric_vehicle" },
+                                            { label: "Motorcycle", value: "motorcycle" },
                                         ]}
                                     />
 
                                     {/* vin */}
-                                    <FormInputFields
-                                        label="VIN"
-                                        name="vin"
-                                        value={formData.vin}
-                                        onChange={handleChange}
-                                        onBlur={handleVinBlur}
-                                        disabled={isDecoding}
-                                        required
-                                        placeholder="Enter VIN Number"
-                                    />
+                                    <div>
+                                        <FormInputFields
+                                            label="VIN"
+                                            name="vin"
+                                            value={formData.vin}
+                                            onChange={handleChange}
+                                            onBlur={handleVinBlur}
+                                            disabled={isDecoding}
+                                            required
+                                            placeholder="Enter VIN Number"
+                                        />
+                                        {isDecoding && (
+                                            <p className="mt-1 text-[12px] text-[#D97706] flex items-center gap-1">
+                                                <Loader2 size={12} className="animate-spin" />
+                                                Decoding VIN...
+                                            </p>
+                                        )}
+                                    </div>
 
                                     {/* Make */}
                                     <FormInputFields
@@ -571,19 +734,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.year}
                                         onChange={handleChange}
                                         required
-                                        options={[
-                                            { label: "2026", value: "2026" },
-                                            { label: "2025", value: "2025" },
-                                            { label: "2024", value: "2024" },
-                                            { label: "2023", value: "2023" },
-                                            { label: "2022", value: "2022" },
-                                            { label: "2021", value: "2021" },
-                                            { label: "2020", value: "2020" },
-                                            { label: "2019", value: "2019" },
-                                            { label: "2018", value: "2018" },
-                                            { label: "2017", value: "2017" },
-                                            { label: "2016", value: "2016" },
-                                        ]}
+                                        options={yearOptions}
                                     />
 
                                     {/* Trim */}
@@ -603,13 +754,17 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "SUV", value: "suv" },
                                             { label: "Sedan", value: "sedan" },
+                                            { label: "SUV", value: "suv" },
                                             { label: "Hatchback", value: "hatchback" },
                                             { label: "Coupe", value: "coupe" },
                                             { label: "Convertible", value: "convertible" },
                                             { label: "Wagon", value: "wagon" },
-                                            { label: "Truck", value: "truck" },
+                                            { label: "Pickup Truck", value: "pickup_truck" },
+                                            { label: "Van", value: "van" },
+                                            { label: "Minivan", value: "minivan" },
+                                            { label: "Roadster", value: "roadster" },
+                                            { label: "Crossover", value: "crossover" },
                                         ]}
                                     />
 
@@ -653,7 +808,9 @@ function AddNewVehicle({ setCurrentPage }) {
                                             { label: "Diesel", value: "diesel" },
                                             { label: "Electric", value: "electric" },
                                             { label: "Hybrid", value: "hybrid" },
+                                            { label: "Plug-in Hybrid", value: "plug_in_hybrid" },
                                             { label: "CNG", value: "cng" },
+                                            { label: "LPG", value: "lpg" },
                                         ]}
                                     />
 
@@ -666,10 +823,10 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "FWD", value: "fwd" },
-                                            { label: "RWD", value: "rwd" },
-                                            { label: "AWD", value: "awd" },
-                                            { label: "4WD", value: "4wd" },
+                                            { label: "Front-Wheel Drive (FWD)", value: "fwd" },
+                                            { label: "Rear-Wheel Drive (RWD)", value: "rwd" },
+                                            { label: "All-Wheel Drive (AWD)", value: "awd" },
+                                            { label: "Four-Wheel Drive (4WD)", value: "4wd" },
                                         ]}
                                     />
 
@@ -680,14 +837,42 @@ function AddNewVehicle({ setCurrentPage }) {
                                         name="exteriorColor"
                                         value={formData.exteriorColor}
                                         onChange={handleChange}
+                                        required
                                         options={[
                                             { label: "Black", value: "black" },
                                             { label: "White", value: "white" },
                                             { label: "Silver", value: "silver" },
-                                            { label: "Gray", value: "gray" },
-                                            { label: "Blue", value: "blue" },
+                                            { label: "Grey", value: "grey" },
                                             { label: "Red", value: "red" },
+                                            { label: "Blue", value: "blue" },
                                             { label: "Green", value: "green" },
+                                            { label: "Brown", value: "brown" },
+                                            { label: "Gold", value: "gold" },
+                                            { label: "Beige", value: "beige" },
+                                            { label: "Orange", value: "orange" },
+                                            { label: "Yellow", value: "yellow" },
+                                            { label: "Purple", value: "purple" },
+                                            { label: "Other", value: "other" },
+                                        ]}
+                                    />
+
+                                    {/* Interior Color */}
+                                    <FormInputFields
+                                        label="Interior Color"
+                                        type="select"
+                                        name="interiorColor"
+                                        value={formData.interiorColor}
+                                        onChange={handleChange}
+                                        required
+                                        options={[
+                                            { label: "Black", value: "black" },
+                                            { label: "White", value: "white" },
+                                            { label: "Grey", value: "grey" },
+                                            { label: "Beige", value: "beige" },
+                                            { label: "Brown", value: "brown" },
+                                            { label: "Tan", value: "tan" },
+                                            { label: "Red", value: "red" },
+                                            { label: "Blue", value: "blue" },
                                             { label: "Other", value: "other" },
                                         ]}
                                     />
@@ -771,7 +956,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                         name="zipCode"
                                         value={formData.zipCode}
                                         onChange={handleChange}
-                                        required
                                         placeholder="Enter Zip Code"
                                     />
 
@@ -797,8 +981,9 @@ function AddNewVehicle({ setCurrentPage }) {
                                             onChange={handleChange}
                                             required
                                             options={[
-                                                { label: "Clean", value: "clean", },
-                                                { label: "Salvage", value: "salvage", },
+                                                { label: "Clean", value: "clean" },
+                                                { label: "Salvage", value: "salvage" },
+                                                { label: "Rebuilt", value: "rebuilt" },
                                             ]}
                                         />
 
@@ -851,7 +1036,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                                     type="radio"
                                                     name="accidentHistory"
                                                     value="not-sure"
-                                                    checked={formData.accidentHistory === "not-sure"}
+                                                    checked={formData.accidentHistory === "not_sure"}
                                                     onChange={handleChange}
                                                     className="accent-[#D97706]"
                                                 />
@@ -963,11 +1148,10 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Doors", value: "" },
-                                            { label: "2", value: "2" },
-                                            { label: "3", value: "3" },
-                                            { label: "4", value: "4" },
-                                            { label: "5", value: "5" },
+                                            { label: "2 Doors", value: "2" },
+                                            { label: "3 Doors", value: "3" },
+                                            { label: "4 Doors", value: "4" },
+                                            { label: "5 Doors", value: "5" },
                                         ]}
                                     />
 
@@ -980,13 +1164,14 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         required
                                         options={[
-                                            { label: "Select Seats", value: "" },
-                                            { label: "2", value: "2" },
-                                            { label: "4", value: "4" },
-                                            { label: "5", value: "5" },
-                                            { label: "6", value: "6" },
-                                            { label: "7", value: "7" },
-                                            { label: "8", value: "8" },
+                                            { label: "2 Seats", value: "2" },
+                                            { label: "3 Seats", value: "3" },
+                                            { label: "4 Seats", value: "4" },
+                                            { label: "5 Seats", value: "5" },
+                                            { label: "6 Seats", value: "6" },
+                                            { label: "7 Seats", value: "7" },
+                                            { label: "8 Seats", value: "8" },
+                                            { label: "9 Seats", value: "9" },
                                         ]}
                                     />
 
@@ -997,6 +1182,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.engineSize}
                                         onChange={handleChange}
                                         placeholder="Enter Engine Size (e.g. 2.0L)"
+                                        required
                                     />
 
                                     {/* Cylinders */}
@@ -1017,22 +1203,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                         ]}
                                     />
 
-                                    {/* Drive Type */}
-                                    <FormInputFields
-                                        label="Drive Type"
-                                        type="select"
-                                        name="driveType"
-                                        value={formData.driveType}
-                                        onChange={handleChange}
-                                        options={[
-                                            { label: "Select Drive Type", value: "" },
-                                            { label: "FWD", value: "fwd" },
-                                            { label: "RWD", value: "rwd" },
-                                            { label: "AWD", value: "awd" },
-                                            { label: "4WD", value: "4wd" },
-                                        ]}
-                                    />
-
                                     {/* Key Type */}
                                     <FormInputFields
                                         label="Key Type"
@@ -1041,11 +1211,11 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.keyType}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select Key Type", value: "" },
-                                            { label: "Original Key", value: "original" },
-                                            { label: "Spare Key", value: "spare" },
-                                            { label: "Both Keys", value: "both" },
-                                            { label: "No Key", value: "no-key" },
+                                            { label: "Standard Key", value: "standard" },
+                                            { label: "Remote Key", value: "remote" },
+                                            { label: "Smart Key", value: "smart_key" },
+                                            { label: "Keyless Entry", value: "keyless_entry" },
+                                            { label: "Keyless Start", value: "keyless_start" },
                                         ]}
                                     />
 
@@ -1140,7 +1310,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                         onChange={handleChange}
                                         options={[
                                             { label: "Select", value: "" },
-                                            { label: "Factory Original", value: "factory-original" },
+                                            { label: "Factory Original", value: "factory_original" },
                                             { label: "Repainted", value: "repainted" },
                                         ]}
                                     />
@@ -1153,20 +1323,26 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.glassCondition}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
-                                            { label: "No Cracks", value: "no-cracks" },
-                                            { label: "Minor Cracks", value: "minor-cracks" },
-                                            { label: "Major Cracks", value: "major-cracks" },
+                                            { label: "No Cracks", value: "no_cracks" },
+                                            { label: "Minor Cracks", value: "minor_cracks" },
+                                            { label: "Major Cracks", value: "major_cracks" },
                                         ]}
                                     />
 
                                     {/* Tires Condition */}
                                     <FormInputFields
                                         label="Tires Condition"
+                                        type='select'
                                         name="tiresCondition"
                                         value={formData.tiresCondition}
                                         onChange={handleChange}
-                                        placeholder="e.g. 90%"
+                                        options={[
+                                            { label: "Excellent", value: "excellent" },
+                                            { label: "Good", value: "good" },
+                                            { label: "Fair", value: "fair" },
+                                            { label: "Poor", value: "poor" },
+                                            { label: "Needs Replacement", value: "needs_replacement" },
+                                        ]}
                                     />
 
                                     {/* Tire Brand */}
@@ -1195,20 +1371,13 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.seatMaterial}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
-                                            { label: "Leather", value: "leather" },
                                             { label: "Fabric", value: "fabric" },
-                                            { label: "Synthetic", value: "synthetic" },
+                                            { label: "Leather", value: "leather" },
+                                            { label: "Synthetic Leather", value: "synthetic_leather" },
+                                            { label: "Suede", value: "suede" },
+                                            { label: "Alcantara", value: "alcantara" },
+                                            { label: "Vinyl", value: "vinyl" },
                                         ]}
-                                    />
-
-                                    {/* Interior Color */}
-                                    <FormInputFields
-                                        label="Interior Color"
-                                        name="interiorColor"
-                                        value={formData.interiorColor}
-                                        onChange={handleChange}
-                                        placeholder="e.g. Beige"
                                     />
 
                                     {/* Sunroof */}
@@ -1219,9 +1388,9 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.sunroof}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
                                             { label: "Yes", value: "yes" },
                                             { label: "No", value: "no" },
+                                            { label: "Panoramic", value: "panoramic" },
                                         ]}
                                     />
 
@@ -1251,9 +1420,9 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.navigation}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
                                             { label: "Yes", value: "yes" },
                                             { label: "No", value: "no" },
+                                            { label: "Built In", value: "built_in" },
                                         ]}
                                     />
 
@@ -1265,7 +1434,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.powerWindows}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
                                             { label: "Yes", value: "yes" },
                                             { label: "No", value: "no" },
                                         ]}
@@ -1279,7 +1447,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                         value={formData.powerLocks}
                                         onChange={handleChange}
                                         options={[
-                                            { label: "Select", value: "" },
                                             { label: "Yes", value: "yes" },
                                             { label: "No", value: "no" },
                                         ]}
@@ -1500,42 +1667,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-                                    {/* starting bid price */}
-                                    <FormInputFields
-                                        label="Starting Bid Price"
-                                        name="startingBid"
-                                        type="text"
-                                        prefix="$"
-                                        maxLength={9}
-                                        value={formData.startingBid}
-                                        onChange={handlePriceChange}
-                                        placeholder="28500"
-                                    />
-
-                                    {/* buy now price */}
-                                    <FormInputFields
-                                        label="Buy Now Price"
-                                        name="buyNowPrice"
-                                        type="text"
-                                        prefix="$"
-                                        maxLength={9}
-                                        value={formData.buyNowPrice}
-                                        onChange={handlePriceChange}
-                                        placeholder="28500"
-                                    />
-
-                                    {/* reserve price */}
-                                    <FormInputFields
-                                        label="Reserve Price (Optional)"
-                                        name="reservePrice"
-                                        type="text"
-                                        prefix="$"
-                                        maxLength={9}
-                                        value={formData.reservePrice}
-                                        onChange={handlePriceChange}
-                                        placeholder="28500"
-                                    />
-
                                     {/* Price Type */}
                                     <div>
                                         <label className="block text-[13px] font-medium text-[#0B1E3D] mb-2">
@@ -1549,8 +1680,8 @@ function AddNewVehicle({ setCurrentPage }) {
                                                 <input
                                                     type="radio"
                                                     name="priceType"
-                                                    value="fixed"
-                                                    checked={formData.priceType === "fixed"}
+                                                    value="fixed_price"
+                                                    checked={formData.priceType === "fixed_price"}
                                                     onChange={handleChange}
                                                     className="accent-[#D97706]"
                                                 />
@@ -1565,8 +1696,8 @@ function AddNewVehicle({ setCurrentPage }) {
                                                 <input
                                                     type="radio"
                                                     name="priceType"
-                                                    value="reserve"
-                                                    checked={formData.priceType === "reserve"}
+                                                    value="reserve_price"
+                                                    checked={formData.priceType === "reserve_price"}
                                                     onChange={handleChange}
                                                     className="accent-[#D97706]"
                                                 />
@@ -1578,6 +1709,46 @@ function AddNewVehicle({ setCurrentPage }) {
 
                                         </div>
                                     </div>
+
+                                    {/* starting bid price */}
+                                    <FormInputFields
+                                        label="Starting Bid Price"
+                                        name="startingBidPrice"
+                                        type="text"
+                                        prefix="$"
+                                        maxLength={9}
+                                        value={formData.startingBidPrice}
+                                        onChange={handlePriceChange}
+                                        placeholder="28500"
+                                    />
+
+                                    {/* buy now price */}
+                                    {formData.priceType !== 'reserve_price' && (
+                                        <FormInputFields
+                                            label="Buy Now Price"
+                                            name="buyNowPrice"
+                                            type="text"
+                                            prefix="$"
+                                            maxLength={9}
+                                            value={formData.buyNowPrice}
+                                            onChange={handlePriceChange}
+                                            placeholder="28500"
+                                        />
+                                    )}
+
+                                    {/* reserve price */}
+                                    {formData.priceType === 'reserve_price' && (
+                                        <FormInputFields
+                                            label="Reserve Price"
+                                            name="reservePrice"
+                                            type="text"
+                                            prefix="$"
+                                            maxLength={9}
+                                            value={formData.reservePrice}
+                                            onChange={handlePriceChange}
+                                            placeholder="28500"
+                                        />
+                                    )}
                                 </div>
                             </div>
 
@@ -1617,6 +1788,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                                 name="auctionStartDate"
                                                 value={formData.auctionStartDate}
                                                 onChange={handleChange}
+                                                min={new Date().toISOString().split('T')[0]}
                                                 required
                                             />
 
@@ -1649,26 +1821,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                         />
                                         <p className="mt-1 text-[12px] text-slate-500">Duration of the auction</p>
                                     </div>
-
-                                    {/* Time Extension */}
-                                    {/* <div>
-
-                                        <FormInputFields
-                                            label="Time Extension"
-                                            type="select"
-                                            name="timeExtension"
-                                            value={formData.timeExtension}
-                                            onChange={handleChange}
-                                            options={[
-                                                { label: "No Extension", value: "none" },
-                                                { label: "1 Minute", value: "1-minute" },
-                                                { label: "2 Minutes", value: "2-minutes" },
-                                                { label: "5 Minutes", value: "5-minutes" },
-                                            ]}
-                                        />
-                                        <p className="mt-1 text-[12px] text-slate-500">If a bid is placed in the last 2 minutes, the auction will be extended</p>
-                                    </div> */}
-
                                 </div>
                             </div>
 
@@ -1717,7 +1869,10 @@ function AddNewVehicle({ setCurrentPage }) {
                             <div className="border border-slate-200 rounded-xl p-5">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-sm font-bold text-[#0B1E3D]">Vehicle Details</h3>
-                                    <button type="button" onClick={() => setCurrentStep(1)} className="text-xs font-medium text-[#D97706] hover:underline">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentStep(1)}
+                                        className="text-xs font-medium text-[#D97706] hover:underline">
                                         Edit
                                     </button>
                                 </div>
@@ -1755,7 +1910,6 @@ function AddNewVehicle({ setCurrentPage }) {
                                     <div><span className="text-slate-500">Seats: </span><span className="text-[#0B1E3D] font-medium">{formData.seats}</span></div>
                                     <div><span className="text-slate-500">Engine Size: </span><span className="text-[#0B1E3D] font-medium">{formData.engineSize}</span></div>
                                     <div><span className="text-slate-500">Cylinders: </span><span className="text-[#0B1E3D] font-medium">{formData.cylinders}</span></div>
-                                    <div><span className="text-slate-500">Drive Type: </span><span className="text-[#0B1E3D] font-medium">{formData.driveType}</span></div>
                                     <div><span className="text-slate-500">Key Type: </span><span className="text-[#0B1E3D] font-medium">{formData.keyType}</span></div>
                                     <div className="sm:col-span-3"><span className="text-slate-500">Additional Features: </span><span className="text-[#0B1E3D] font-medium">{formData.additionalFeatures}</span></div>
                                     <div className="sm:col-span-3"><span className="text-slate-500">Location: </span><span className="text-[#0B1E3D] font-medium">{formData.city}, {formData.emirate}</span></div>
@@ -1774,7 +1928,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                     {images?.slice(0, 6).map((img, i) => (
                                         <img
                                             key={i}
-                                            src={img.preview || img.url || img}
+                                            src={img.previewUrl}
                                             alt={`vehicle-${i}`}
                                             className="w-full h-20 object-cover rounded-lg"
                                         />

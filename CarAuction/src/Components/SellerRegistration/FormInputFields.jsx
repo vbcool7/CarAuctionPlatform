@@ -13,7 +13,7 @@ const FormInputFields = ({ label, name, value, onChange, type = "text", placehol
         placeholder:text-slate-400
         outline-none transition-all
         focus:border-[#D97706]
-        focus:ring-2 focus:ring-[#D97706]/15
+        focus:ring-2 focus:ring-[#D97706]/15 
         disabled:bg-slate-100 disabled:cursor-not-allowed
         ${prefix ? "pl-8" : ""}
         ${className}

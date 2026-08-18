@@ -468,3 +468,103 @@ export const bidsData = [
         action: "View Results",
     },
 ];
+
+export const salesHistoryData = [
+    {
+        id: 'SL-2024-0028',
+        vehicle: '2018 Toyota Camry',
+        stockId: 'BDV12342',
+        vehicleImage: 'https://imgd.aeplcdn.com/370x208/n/cw/ec/225514/x5-exterior-right-side-view.jpeg?isig=0&q=80',
+        buyerName: 'Robert Brown',
+        buyerEmail: 'robert@example.com',
+        saleDate: '30 May 2024',
+        saleTime: '3:00 PM',
+        salePrice: 12000,
+        commissionRate: 5,
+        commissionAmount: 600,
+        payoutAmount: 11400,
+        payoutDate: '30 May 2024',
+        payoutTime: '3:00 PM',
+        invoiceNo: 'INV-2024-0028',
+        status: 'completed',
+    },
+    {
+        id: 'SL-2024-0027',
+        vehicle: '2022 Honda CR-V',
+        stockId: 'BDV12341',
+        vehicleImage: 'https://imgd.aeplcdn.com/370x208/n/cw/ec/225514/x5-exterior-right-side-view.jpeg?isig=0&q=80',
+        buyerName: 'Emily Davis',
+        buyerEmail: 'emily@example.com',
+        saleDate: '30 May 2024',
+        saleTime: '3:00 PM',
+        salePrice: 20500,
+        commissionRate: 5,
+        commissionAmount: 1025,
+        payoutAmount: null, // not yet paid — must render as "—" in UI
+        payoutDate: '30 May 2024',
+        payoutTime: '3:00 PM',
+        invoiceNo: 'INV-2024-0027',
+        status: 'pending',
+    },
+    {
+        id: 'SL-2024-0026',
+        vehicle: '2021 Ford Explorer',
+        stockId: 'BDV12340',
+        vehicleImage: 'https://imgd.aeplcdn.com/370x208/n/cw/ec/225514/x5-exterior-right-side-view.jpeg?isig=0&q=80',
+        buyerName: 'Michael Wilson',
+        buyerEmail: 'michael@example.com',
+        saleDate: '30 May 2024',
+        saleTime: '3:00 PM',
+        salePrice: 25000,
+        commissionRate: 5,
+        commissionAmount: 1250,
+        payoutAmount: null,
+        payoutDate: '30 May 2024',
+        payoutTime: '3:00 PM',
+        invoiceNo: 'INV-2024-0026',
+        status: 'overdue', // included to test the 3rd status state — not in your original screenshot
+    },
+
+];
+
+export const payoutsData = [
+    {
+        id: "PAYOUT12456",
+        payoutDate: "May 31, 2024",
+        payoutTime: "02:45 PM",
+        earningsFrom: "May 1 - May 31, 2024",
+        salesCount: "31 Sales",
+        payoutMethod: "Bank Transfer",
+        accountNumber: "**** 4567",
+        amount: "$6,250.00",
+        status: "Pending",
+        statusSubtext: "Scheduled: Jun 3, 2024",
+        referenceId: "UTR987654321"
+    },
+    {
+        id: "PAYOUT12455",
+        payoutDate: "May 15, 2024",
+        payoutTime: "10:30 AM",
+        earningsFrom: "Apr 16 - Apr 30, 2024",
+        salesCount: "18 Sales",
+        payoutMethod: "Bank Transfer",
+        accountNumber: "**** 4567",
+        amount: "$5,850.00",
+        status: "Completed",
+        statusSubtext: "Paid on May 15, 2024",
+        referenceId: "UTR987123456"
+    },
+    {
+        id: "PAYOUT12454",
+        payoutDate: "Apr 30, 2024",
+        payoutTime: "09:15 AM",
+        earningsFrom: "Apr 1 - Apr 15, 2024",
+        salesCount: "22 Sales",
+        payoutMethod: "Bank Transfer",
+        accountNumber: "**** 4567",
+        amount: "$6,200.00",
+        status: "Completed",
+        statusSubtext: "Paid on Apr 30, 2024",
+        referenceId: "UTR986654321"
+    },
+];
