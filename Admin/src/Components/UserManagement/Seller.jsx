@@ -2,8 +2,6 @@
 import React, { useState } from 'react'
 import { dummySeller } from '../Data';
 import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Search, Filter, Calendar, Edit2, PauseCircle, Trash2, Eye, SlidersHorizontal, ShieldCheck, X } from 'lucide-react';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import UserManagementHeader from './UserManagementHeader';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
@@ -89,6 +87,16 @@ function Seller({ onViewSeller, setCurrentPage }) {
   const [verificationTarget, setVerificationTarget] = useState(null);
   const [verificationError, setVerificationError] = useState("");
 
+  const [selectedSellerType, setSelectedSellerType] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedTradeLicense, setSelectedTradeLicense] = useState("");
+
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+
   const handleVerifyClick = (seller) => {
     setVerificationTarget(seller);
     setVerificationError("");
@@ -106,15 +114,6 @@ function Seller({ onViewSeller, setCurrentPage }) {
   };
 
   const totalPages = sellerList?.pagination?.totalPages || 1;
-
-  const [selectedSellerType, setSelectedSellerType] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedTradeLicense, setSelectedTradeLicense] = useState("");
-
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
-
-  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // delete 
   const handleDeleteClick = (seller) => {
@@ -315,9 +314,11 @@ function Seller({ onViewSeller, setCurrentPage }) {
                     </td>
 
                     {/* business type */}
-                    <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold border w-max ${sellerTypeConfig[seller.businessType]?.classes || sellerTypeConfig.other.classes}`}>
-                      {sellerTypeConfig[seller.businessType]?.label || seller.businessType}
-                    </span>
+                    <td>
+                      <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold border w-max ${sellerTypeConfig[seller.businessType]?.classes || sellerTypeConfig.other.classes}`}>
+                        {sellerTypeConfig[seller.businessType]?.label || seller.businessType}
+                      </span>
+                    </td>
 
                     {/* email */}
                     <td className="px-6 py-4">

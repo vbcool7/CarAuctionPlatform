@@ -56,6 +56,7 @@ import AdvancedFeatures from './Components/AdvancedFeatures/AdvancedFeatures';
 import PayoutsDetail from './Components/PayoutManagement/Payouts/PayoutsDetail';
 import RefundsDetail from './Components/PayoutManagement/Refunds/RefundsDetail';
 import TransactionsDetail from './Components/PayoutManagement/Transactions/TransactionsDetail';
+import SellerVehicleDetail from './Components/UserManagement/SellerVehicleDetail';
 
 function App() {
 
@@ -70,8 +71,10 @@ function App() {
 
   // buyer-seller-staff
   const [selectedBuyer, setSelectedBuyer] = useState(null);
-  const [selectedSeller, setSelectedSeller] = useState(null);
+  const [selectedSellerId, setSelectedSellerId] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState(null);
 
   // auct management
   const [selectedAuction, setSelectedAuction] = useState(null);
@@ -144,7 +147,7 @@ function App() {
 
   // user mang - seller detail
   const handleViewSeller = (seller) => {
-    setSelectedSeller(seller);
+    setSelectedSellerId(seller._id);
     setCurrentPage('seller-detail');
   };
 
@@ -200,7 +203,10 @@ function App() {
 
                 {/* user management - detail page : buyer, seller, staff */}
                 {currentPage === 'buyer-detail' && <BuyerDetail buyer={selectedBuyer} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'seller-detail' && <SellerDetail seller={selectedSeller} setCurrentPage={setCurrentPage} />}
+
+                {currentPage === 'seller-detail' && <SellerDetail sellerId={selectedSellerId} setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'seller-vehicle-detail' && <SellerVehicleDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage}/>}
+
                 {currentPage === 'staff-detail' && <StaffDetail staff={selectedStaff} setCurrentPage={setCurrentPage} />}
 
                 {/* user management - form : buyer, seller, staff */}

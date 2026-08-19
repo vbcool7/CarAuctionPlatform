@@ -1,52 +1,29 @@
+
 import React from "react";
-import {
-  Eye,
-  Pencil,
-  MoreVertical,
-  Plus,
-  Filter,
-} from "lucide-react";
+import { Eye, Pencil, MoreVertical, Plus, Filter, } from "lucide-react";
+import { useGetVehiclesBySeller } from "../../hooks/useVehicle";
+import { getPaginationRange } from "../utils/getPaginationRange";
+import { useState } from "react";
 
-const listings = [
-  {
-    id: 1,
-    image: "https://static.vecteezy.com/system/resources/thumbnails/053/733/179/small/every-detail-of-a-sleek-modern-car-captured-in-close-up-photo.jpg",
-    vehicle: "Mercedes-Benz G63 AMG 2022",
-    vin: "W1N7CY7H5NX123456",
-    listingId: "LST-12580",
-    category: "SUV",
-    price: "AED 850,000",
-    status: "Active",
-    listedOn: "May 13, 2024",
-    views: 1245,
-  },
-  {
-    id: 2,
-    image: "https://cdn-s3.autocarindia.com/Mercedes/cla-electric/Mercedes-Benz_CLA_EV_Front_Quarter_Tracking.jpg?w=640&q=75",
-    vehicle: "Toyota Land Cruiser 2021",
-    vin: "JTMCY7AJ8M4087321",
-    listingId: "LST-12579",
-    category: "SUV",
-    price: "AED 235,000",
-    status: "Active",
-    listedOn: "May 12, 2024",
-    views: 978,
-  },
-  {
-    id: 3,
-    image: "https://cdn-s3.autocarindia.com/Mercedes/cla-electric/Mercedes-Benz_CLA_EV_Front_Quarter_Tracking.jpg?w=640&q=75",
-    vehicle: "BMW X5 M Sport 2023",
-    vin: "WBAXX1200PX456789",
-    listingId: "LST-12578",
-    category: "Luxury",
-    price: "AED 415,000",
-    status: "Pending",
-    listedOn: "May 10, 2024",
-    views: 684,
-  },
-];
+function SellerListingTab({ data, sellerId, setSelectedVehicleId, setCurrentPage }) {
 
-function SellerListingTab() {
+  const [page, setPage] = useState(1);
+  const { data: vehicleData, isLoading, isError } = useGetVehiclesBySeller(sellerId, page);
+  const vehicles = vehicleData?.data || [];
+
+  const totalPages = vehicleData?.pagination?.totalPages || 1;
+
+  if (isLoading) return <p className="p-10 text-center">Loading vehicle list....</p>;
+  if (isError) return <p className="p-10 text-center text-red-500">Failed to load vehicle list</p>;
+
+  const formatEnumValue = (value) => {
+    if (!value) return "--";
+
+    return value
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   return (
     <div className="space-y-6">
 
@@ -111,98 +88,139 @@ function SellerListingTab() {
             </thead>
 
             <tbody>
-              {listings.map((item) => (
+              {vehicles.length > 0 ? (
+                vehicles.map((vehicle) => (
+                  <tr
+                    key={vehicle._id}
+                    className="border-b border-slate-100 hover:bg-slate-50 transition"
+                  >
+                    {/* Vehicle */}
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
 
-                <tr
-                  key={item.id}
-                  className="border-b border-slate-100 hover:bg-slate-50 transition"
-                >
-                  {/* Vehicle */}
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
+                        <img
+                          src={vehicle.images?.[0]?.url || "/placeholder-car.jpg"}
+                          alt={`${vehicle.make || ""} ${vehicle.model || ""}`}
+                          className="w-14 h-14 rounded-xl object-cover border"
+                        />
 
-                      <img
-                        src={item.image}
-                        alt={item.vehicle}
-                        className="w-14 h-14 rounded-xl object-cover border"
-                      />
+                        <div>
+                          <h4 className="font-semibold text-sm text-[#0B1E3D]">
+                            {`${formatEnumValue(vehicle.make)} ${formatEnumValue(vehicle.model)}`}
+                          </h4>
 
-                      <div>
-
-                        <h4 className="font-semibold text-sm text-[#0B1E3D]">
-                          {item.vehicle}
-                        </h4>
-
-                        <p className="text-xs text-slate-500 mt-1">
-                          VIN: {item.vin}
-                        </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            VIN: {vehicle.vin || "--"}
+                          </p>
+                        </div>
 
                       </div>
+                    </td>
 
+                    <td className="px-4 py-4 text-sm font-medium text-slate-700">
+                      {vehicle.listingId || "--"}
+                    </td>
+
+                    <td className="px-4 py-4 text-sm text-slate-600">
+                      {formatEnumValue(vehicle.bodyType)}
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-semibold text-[#0B1E3D]">
+                          Bid Price:{" "} {vehicle.startingBidPrice ? `$${vehicle.startingBidPrice}` : "--"}
+                        </span>
+
+                        {vehicle.priceType === "fixed_price" && (
+                          <span className="text-xs text-slate-500">
+                            Buy Now:{" "}
+                            <span className="font-medium text-slate-700">
+                              {vehicle.buyNowPrice ? `$${vehicle.buyNowPrice}` : "--"}
+                            </span>
+                          </span>
+                        )}
+
+                        {vehicle.priceType === "reserve_price" && (
+                          <span className="text-xs text-slate-500">
+                            Reserve:{" "}
+                            <span className="font-medium text-slate-700">
+                              {vehicle.reservePrice ? `$${vehicle.reservePrice}` : "--"}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold ${vehicle.adminStatus === "approved"
+                          ? "bg-green-100 text-green-700"
+                          : vehicle.adminStatus === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : vehicle.adminStatus === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                      >
+                        {vehicle.adminStatus
+                          ? vehicle.adminStatus.charAt(0).toUpperCase() +
+                          vehicle.adminStatus.slice(1)
+                          : "--"}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-4 text-sm text-slate-600">
+                      {vehicle.createdAt
+                        ? new Date(vehicle.createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                        : "--"}
+                    </td>
+
+                    <td className="px-4 py-4 text-center font-medium">
+                      --
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className="flex justify-center gap-2">
+
+                        <button
+                          onClick={() => {
+                            setSelectedVehicleId(vehicle._id);
+                            setCurrentPage("seller-vehicle-detail");
+                          }}
+                          className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center hover:text-amber-600 hover:border-amber-600">
+                          <Eye size={16} />
+                        </button>
+
+                        <button className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center hover:text-green-600 hover:border-green-600">
+                          <MoreVertical size={16} />
+                        </button>
+
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-5 py-10 text-center text-slate-500"
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-sm font-semibold text-slate-600">
+                        No Data Found
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-400">
+                        No vehicles available to display.
+                      </p>
                     </div>
-
                   </td>
-
-                  <td className="px-4 py-4 text-sm font-medium text-slate-700">
-                    {item.listingId}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-slate-600">
-                    {item.category}
-                  </td>
-
-                  <td className="px-4 py-4 font-semibold text-[#0B1E3D]">
-                    {item.price}
-                  </td>
-
-                  <td className="px-4 py-4">
-
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${item.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
-                        }`}
-                    >
-                      {item.status}
-                    </span>
-
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-slate-600">
-                    {item.listedOn}
-                  </td>
-
-                  <td className="px-4 py-4 text-center font-medium">
-                    {item.views}
-                  </td>
-
-                  <td className="px-4 py-4">
-
-                    <div className="flex justify-center gap-2">
-
-                      <button
-                        className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center hover:text-amber-600 hover:border-amber-600">
-                        <Eye size={16} />
-                      </button>
-
-                      <button
-                        className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center hover:text-blue-600 hover:border-blue-600">
-                        <Pencil size={16} />
-                      </button>
-
-                      <button
-                        className="w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center hover:text-green-600 hover:border-green-600">
-                        <MoreVertical size={16} />
-                      </button>
-
-                    </div>
-
-                  </td>
-
                 </tr>
-
-              ))}
-
+              )}
             </tbody>
 
           </table>
@@ -210,6 +228,74 @@ function SellerListingTab() {
         </div>
 
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+          {/* Page Info */}
+          <p className="hidden sm:block text-xs text-slate-500">
+            Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+            <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+          </p>
+
+          {/* Pagination */}
+          <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+            {/* Previous */}
+            <button
+              type="button"
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                      hover:bg-slate-50 hover:border-slate-300
+                      disabled:opacity-40 disabled:cursor-not-allowed
+                      transition-all"
+            >
+              Previous
+            </button>
+
+            {/* Page Numbers */}
+            {getPaginationRange(page, totalPages).map((num, idx) =>
+              num === "..." ? (
+                <span
+                  key={`dot-${idx}`}
+                  className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  key={num}
+                  onClick={() => setPage(num)}
+                  className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                  ${page === num
+                      ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                      : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                    }`}
+                >
+                  {num}
+                </button>
+              )
+            )}
+
+            {/* Next */}
+            <button
+              type="button"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                      hover:bg-slate-50 hover:border-slate-300
+                      disabled:opacity-40 disabled:cursor-not-allowed
+                      transition-all"
+            >
+              Next
+            </button>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

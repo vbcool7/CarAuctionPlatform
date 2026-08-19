@@ -3,12 +3,14 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
-import { buildWelcomeEmail, buildPendingActivationEmail } from '../utils/emailTemplates.js';
+import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { getNextBuyerId } from '../utils/counterHelper.js';
 
 import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
+import Vehicle from '../models/vehicleModelSchema.js';
 
 export const adminSignup = async (req, res) => {
     try {
@@ -161,10 +163,10 @@ export const adminGet = async (req, res) => {
 export const addNewBuyer = async (req, res) => {
     try {
         const {
-            firstName, lastName, email, mobile, password, confirmPassword, gender,
-            dob, nationality, country, city, address, pincode, buyerType, companyName, registrationNumber, vatNumber,
+            firstName, lastName, email, mobile, gender,
+            dob, nationality, country, emirate, city, address, pincode, buyerType, companyName, registrationNumber, vatNumber,
             paymentMethod, isEmailVerified, isMobileVerified, identityDocType, addressDocType,
-            kycStatus, accountStatus
+            sendWelcomeEmail: shouldSendWelcomeEmail
         } = req.body;
 
         const profileImageUrl = req.files?.['profileImageUrl']?.[0]?.path || "";
@@ -179,8 +181,12 @@ export const addNewBuyer = async (req, res) => {
             { value: lastName, label: "Last Name" },
             { value: email, label: "Email" },
             { value: mobile, label: "Mobile Number" },
-            { value: password, label: "Password" },
             { value: dob, label: "Date Of Birth" },
+            { value: country, label: "Country" },
+            { value: city, label: "City" },
+            { value: address, label: "Address" },
+            { value: buyerType, label: "Buyer Type" },
+            { value: paymentMethod, label: "Payment Method" },
             { value: frontImageUrl, label: "Identity Front Image" },
             { value: selfieImageUrl, label: "Selfie Image" },
             { value: documentUrl, label: "Address Document" },
@@ -194,14 +200,6 @@ export const addNewBuyer = async (req, res) => {
                     message: `${field.label} is required`,
                 });
             }
-        }
-
-        if (password !== confirmPassword) {
-            if (req.files) await deleteCloudinaryFiles(req.files);
-            return res.status(400).json({
-                success: false,
-                message: "Password and Confirm Password do not match"
-            });
         }
 
         if (!buyerType) {
@@ -239,39 +237,56 @@ export const addNewBuyer = async (req, res) => {
             });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const resolvedKycStatus = kycStatus || 'pending';
+        const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10);
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+        const buyerId = await getNextBuyerId();
 
         const newBuyer = new Buyer({
+            buyerId,
             firstName, lastName, email, mobile, password: hashedPassword, gender, profileImageUrl,
 
-            identityVerification: { documentType: identityDocType, frontImageUrl, backImageUrl, selfieImageUrl, status: resolvedKycStatus },
-            addressVerification: { documentType: addressDocType, documentUrl, landlordIdUrl, status: resolvedKycStatus },
+            identityVerification: { documentType: identityDocType, frontImageUrl, backImageUrl, selfieImageUrl },
+            addressVerification: { documentType: addressDocType, documentUrl, landlordIdUrl, },
 
-            dob, nationality, country, city, address, pincode, buyerType, companyName, registrationNumber, vatNumber,
+            dob, nationality, country, emirate, city, address, pincode, buyerType, companyName, registrationNumber, vatNumber,
 
-            isEmailVerified: isEmailVerified === 'true',
-            isMobileVerified: isMobileVerified === 'true',
+            isEmailVerified: isEmailVerified === 'true' || isEmailVerified === true,
+            isMobileVerified: isMobileVerified === 'true' || isMobileVerified === true,
 
-            payment: {
-                method: paymentMethod
-            },
+            payment: { method: paymentMethod },
 
-            status: accountStatus || 'pending',
+            status: 'approved',
             createdBy: 'admin',
             addedByAdminId: req.user.id
         });
 
         await newBuyer.save();
 
+        const isVerified = newBuyer.isEmailVerified;
+
+        const { subject, html } = isVerified
+            ? buildBuyerWelcomeEmail(email, rawPassword)
+            : buildPendingBuyerActivationEmail(email);
+
         const buyerToReturn = newBuyer.toObject();
         delete buyerToReturn.password;
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
-            message: "Buyer added successfully",
+            message: isVerified
+                ? "Buyer created. Login credentials sent to their email."
+                : "Buyer created. Pending verification email sent.",
             data: buyerToReturn
         });
+
+        if (shouldSendWelcomeEmail !== 'false') {
+            try {
+                await sendEmail(newBuyer.email, subject, html);
+            } catch (emailErr) {
+                console.error("Welcome email failed to send:", emailErr);
+            }
+        }
 
     } catch (err) {
         if (req.files) {
@@ -295,6 +310,120 @@ export const addNewBuyer = async (req, res) => {
             message: "Server Error Occured"
         });
     }
+};
+
+// get all buyers
+export const getAllBuyers = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const [buyers, totalCount] = await Promise.all([
+            Buyer.find()
+                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status lastLoginAt createdAt createdBy isEmailVerified')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Buyer.countDocuments()
+        ]);
+
+        res.status(200).json({
+            success: true,
+            buyers,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("Fetching All Sellers Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// toggle - buyer email/phone verification
+export const toggleBuyerVerification = async (req, res) => {
+    try {
+        const { buyerId } = req.params;
+        const { isVerified } = req.body;
+
+        const buyer = await Buyer.findById(buyerId);
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        const wasUnverified = !buyer.isEmailVerified;
+        const nowVerified = isVerified === true || isVerified === 'true';
+
+        buyer.isEmailVerified = nowVerified;
+        buyer.isPhoneVerified = nowVerified;
+
+        if (wasUnverified && nowVerified) {
+            const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10); // ← new password generate
+            buyer.password = await bcrypt.hash(rawPassword, 10);
+
+            await buyer.save();
+
+            const { subject, html } = buildBuyerWelcomeEmail(buyer.email, rawPassword);
+            try {
+                await sendEmail(buyer.email, subject, html);
+            } catch (emailErr) {
+                console.error("Verification welcome email failed:", emailErr);
+                // response abhi bhi success jayega — email fail hone se verification revert nahi honi chahiye
+            }
+        } else {
+            await buyer.save();
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: nowVerified ? "Buyer verified and activated" : "Buyer marked unverified"
+        });
+
+    } catch (err) {
+        console.error("Toggle Verification Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get buyer by id
+export const getBuyerById = async (req, res) => {
+    try {
+        const { buyerId } = req.params;
+        const buyer = await Buyer.findById(buyerId);
+
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is buyer detail",
+            data: buyer
+        });
+    } catch (err) {
+        console.error("Get buyer By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    };
 };
 
 // add new seller
@@ -413,7 +542,7 @@ export const addNewSeller = async (req, res) => {
 export const getAllSellers = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 2;
+        const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
         const filter = { isComplete: true };
@@ -447,7 +576,7 @@ export const getAllSellers = async (req, res) => {
     }
 }
 
-// toggle email/phone verification
+// toggle - seller email/phone verification
 export const toggleSellerVerification = async (req, res) => {
     try {
         const { sellerId } = req.params;
@@ -455,9 +584,9 @@ export const toggleSellerVerification = async (req, res) => {
 
         const seller = await Seller.findById(sellerId);
         if (!seller) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Seller not found" 
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
             });
         }
 
@@ -490,9 +619,99 @@ export const toggleSellerVerification = async (req, res) => {
 
     } catch (err) {
         console.error("Toggle Verification Error:", err);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Server Error Occurred" 
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get seller by id
+export const getSellerById = async (req, res) => {
+    try {
+        const { sellerId } = req.params;
+        const seller = await Seller.findById(sellerId);
+
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is seller detail",
+            data: seller
+        });
+    } catch (err) {
+        console.error("Get Seller By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    };
+};
+
+// get vehicles by seller
+export const getVehiclesBySeller = async (req, res) => {
+    try {
+        const { sellerId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const skip = (page - 1) * limit;
+
+        const [vehicles, total] = await Promise.all([
+            Vehicle.find({ sellerId })
+                .select('make model year vin bodyType priceType startingBidPrice buyNowPrice reservePrice adminStatus auctionStatus images createdAt')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(Number(limit)),
+            Vehicle.countDocuments({ sellerId }),
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Vehicles fetched",
+            data: vehicles,
+            pagination: {
+                total,
+                totalPages: Math.ceil(total / limit),
+                currentPage: Number(page)
+            },
+        });
+
+    } catch (err) {
+        console.error("Get Vehicles By Seller Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get vehcile by id
+export const getVehicleById = async (req, res) => {
+    try {
+        const { vehicleId } = req.params;
+        const vehicle = await Vehicle.findById(vehicleId);
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Vehicle not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is vehicle detail",
+            data: vehicle
+        });
+    } catch (err) {
+        console.error("Get Vehicle By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

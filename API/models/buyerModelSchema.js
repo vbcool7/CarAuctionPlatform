@@ -8,6 +8,8 @@ const buyerSchema = new mongoose.Schema({
         default: "buyer"
     },
 
+    buyerId: { type: String, unique: true },
+
     // Step 1
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -27,7 +29,14 @@ const buyerSchema = new mongoose.Schema({
     // Step 3
     dob: { type: Date },
     nationality: { type: String },
-    country: { type: String },
+    country: { 
+        type: String, 
+        enum: ['united_arab_emirates'], 
+    },
+    emirate: {
+        type: String,
+        enum: ['abu_dhabi', 'dubai', 'sharjah', 'ajman', 'umm_al_quwain', 'ras_al_khaimah', 'fujairah']
+    },
     city: { type: String },
     address: { type: String },
     pincode: { type: String },
@@ -125,6 +134,9 @@ const buyerSchema = new mongoose.Schema({
     addedByAdminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Admin'
+    },
+    lastLoginAt: {
+        type: Date
     },
     status: {
         type: String,

@@ -1,6 +1,7 @@
 
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import API from "../api/axiosInstance";
+import toast from "react-hot-toast";
 
 // add new seller
 export const useAddNewSeller =() => {
@@ -14,7 +15,7 @@ export const useAddNewSeller =() => {
 };
 
 // all sellers list
-export const useGetAllSellers = (page=1, limit=2) => {
+export const useGetAllSellers = (page=1, limit=10) => {
     return useQuery({
         queryKey: ['sellers', page, limit],
         queryFn: async () => {
@@ -41,5 +42,17 @@ export const useToggleSellerVerification = () => {
             console.error('Toggle verification failed:', err);
             toast.error(err?.response?.data?.message || "Failed to update verification status");
         },
+    });
+};
+
+// get seller by id
+export const useGetSellerById = (sellerId) => {
+    return useQuery({
+        queryKey: ['seller', sellerId],
+        queryFn: async () => {
+            const res = await API.get(`/admin/get-seller/${sellerId}`);
+            return res.data;
+        },
+        enabled: !!sellerId,
     });
 };

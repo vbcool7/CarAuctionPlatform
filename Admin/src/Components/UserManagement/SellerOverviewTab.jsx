@@ -6,14 +6,29 @@ import InputField from './Shared/InputField';
 function SellerOverviewTab({ data, isEditing, updateField }) {
 
   const contactInfoFields = [
+    { label: "Name", name: "email", value: data.fullName },
     { label: "Email Address", name: "email", value: data.email },
     { label: "Phone Number", name: "phone", value: data.phone },
-    { label: "Alternate Phone", name: "alternatePhone", value: data.alternatePhone },
-    { label: "Website", name: "website", value: data.website },
-    { label: "Business Address", name: "businessAddress.street", value: data.businessAddress.street },
-    { label: "City", name: "businessAddress.city", value: data.businessAddress.city },
-    { label: "Country", name: "businessAddress.country", value: data.businessAddress.country },
-    { label: "Zip / Postal Code", name: "businessAddress.zip", value: data.businessAddress.zip },
+  ];
+
+  const addressInfoFields = [
+    { label: "Country", name: "country", value: data.country },
+    { label: "Emirate", name: "country", value: data.emirate },
+    { label: "City", name: "city", value: data.city },
+    { label: "Area / District", name: "area", value: data.area },
+    { label: "Street Address", name: "street", value: data.streetAddress },
+    { label: "Building", name: "building", value: data.building },
+    { label: "P.O Box", name: "poBox", value: data.poBox },
+    { label: "Zip / Postal Code", name: "zip", value: data.zip },
+  ];
+
+  const bankInfoFields = [
+    { label: "Account Holder Name", name: "accountHolderName", value: data.accountHolderName },
+    { label: "Bank Name", name: "bankName", value: data.bankName },
+    { label: "IBAN", name: "iban", value: data.ibanNumber },
+    { label: "Account Number", name: "accountNumber", value: data.accountNumber },
+    { label: "SWIFT Code", name: "swiftCode", value: data.swiftCode },
+    { label: "Currency", name: "currency", value: data.currency },
   ];
 
   const socialMediaFields = [
@@ -23,22 +38,21 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
     { label: "LinkedIn", name: "socialMedia.linkedin", value: data.socialMedia?.linkedin, icon: FaLinkedin, color: "text-blue-600" },
   ];
 
-  const bankInfoFields = [
-    { label: "Bank Name", name: "bankDetails.bankName", value: data.bankDetails?.bankName },
-    { label: "Account Number", name: "bankDetails.accountNumber", value: data.bankDetails?.accountNumber },
-    { label: "Branch Name", name: "bankDetails.branchName", value: data.bankDetails?.branchName },
-    { label: "Account Holder Name", name: "bankDetails.accountHolderName", value: data.bankDetails?.accountHolderName },
-    { label: "IBAN", name: "bankDetails.iban", value: data.bankDetails?.iban },
-    { label: "SWIFT Code", name: "bankDetails.swiftCode", value: data.bankDetails?.swiftCode },
-  ];
+  const formatEnumValue = (value) => {
+    if (!value) return "--";
+
+    return value
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
   return (
     <div>
 
-      {/*contact Information */}
+      {/* basic Information */}
       <div className="md:mb-8">
         <h3 className="font-bold text-slate-900 mb-4">
-          Contact Information
+          Basic Information
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {contactInfoFields.map((item, i) => (
@@ -54,7 +68,38 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
                 <>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-700">{item.value || '--'}</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate">{formatEnumValue(item.value) || '---'}</p>
+                    {item.badge && <span className="text-[10px] bg-green-50 text-green-600 px-1.5 rounded">{item.badge}</span>}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <hr className="my-4 md:my-6 border-slate-100" />
+
+      {/* address Information */}
+      <div className="md:mb-8">
+        <h3 className="font-bold text-slate-900 mb-4">
+          Address Information
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {addressInfoFields.map((item, i) => (
+            <div key={i}>
+              {isEditing ? (
+                <InputField
+                  label={item.label}
+                  name={item.name}
+                  value={item.value || ''}
+                  onChange={updateField}
+                />
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500 uppercase">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-700 truncate">{formatEnumValue(item.value) || '---'}</p>
                     {item.badge && <span className="text-[10px] bg-green-50 text-green-600 px-1.5 rounded">{item.badge}</span>}
                   </div>
                 </>
@@ -82,7 +127,7 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
               ) : (
                 <div>
                   <p className="text-xs text-slate-500 uppercase">{item.label}</p>
-                  <p className="text-sm font-semibold text-slate-700 mt-1">{item.value || '--'}</p>
+                  <p className="text-sm font-semibold text-slate-700 mt-1">{formatEnumValue(item.value) || '---'}</p>
                 </div>
               )}
             </div>
@@ -110,7 +155,7 @@ function SellerOverviewTab({ data, isEditing, updateField }) {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Icon className={`w-4 h-4 ${item.color}`} />
-                    <p className="text-sm font-semibold text-slate-700">{item.value || '--'}</p>
+                    <p className="text-sm font-semibold text-slate-700">{item.value || 'Not Applicable'}</p>
                   </div>
                 )}
               </div>

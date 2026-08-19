@@ -2,7 +2,7 @@
 import express from 'express';
 import { upload } from '../middlewares/imageStorage.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, getAllSellers, toggleSellerVerification } from '../controllers/adminController.js';
+import { adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, getVehiclesBySeller, getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById } from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -28,31 +28,55 @@ router.post('/admin-login', adminLogin);
 router.get('/admin-get', authMiddleware(['admin']), adminGet);
 router.post('/admin-logout', adminLogout);
 
-router.post('/add-new-buyer', authMiddleware(['admin']), identityDocsUpload, addNewBuyer);
-
-router.post('/add-new-seller',authMiddleware(['admin']), (req, res, next) => {
-        sellerDocsUpload(req, res, (err) => {
-            if (err) {
-                if (err.code === 'LIMIT_FILE_SIZE') {
-                    return res.status(400).json({
-                        success: false,
-                        message: "File size exceeds 10MB limit"
-                    });
-                }
-
+router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
+    identityDocsUpload(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({
                     success: false,
-                    message: err.message || "Invalid file upload"
+                    message: "File size exceeds 10MB limit"
                 });
             }
 
-            next();
-        });
-    },
-    addNewSeller
-);
+            return res.status(400).json({
+                success: false,
+                message: err.message || "Invalid file upload"
+            });
+        }
+
+        next();
+    })
+}, addNewBuyer);
+
+router.get('/all-buyers-list', authMiddleware(['admin']), getAllBuyers);
+router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin']), toggleBuyerVerification);
+router.get('/get-buyer/:buyerId', authMiddleware(['admin']), getBuyerById);
+
+router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
+    sellerDocsUpload(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    success: false,
+                    message: "File size exceeds 10MB limit"
+                });
+            }
+
+            return res.status(400).json({
+                success: false,
+                message: err.message || "Invalid file upload"
+            });
+        }
+
+        next();
+    });
+}, addNewSeller);
 
 router.get('/all-sellers-list', authMiddleware(['admin']), getAllSellers);
 router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin']), toggleSellerVerification);
+router.get('/get-seller/:sellerId', authMiddleware(['admin']), getSellerById);
+
+router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehiclesBySeller);
+router.get('/get-vehicle/:vehicleId', authMiddleware(['admin']), getVehicleById);
 
 export default router;

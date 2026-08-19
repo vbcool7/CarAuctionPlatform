@@ -1,34 +1,30 @@
 
 import React from 'react';
-import { Eye, Download , FileText, User, ShieldCheck, Upload } from 'lucide-react';
+import { Eye, Download, FileText, User, ShieldCheck, Upload } from 'lucide-react';
 
-// static
-const documents = [
-  {
-    id: 1,
-    type: "Trade License",
-    description: "Company trade license copy",
-    fileName: "Trade_License_AhmedMotors.pdf",
-    fileSize: "1.2 MB",
-    status: "Verified",
-    verDate: "May 13, 2024",
-    expDate: "May 12, 2025",
-    icon: <User className="text-indigo-500" />
-  },
-  {
-    id: 2,
-    type: "VAT Certificate",
-    description: "VAT registration certificate",
-    fileName: "VAT_Certificate_AhmedMotors.pdf",
-    fileSize: "1.1 MB",
-    status: "Verified",
-    verDate: "May 13, 2024",
-    expDate: "May 13, 2025",
-    icon: <ShieldCheck className="text-green-500" />
-  }
+const documentConfig = [
+  { key: 'tradeLicense', type: 'Trade License', description: 'Company trade license copy', icon: <User className="text-indigo-500" /> },
+  { key: 'emiratesId', type: 'Emirates ID', description: 'Identity proof document', icon: <ShieldCheck className="text-green-500" /> },
+  { key: 'bankStatement', type: 'Bank Statement', description: 'Bank account statement', icon: <FileText className="text-blue-500" /> },
+  { key: 'vatCertificate', type: 'VAT Certificate', description: 'VAT registration certificate (optional)', icon: <ShieldCheck className="text-slate-400" /> },
 ];
 
 function SellerDocumentsTab({ data }) {
+
+  const documents = documentConfig.map((cfg) => ({
+    ...cfg,
+    url: data?.[cfg.key]?.url,
+    status: data?.[cfg.key]?.status || 'not_uploaded',
+    rejectionReason: data?.[cfg.key]?.rejectionReason,
+  }));
+
+  const statusStyles = {
+    approved: 'bg-green-100 text-green-700',
+    pending: 'bg-amber-100 text-amber-700',
+    rejected: 'bg-red-100 text-red-700',
+    not_uploaded: 'bg-slate-100 text-slate-500',
+  };
+
   return (
     <div>
 
@@ -47,14 +43,14 @@ function SellerDocumentsTab({ data }) {
         </div>
 
         {/* Right Button */}
-        <div className="flex justify-start lg:justify-end">
+        {/* <div className="flex justify-start lg:justify-end">
           <button
             className="inline-flex items-center justify-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-[#D97706] text-white font-medium transition-all duration-200 hover:bg-[#b86505] active:scale-95"
           >
             <Upload size={18} />
             Upload New Document
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Documents Table */}
@@ -63,99 +59,44 @@ function SellerDocumentsTab({ data }) {
           <table className="w-full border-collapse">
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
               <tr className="text-sm text-slate-600">
-                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                  Document Type
-                </th>
-                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                  Document
-                </th>
-                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                  Verification Date
-                </th>
-                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">
-                  Expiry Date
-                </th>
-                <th className="px-6 py-4 text-center font-semibold whitespace-nowrap">
-                  Actions
-                </th>
+                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">Document Type</th>
+                <th className="px-6 py-4 text-left font-semibold whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-center font-semibold whitespace-nowrap">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
               {documents.map((doc) => (
-                <tr
-                  key={doc.id}
-                  className="hover:bg-slate-50 transition-colors duration-200"
-                >
-                  {/* Document Type */}
+                <tr key={doc.key} className="hover:bg-slate-50 transition-colors duration-200">
                   <td className="px-6 py-5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-[#D97706]">
                         {doc.icon}
                       </div>
-
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {doc.type}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {doc.description}
-                        </p>
+                        <p className="text-sm font-semibold text-slate-900">{doc.type}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{doc.description}</p>
                       </div>
                     </div>
                   </td>
 
-                  {/* File */}
                   <td className="px-6 py-5 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50">
-                        <FileText
-                          size={20}
-                          className="text-red-500"
-                        />
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          {doc.fileName}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {doc.fileSize}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-6 py-5 whitespace-nowrap">
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                      {doc.status}
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusStyles[doc.status]}`}>
+                      {doc.status.replace('_', ' ')}
                     </span>
+                    {doc.status === 'rejected' && doc.rejectionReason && (
+                      <p className="text-xs text-red-500 mt-1">{doc.rejectionReason}</p>
+                    )}
                   </td>
 
-                  {/* Verification */}
-                  <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-600">
-                    {doc.verDate}
-                  </td>
-
-                  {/* Expiry */}
-                  <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-600">
-                    {doc.expDate}
-                  </td>
-
-                  {/* Actions */}
                   <td className="px-6 py-5">
                     <div className="flex justify-center gap-2">
-
-                      <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-[#D97706] hover:bg-amber-50 hover:text-[#D97706]">
+                      <button
+                        disabled={!doc.url}
+                        onClick={() => window.open(doc.url, '_blank')}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-[#D97706] hover:bg-amber-50 hover:text-[#D97706] disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
                         <Eye size={18} />
-                      </button>
-
-                      <button className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-blue-600 hover:bg-amber-50 hover:text-blue-600">
-                        <Download  size={18} />
                       </button>
                     </div>
                   </td>

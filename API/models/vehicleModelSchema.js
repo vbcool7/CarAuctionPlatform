@@ -8,6 +8,7 @@ const vehicleSchema = new mongoose.Schema(
             ref: 'Seller',
             required: true
         },
+        listingId: { type: String, unique: true },
 
         // ============ 1st-step
         vehicleType: {
@@ -209,6 +210,8 @@ const vehicleSchema = new mongoose.Schema(
         autoRelist: { type: Boolean, default: false },
 
         currentBid: { type: Number, default: null },
+        views: { type: Number, default: 0 },
+        
         adminStatus: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],

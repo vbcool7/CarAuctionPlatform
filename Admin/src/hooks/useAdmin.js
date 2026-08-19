@@ -35,14 +35,3 @@ export const useAdminGet = () => {
         enabled: !!token,
     });
 };
-
-// add new buyer
-export const useAddNewBuyer = () => {
-    return useMutation({
-        mutationKey: ['newBuyerAdded'],
-        mutationFn: async(buyerData) => {
-            const res = await API.post('/admin/add-new-buyer', buyerData);
-            return res.data;
-        }
-    });
-};

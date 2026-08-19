@@ -19,8 +19,27 @@ import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 import SummaryTransactionCard from './SummaryTransactionCard';
 import TransactionPaymentMethods from './TransactionPaymentMethods';
 import CheckListCard from './CheckListCard';
+import { useGetSellerById } from '../../hooks/useSeller';
 
-function SellerDetail({ seller, setCurrentPage }) {
+// acc status
+const computeKycStatus = (seller) => {
+    const statuses = [
+        seller.tradeLicense?.status,
+        seller.emiratesId?.status,
+        seller.bankStatement?.status,
+        seller.vatCertificate?.status,
+    ].filter(Boolean);
+
+    if (statuses.some(s => s === 'rejected')) return 'rejected';
+    if (statuses.some(s => s === 'pending')) return 'pending';
+    if (statuses.length && statuses.every(s => s === 'approved')) return 'approved';
+    return 'pending';
+};
+
+function SellerDetail({ sellerId, setSelectedVehicleId, setCurrentPage }) {
+
+    const { data: sellerData, isLoading, isError } = useGetSellerById(sellerId);
+    const seller = sellerData?.data;
 
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState(seller);
@@ -44,7 +63,7 @@ function SellerDetail({ seller, setCurrentPage }) {
         documents: ['documentSummary', 'checkListCard', 'needHelp'],
         listings: ['listingSummary', 'listingOverview', 'quickActions', 'needHelp'],
         transactions: ['transactionSummary', 'transactionPaymentMethods', 'quickActions'],
-        reviews: ['reviewSummary','reviewFeedback', 'reviewImprove', 'quickActions'],
+        reviews: ['reviewSummary', 'reviewFeedback', 'reviewImprove', 'quickActions'],
     };
 
     const quickActionsByTab = {
@@ -115,6 +134,35 @@ function SellerDetail({ seller, setCurrentPage }) {
 
     const data = isEditing ? editData : seller;
 
+    // doc side card
+    const computeDocumentSummary = (seller) => {
+        const docs = [
+            seller.tradeLicense,
+            seller.emiratesId,
+            seller.bankStatement,
+            seller.vatCertificate,
+        ];
+
+        const counts = { approved: 0, pending: 0, rejected: 0, notUploaded: 0 };
+
+        docs.forEach((doc) => {
+            if (!doc?.url) {
+                counts.notUploaded += 1;
+            } else if (doc.status === 'approved') {
+                counts.approved += 1;
+            } else if (doc.status === 'rejected') {
+                counts.rejected += 1;
+            } else {
+                counts.pending += 1;
+            }
+        });
+
+        return counts;
+    };
+
+    if (isLoading) return <div>Loading...</div>;
+    if (isError || !seller) return <div>Seller not found</div>;
+
     return (
         <div>
             {/* heading */}
@@ -139,24 +187,23 @@ function SellerDetail({ seller, setCurrentPage }) {
 
                         {/* Header Section */}
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-10">
-
                             {/* Left Section */}
                             <div className="flex items-start gap-4 flex-1 min-w-0">
                                 <img
-                                    src={seller.avatar || null}
-                                    alt={seller.name}
+                                    src={seller.profileImage || "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-image-182145777.jpg"}
+                                    alt={seller.fullName}
                                     className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover shrink-0"
                                 />
 
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="text-sm md:text-lg font-bold text-slate-900 wrap-break-word">
-                                            {seller.name}
+                                            {seller.fullName}
                                         </h2>
 
-                                        {seller.kycStatus === "verified" && (
+                                        {seller.status === "approved" && (
                                             <span className="bg-green-50 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-md whitespace-nowrap">
-                                                Verified
+                                                Approved
                                             </span>
                                         )}
                                     </div>
@@ -164,16 +211,26 @@ function SellerDetail({ seller, setCurrentPage }) {
                                     <p className="mt-1 text-xs sm:text-sm text-slate-500">
                                         Seller ID:
                                         <span className="ml-1 font-semibold text-slate-900">
-                                            {seller.sellerId || "--"}
+                                            SLR - {seller._id ? seller._id.slice(-6).toUpperCase() : "--"}
                                         </span>
                                     </p>
 
-                                    <p className="text-xs sm:text-sm text-slate-500">
+                                    <p className="text-xs sm:text-sm text-slate-500 flex gap-1">
                                         Member Since:
                                         <span className="ml-1">
-                                            {seller.joinedOn
-                                                ? new Date(seller.joinedOn).toLocaleDateString()
-                                                : "--"}
+                                            {seller.createdAt ? (
+                                                <>
+                                                    <p>
+                                                        {new Date(seller.createdAt).toLocaleDateString("en-US", {
+                                                            month: "short",
+                                                            day: "2-digit",
+                                                            year: "numeric",
+                                                        })}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                "--"
+                                            )}
                                         </span>
                                     </p>
 
@@ -186,10 +243,10 @@ function SellerDetail({ seller, setCurrentPage }) {
                                         />
 
                                         <span className="font-semibold text-slate-900">
-                                            {seller.rating}
+                                            {seller.rating || 0}
                                         </span>
 
-                                        <span>({seller.reviewCount} Reviews)</span>
+                                        <span>({seller.reviewCount || 0} Reviews)</span>
                                     </div>
                                 </div>
                             </div>
@@ -221,7 +278,6 @@ function SellerDetail({ seller, setCurrentPage }) {
                                     </>
                                 )}
                             </div>
-
                         </div>
 
                         {/* Tab Bar */}
@@ -250,7 +306,7 @@ function SellerDetail({ seller, setCurrentPage }) {
                             <SellerDocumentsTab data={data} />
                         )}
                         {activeTab === 'listings' && (
-                            <SellerListingsTab data={data} />
+                            <SellerListingsTab data={data} sellerId={sellerId} setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />
                         )}
                         {activeTab === 'transactions' && (
                             <SellerTransactionsTab data={data} />
@@ -267,15 +323,14 @@ function SellerDetail({ seller, setCurrentPage }) {
                     {/* acc status */}
                     {sellerRightColumnMap[activeTab].includes('accountStatus') && (
                         <AccountStatusCard fields={[
-                            { label: 'KYC Status', value: seller.kycStatus, type: 'badge' },
+                            { label: 'KYC Status', value: computeKycStatus(seller), type: 'badge' },
                             { label: 'Account Status', value: seller.status, type: 'badge' },
-                            { label: 'Verification Date', value: seller.emailVerified, type: 'text' },
-                            { label: 'Last Verified On', value: seller.phoneVerified, type: 'text' },
-                            { label: 'Next KYC Due', value: seller.kycDue, type: 'text' },
+                            { label: 'Email Verified', value: seller.isEmailVerified ? 'Yes' : 'No', type: 'text' },
+                            { label: 'Phone Verified', value: seller.isPhoneVerified ? 'Yes' : 'No', type: 'text' },
                         ]} />
                     )}
 
-                    {/* business card */}
+                    {/* business overview */}
                     {sellerRightColumnMap[activeTab].includes('businessOverview') && (
                         <BusinessOverviewCard fields={[
                             { label: "Total Listings", value: seller.totalListings },
@@ -290,30 +345,47 @@ function SellerDetail({ seller, setCurrentPage }) {
 
                     {/* doc preview */}
                     {sellerRightColumnMap[activeTab].includes('documentsPreview') && (
-                        <DocumentsPreview documents={[
-                            { label: "Trade License", status: "verified", onPreview: () => { }, onDownload: () => { } },
-                            { label: "VAT Certificate", status: "verified", onPreview: () => { }, onDownload: () => { } },
-                            { label: "Company Registration", status: "verified", onPreview: () => { }, onDownload: () => { } },
-                            { label: "Bank Statement", status: "verified", onPreview: () => { }, onDownload: () => { } },
-                        ]}
+                        <DocumentsPreview
+                            documents={[
+                                {
+                                    label: "Trade License",
+                                    status: seller?.tradeLicense?.status,
+                                },
+                                {
+                                    label: "Emirates ID",
+                                    status: seller?.emiratesId?.status,
+                                },
+                                {
+                                    label: "VAT Certificate",
+                                    status: seller?.vatCertificate?.status,
+                                },
+                                {
+                                    label: "Bank Statement",
+                                    status: seller?.bankStatement?.status,
+                                },
+                            ]}
                         />
                     )}
 
                     {/* doc summary */}
-                    {sellerRightColumnMap[activeTab].includes('documentSummary') && (
-                        <SummaryDonutCard
-                            title="Document Summary"
-                            centerValue="6/6"
-                            centerLabel="VERIFIED"
-                            showPercentage={false}
-                            segments={[
-                                { name: 'Verified', value: 6, color: '#10B981' },
-                                { name: 'Pending', value: 0, color: '#3B82F6' },
-                                { name: 'Rejected', value: 0, color: '#F59E0B' },
-                                { name: 'Not Uploaded', value: 0, color: '#9CA3AF' },
-                            ]}
-                        />
-                    )}
+                    {sellerRightColumnMap[activeTab].includes('documentSummary') && (() => {
+                        const docSummary = computeDocumentSummary(seller);
+                        const totalDocs = 4;
+                        return (
+                            <SummaryDonutCard
+                                title="Document Summary"
+                                centerValue={`${docSummary.approved}/${totalDocs}`}
+                                centerLabel="VERIFIED"
+                                showPercentage={false}
+                                segments={[
+                                    { name: 'Verified', value: docSummary.approved, color: '#10B981' },
+                                    { name: 'Pending', value: docSummary.pending, color: '#3B82F6' },
+                                    { name: 'Rejected', value: docSummary.rejected, color: '#F59E0B' },
+                                    { name: 'Not Uploaded', value: docSummary.notUploaded, color: '#9CA3AF' },
+                                ]}
+                            />
+                        );
+                    })()}
 
                     {/* doc - guidlines */}
                     {sellerRightColumnMap[activeTab].includes('checkListCard') && (

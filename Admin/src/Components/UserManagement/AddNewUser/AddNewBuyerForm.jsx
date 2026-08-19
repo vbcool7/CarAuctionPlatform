@@ -11,10 +11,10 @@ import NotesField from '../Shared/NotesField';
 import CustomDropdown from '../../SharedComponents/CustomDropDown';
 import DateInputField from '../Shared/DateInputField';
 import InputField from '../Shared/InputField';
-import { useAddNewBuyer } from '../../../hooks/useAdmin';
+import { useAddNewBuyer } from '../../../hooks/useBuyer';
 
 const initialFormState = {
-    firstName: '', lastName: '', email: '', mobile: '', password: '', confirmPassword: '',
+    firstName: '', lastName: '', email: '', mobile: '',
     dob: '', gender: '', profileImageUrl: null,
     identityDocType: '', addressDocType: '',
     frontImageUrl: null, backImageUrl: null, selfieImageUrl: null, documentUrl: null, landlordIdUrl: null,
@@ -31,7 +31,6 @@ const GENDER_MAP = {
 };
 
 const KYC_STATUS_MAP = {
-    'Not Submitted': 'not_submitted',
     'Pending': 'pending',
     'Approved': 'approved',
     'Rejected': 'rejected'
@@ -155,8 +154,6 @@ function AddNewBuyerForm({ setCurrentPage }) {
         lastName: '',
         email: '',
         mobile: '',
-        password: '',
-        confirmPassword: '',
         dob: '',
         gender: '',
         profileImageUrl: null,
@@ -204,7 +201,6 @@ function AddNewBuyerForm({ setCurrentPage }) {
             { value: formData.lastName, label: "Last Name" },
             { value: formData.email, label: "Email" },
             { value: formData.mobile, label: "Mobile Number" },
-            { value: formData.password, label: "Password" },
             { value: formData.dob, label: "Date Of Birth" },
         ];
 
@@ -212,10 +208,6 @@ function AddNewBuyerForm({ setCurrentPage }) {
             if (!field.value?.toString().trim()) {
                 return toast.error(`${field.label} is required`);
             }
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            return toast.error("Password and Confirm Password do not match");
         }
 
         if (!formData.buyerType) {
@@ -232,13 +224,13 @@ function AddNewBuyerForm({ setCurrentPage }) {
             }
         }
 
-        // if (!formData.docType) {
-        //     return toast.error("Please select Identity Document Type");
-        // }
+        if (!formData.identityDocType) {
+    return toast.error("Please select Identity Document Type");
+}
 
-        // if (!formData.addrType) {
-        //     return toast.error("Please select Address Document Type");
-        // }
+if (!formData.addressDocType) {
+    return toast.error("Please select Address Document Type");
+}
 
         if (!formData.paymentMethod) {
             return toast.error("Please select Payment Method");
@@ -247,7 +239,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
         const submitData = new FormData();
 
         const directFields = [
-            'firstName', 'lastName', 'email', 'mobile', 'password', 'confirmPassword',
+            'firstName', 'lastName', 'email', 'mobile', 
             'dob', 'nationality', 'address', 'city', 'country', 'pincode',
             'buyerType', 'companyName', 'registrationNumber', 'vatNumber',
             'isEmailVerified', 'isMobileVerified'
@@ -507,12 +499,6 @@ function AddNewBuyerForm({ setCurrentPage }) {
 
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
 
-                            {/* pass */}
-                            <InputField label="Password" name="password" type='password' value={formData.password} required onChange={updateField} />
-
-                            {/* confirm pass */}
-                            <InputField label="ConfirmPassword" name="confirmPassword" type='password' value={formData.confirmPassword} required onChange={updateField} />
-
                             <CustomDropdown
                                 label="Payment Method"
                                 placeholder="Select Payment Method"
@@ -524,31 +510,13 @@ function AddNewBuyerForm({ setCurrentPage }) {
                         </div>
                     </div>
 
-                    {/* Verification & Status */}
+                    {/* Verification */}
                     <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h2 className="text-base font-bold text-[#0B1E3D] mb-6">
-                            Verification & Status
+                            Verification
                         </h2>
 
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
-
-                            {/* kyc */}
-                            <CustomDropdown
-                                label="KYC Status"
-                                placeholder="Select KYC Status"
-                                options={['Not Submitted', 'Pending', 'Approved', 'Rejected']}
-                                selected={formData.kycStatus}
-                                onChange={(val) => updateField('kycStatus', val)}
-                            />
-
-                            {/* acc status */}
-                            <CustomDropdown
-                                label="Account Status"
-                                placeholder="Select Account Status"
-                                options={['Pending', 'Approved', 'Rejected']}
-                                selected={formData.accountStatus}
-                                onChange={(val) => updateField('accountStatus', val)}
-                            />
 
                             {/* email  */}
                             <div className='flex flex-col gap-1.5'>

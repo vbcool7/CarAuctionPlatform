@@ -2,6 +2,7 @@
 import axios from 'axios';
 import Vehicle from '../models/vehicleModelSchema.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { getNextListingId } from '../utils/counterHelper.js';
 
 export const decodeVin = async (req, res) => {
     const { vin } = req.params;
@@ -64,7 +65,8 @@ export const addVehicle = async (req, res) => {
         // Step 3: whitelist + type-cast + build final payload
         const vehicleData = {
             sellerId: req.user.id,
-
+            listingId: await getNextListingId(),
+            
             // Step 1
             vehicleType, vin, make, model,
             year: toNumber(year),

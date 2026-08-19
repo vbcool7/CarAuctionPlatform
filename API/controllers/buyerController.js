@@ -5,6 +5,7 @@ import Buyer from '../models/buyerModelSchema.js';
 import OTP from '../models/otpModelSchema.js';
 import sendEmail from '../utils/sendEmail.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { getNextBuyerId } from '../utils/counterHelper.js';
 
 export const buyerRegistration = async (req, res) => {
     try {
@@ -16,14 +17,14 @@ export const buyerRegistration = async (req, res) => {
 
         const {
             firstName, lastName, email, mobile, password, confirmPassword,
-            dob, nationality, country, city, address, pincode,
+            dob, nationality, country, emirate, city, address, pincode,
             buyerType, companyName, registrationNumber, vatNumber,
             identityDocType, addressDocType,
             paymentMethod, termsAccepted
         } = req.body;
 
         const baseMissing = !firstName || !lastName || !email || !mobile || !password || !confirmPassword ||
-            !dob || !nationality || !country || !city || !address || !pincode || !buyerType ||
+            !dob  || !country || !emirate || !city || !address || !buyerType ||
             !identityDocType || !addressDocType || !paymentMethod;
 
         if (baseMissing) {
@@ -121,8 +122,9 @@ export const buyerRegistration = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const buyer = await Buyer.create({
+            buyerId: await getNextBuyerId(),
             firstName, lastName, email, mobile, password: hashedPassword,
-            dob, nationality, country, city, address, pincode,
+            dob, nationality, country, emirate, city, address, pincode,
             buyerType, companyName, registrationNumber, vatNumber,
             identityVerification: { documentType: identityDocType, frontImageUrl, backImageUrl, selfieImageUrl },
             addressVerification: { documentType: addressDocType, documentUrl, landlordIdUrl },
