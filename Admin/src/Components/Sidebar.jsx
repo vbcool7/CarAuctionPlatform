@@ -103,6 +103,10 @@ const menuItems = [
         icon: RiVerifiedBadgeLine,
         label: "KYC Verification",
         active: false,
+        submenu: [
+            { id: "buyer-kyc", label: "Buyers" },
+            { id: "seller-kyc", label: "Sellers" },
+        ]
     },
     {
         id: "live-chat",

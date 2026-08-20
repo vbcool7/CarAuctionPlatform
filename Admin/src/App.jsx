@@ -49,20 +49,22 @@ import CreateCustomPage from './Components/CmsManagement/CreateCustomPage';
 import CreateBlogPost from './Components/CmsManagement/CreateBlogPost';
 import AllPages from './Components/CmsManagement/AllPages';
 import BlogList from './Components/CmsManagement/BlogList';
-import KycVerification from './Components/KycVerification/KycVerification';
-import KycVerificationDetails from './Components/KycVerification/KycVerificationDetails';
 import SystemSetting from './Components/SystemSetting/SystemSetting';
 import AdvancedFeatures from './Components/AdvancedFeatures/AdvancedFeatures';
 import PayoutsDetail from './Components/PayoutManagement/Payouts/PayoutsDetail';
 import RefundsDetail from './Components/PayoutManagement/Refunds/RefundsDetail';
 import TransactionsDetail from './Components/PayoutManagement/Transactions/TransactionsDetail';
 import SellerVehicleDetail from './Components/UserManagement/SellerVehicleDetail';
+import BuyerKycVerification from './Components/KycVerification/BuyerKycVerification';
+import SellerKycVerification from './Components/KycVerification/SellerKycVerification';
+import BuyerKycVerificationDetail from './Components/KycVerification/BuyerKycVerificationDetail';
+import SellerKycVerificationDetail from './Components/KycVerification/SellerKycVerificationDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('sellers');
+  const [currentPage, setCurrentPage] = useState('buyer-kyc');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -70,7 +72,7 @@ function App() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // buyer-seller-staff
-  const [selectedBuyer, setSelectedBuyer] = useState(null);
+  const [selectedBuyerId, setSelectedBuyerId] = useState(null);
   const [selectedSellerId, setSelectedSellerId] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
 
@@ -98,7 +100,8 @@ function App() {
   const [editingBlog, setEditingBlog] = useState(null);
 
   // kyc
-  const [selectedKycId, setSelectedKycId] = useState(null);
+  const [selectedBuyerKycId, setSelectedBuyerKycId] = useState(null);
+  const [selectedSellerKycId, setSelectedSellerKycId] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -141,7 +144,7 @@ function App() {
 
   // user mang - buyer detail
   const handleViewBuyer = (buyer) => {
-    setSelectedBuyer(buyer);
+    setSelectedBuyerId(buyer._id);
     setCurrentPage('buyer-detail');
   };
 
@@ -198,15 +201,13 @@ function App() {
 
                 {/* user management */}
                 {currentPage === 'buyers' && <Buyer onViewBuyer={handleViewBuyer} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'buyer-detail' && <BuyerDetail buyerId={selectedBuyerId} setCurrentPage={setCurrentPage} />}
+
                 {currentPage === 'sellers' && <Seller onViewSeller={handleViewSeller} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'staffs' && <Staff onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
-
-                {/* user management - detail page : buyer, seller, staff */}
-                {currentPage === 'buyer-detail' && <BuyerDetail buyer={selectedBuyer} setCurrentPage={setCurrentPage} />}
-
                 {currentPage === 'seller-detail' && <SellerDetail sellerId={selectedSellerId} setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'seller-vehicle-detail' && <SellerVehicleDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage}/>}
+                {currentPage === 'seller-vehicle-detail' && <SellerVehicleDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />}
 
+                {currentPage === 'staffs' && <Staff onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'staff-detail' && <StaffDetail staff={selectedStaff} setCurrentPage={setCurrentPage} />}
 
                 {/* user management - form : buyer, seller, staff */}
@@ -368,8 +369,11 @@ function App() {
                 )}
 
                 {/* kyc verification */}
-                {currentPage === 'kyc-verification' && <KycVerification setSelectedKycId={setSelectedKycId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'kyc-verification-detail' && <KycVerificationDetails kycId={selectedKycId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'buyer-kyc' && <BuyerKycVerification setSelectedBuyerKycId={setSelectedBuyerKycId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'buyer-kyc-detail' && <BuyerKycVerificationDetail buyerKycId={selectedBuyerKycId} setCurrentPage={setCurrentPage}/>}
+
+                {currentPage === 'seller-kyc' && <SellerKycVerification setSelectedSellerKycId={setSelectedSellerKycId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'seller-kyc-detail' && <SellerKycVerificationDetail sellerKycId={selectedSellerKycId} setCurrentPage={setCurrentPage}/>}
 
                 {/* system setting */}
                 {currentPage === 'system-settings' && <SystemSetting setCurrentPage={setCurrentPage} />}

@@ -4,7 +4,7 @@ import { create } from 'zustand';
 const initialFormData = {
     firstName: '', lastName: '', email: '', mobile: '', password: '', confirmPassword: '',
     isEmailVerified: false,
-    dob: '', nationality: '', country: '', city: '', address: '', pincode: '', buyerType: '', companyName: '', registrationNumber: '', vatNumber: '',
+    dob: '', nationality: '', country: '', emirate: '', city: '', address: '', pincode: '', buyerType: '', companyName: '', registrationNumber: '', vatNumber: '',
     identityDocType: '', addressDocType: '',
     frontImage: null, backImage: null, selfieImage: null,
     documentFile: null, landlordIdFile: null,

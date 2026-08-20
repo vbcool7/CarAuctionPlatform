@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
-import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail } from '../utils/emailTemplates.js';
+import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId } from '../utils/counterHelper.js';
 
@@ -183,6 +183,7 @@ export const addNewBuyer = async (req, res) => {
             { value: mobile, label: "Mobile Number" },
             { value: dob, label: "Date Of Birth" },
             { value: country, label: "Country" },
+            { value: emirate, label: "Emirate" },
             { value: city, label: "City" },
             { value: address, label: "Address" },
             { value: buyerType, label: "Buyer Type" },
@@ -321,7 +322,7 @@ export const getAllBuyers = async (req, res) => {
 
         const [buyers, totalCount] = await Promise.all([
             Buyer.find()
-                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status lastLoginAt createdAt createdBy isEmailVerified')
+                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status lastLoginAt createdAt createdBy isEmailVerified identityVerification.status identityVerification.documentType addressVerification.status addressVerification.documentType')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -340,7 +341,7 @@ export const getAllBuyers = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Fetching All Sellers Error:", err);
+        console.error("All Buyers Error:", err);
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
@@ -402,8 +403,8 @@ export const toggleBuyerVerification = async (req, res) => {
 // get buyer by id
 export const getBuyerById = async (req, res) => {
     try {
-        const { buyerId } = req.params;
-        const buyer = await Buyer.findById(buyerId);
+        const { id } = req.params;
+        const buyer = await Buyer.findById(id);
 
         if (!buyer) {
             return res.status(404).json({
@@ -424,6 +425,93 @@ export const getBuyerById = async (req, res) => {
             message: "Server Error Occurred"
         });
     };
+};
+
+// buyer doc verification
+export const buyerDocVerification = async (req, res) => {
+    try {
+        const { id, group } = req.params;
+        const { action, rejectionReason } = req.body;
+
+        if (!['identity', 'address'].includes(group)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification group"
+            });
+        }
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: "Action must be 'approve' or 'reject'"
+            });
+        }
+
+        if (action === 'reject' && !rejectionReason?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Rejection reason is required"
+            });
+        }
+
+        const buyer = await Buyer.findById(id);
+
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        const fieldKey = group === 'identity' ? 'identityVerification' : 'addressVerification';
+
+        buyer[fieldKey].status = action === 'approve' ? 'approved' : 'rejected';
+        buyer[fieldKey].reviewedAt = new Date();
+        buyer[fieldKey].rejectionReason = action === 'reject' ? rejectionReason.trim() : undefined;
+
+        if (action === 'reject') {
+            buyer.status = 'pending';
+        } else {
+            const bothApproved =
+                buyer.identityVerification.status === 'approved' &&
+                buyer.addressVerification.status === 'approved';
+
+            if (bothApproved) {
+                buyer.status = 'approved';
+            }
+        }
+
+        await buyer.save();
+
+        const buyerToReturn = buyer.toObject();
+        delete buyerToReturn.password;
+
+        res.status(200).json({
+            success: true,
+            message: `${group} verification ${action}d successfully`,
+            data: buyerToReturn
+        });
+
+        if (action === 'reject') {
+            try {
+                const { subject, html } = reUploadDocumentEmail(
+                    buyer.email,
+                    group,
+                    rejectionReason.trim()
+                );
+                await sendEmail(buyer.email, subject, html);
+            } catch (emailErr) {
+                console.error("Rejection email failed to send:", emailErr);
+            }
+        }
+
+    } catch (err) {
+        console.log("Buyer document verification error : ", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
 };
 
 // add new seller
@@ -549,7 +637,7 @@ export const getAllSellers = async (req, res) => {
 
         const [sellers, totalCount] = await Promise.all([
             Seller.find(filter)
-                .select('fullName profileImage email phone businessName businessType licenseNumber status lastLoginAt createdAt createdBy isEmailVerified')
+                .select('fullName profileImage email phone businessName businessType licenseNumber status lastLoginAt createdAt createdBy isEmailVerified tradeLicense emiratesId bankStatement vatCertificate submittedAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -652,6 +740,11 @@ export const getSellerById = async (req, res) => {
         });
     };
 };
+
+// seller doc verification
+export const sellerDocVerification = async (req, res) => {
+    try{} catch(err){}
+}
 
 // get vehicles by seller
 export const getVehiclesBySeller = async (req, res) => {

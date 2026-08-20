@@ -12,6 +12,7 @@ import CustomDropdown from '../../SharedComponents/CustomDropDown';
 import DateInputField from '../Shared/DateInputField';
 import InputField from '../Shared/InputField';
 import { useAddNewBuyer } from '../../../hooks/useBuyer';
+import { useRef } from 'react';
 
 const initialFormState = {
     firstName: '', lastName: '', email: '', mobile: '',
@@ -19,7 +20,7 @@ const initialFormState = {
     identityDocType: '', addressDocType: '',
     frontImageUrl: null, backImageUrl: null, selfieImageUrl: null, documentUrl: null, landlordIdUrl: null,
     nationality: '', address: '', city: '',
-    country: '', pincode: '', buyerType: '', companyName: '', registrationNumber: '',
+    country: '', emirate: '', pincode: '', buyerType: '', companyName: '', registrationNumber: '',
     vatNumber: '', paymentMethod: '', kycStatus: '',
     isEmailVerified: false, isMobileVerified: false, accountStatus: '',
 };
@@ -168,6 +169,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
         address: '',
         city: '',
         country: '',
+        emirate: '',
         pincode: '',
         buyerType: '',
         companyName: '',
@@ -202,6 +204,15 @@ function AddNewBuyerForm({ setCurrentPage }) {
             { value: formData.email, label: "Email" },
             { value: formData.mobile, label: "Mobile Number" },
             { value: formData.dob, label: "Date Of Birth" },
+            { value: formData.country, label: "Country" },
+            { value: formData.emirate, label: "Emirate" },
+            { value: formData.city, label: "City" },
+            { value: formData.address, label: "Address" },
+            { value: formData.buyerType, label: "Buyer Type" },
+            { value: formData.paymentMethod, label: "Payment Method" },
+            { value: formData.frontImageUrl, label: "Identity Front Image" },
+            { value: formData.selfieImageUrl, label: "Selfie Image" },
+            { value: formData.documentUrl, label: "Address Document" },
         ];
 
         for (const field of requiredFields) {
@@ -210,10 +221,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
             }
         }
 
-        if (!formData.buyerType) {
-            return toast.error("Please select Buyer Type");
-        }
-
+        // Dealer / Business buyer
         if (["dealer", "business"].includes(formData.buyerType)) {
             if (!formData.companyName?.trim()) {
                 return toast.error("Company Name is required");
@@ -224,59 +232,106 @@ function AddNewBuyerForm({ setCurrentPage }) {
             }
         }
 
+        // Identity document type
         if (!formData.identityDocType) {
-    return toast.error("Please select Identity Document Type");
-}
+            return toast.error("Please select Identity Document Type");
+        }
 
-if (!formData.addressDocType) {
-    return toast.error("Please select Address Document Type");
-}
-
-        if (!formData.paymentMethod) {
-            return toast.error("Please select Payment Method");
+        // Address document type
+        if (!formData.addressDocType) {
+            return toast.error("Please select Address Document Type");
         }
 
         const submitData = new FormData();
 
         const directFields = [
-            'firstName', 'lastName', 'email', 'mobile', 
-            'dob', 'nationality', 'address', 'city', 'country', 'pincode',
-            'buyerType', 'companyName', 'registrationNumber', 'vatNumber',
-            'isEmailVerified', 'isMobileVerified'
+            'firstName',
+            'lastName',
+            'email',
+            'mobile',
+            'dob',
+            'nationality',
+            'address',
+            'city',
+            'country',
+            'emirate',
+            'pincode',
+            'buyerType',
+            'companyName',
+            'registrationNumber',
+            'vatNumber',
+            'isEmailVerified',
+            'isMobileVerified'
         ];
 
         directFields.forEach((key) => {
             const value = formData[key];
+
             if (value !== null && value !== undefined && value !== '') {
                 submitData.append(key, value);
             }
         });
 
-        // mapped fields — convert display value to backend enum value
+        // Mapped fields — convert display value to backend enum value
         if (formData.gender) {
-            submitData.append('gender', GENDER_MAP[formData.gender] || formData.gender);
+            submitData.append(
+                'gender',
+                GENDER_MAP[formData.gender] || formData.gender
+            );
         }
+
         if (formData.kycStatus) {
-            submitData.append('kycStatus', KYC_STATUS_MAP[formData.kycStatus] || formData.kycStatus);
+            submitData.append(
+                'kycStatus',
+                KYC_STATUS_MAP[formData.kycStatus] || formData.kycStatus
+            );
         }
+
         if (formData.accountStatus) {
-            submitData.append('accountStatus', ACCOUNT_STATUS_MAP[formData.accountStatus] || formData.accountStatus);
+            submitData.append(
+                'accountStatus',
+                ACCOUNT_STATUS_MAP[formData.accountStatus] || formData.accountStatus
+            );
         }
+
         if (formData.paymentMethod) {
-            submitData.append('paymentMethod', PAYMENT_METHOD_MAP[formData.paymentMethod] || formData.paymentMethod);
+            submitData.append(
+                'paymentMethod',
+                PAYMENT_METHOD_MAP[formData.paymentMethod] || formData.paymentMethod
+            );
         }
 
         if (formData.profileImageUrl) {
             submitData.append('profileImageUrl', formData.profileImageUrl);
         }
 
-        if (formData.identityDocType) submitData.append('identityDocType', formData.identityDocType);
-        if (formData.addressDocType) submitData.append('addressDocType', formData.addressDocType);
-        if (formData.frontImageUrl) submitData.append('frontImageUrl', formData.frontImageUrl);
-        if (formData.backImageUrl) submitData.append('backImageUrl', formData.backImageUrl);
-        if (formData.selfieImageUrl) submitData.append('selfieImageUrl', formData.selfieImageUrl);
-        if (formData.documentUrl) submitData.append('documentUrl', formData.documentUrl);
-        if (formData.landlordIdUrl) submitData.append('landlordIdUrl', formData.landlordIdUrl);
+        if (formData.identityDocType) {
+            submitData.append('identityDocType', formData.identityDocType);
+        }
+
+        if (formData.addressDocType) {
+            submitData.append('addressDocType', formData.addressDocType);
+        }
+
+        if (formData.frontImageUrl) {
+            submitData.append('frontImageUrl', formData.frontImageUrl);
+        }
+
+        if (formData.backImageUrl) {
+            submitData.append('backImageUrl', formData.backImageUrl);
+        }
+
+        if (formData.selfieImageUrl) {
+            submitData.append('selfieImageUrl', formData.selfieImageUrl);
+        }
+
+        if (formData.documentUrl) {
+            submitData.append('documentUrl', formData.documentUrl);
+        }
+
+        if (formData.landlordIdUrl) {
+            submitData.append('landlordIdUrl', formData.landlordIdUrl);
+        }
 
         isBuyerAdded(submitData, {
             onSuccess: (res) => {
@@ -286,9 +341,12 @@ if (!formData.addressDocType) {
                 setPhoneToggle(false);
             },
             onError: (err) => {
-                toast.error(err.response?.data?.message || "Failed to create new buyer");
+                toast.error(
+                    err.response?.data?.message ||
+                    "Failed to create new buyer"
+                );
             }
-        })
+        });
     };
 
     const handleCancel = () => {
@@ -347,9 +405,66 @@ if (!formData.addressDocType) {
 
                             <InputField label="Nationality" name="nationality" value={formData.nationality} onChange={updateField} />
 
-                            <InputField label="Address" name="address" value={formData.address} onChange={updateField} required />
+                            <CustomDropdown
+                                label="Country"
+                                placeholder="Select Country"
+                                options={['United Arab Emirates']}
+                                selected={
+                                    formData.country === 'united_arab_emirates'
+                                        ? 'United Arab Emirates'
+                                        : ''
+                                }
+                                onChange={(val) =>
+                                    updateField(
+                                        'country',
+                                        val === 'United Arab Emirates'
+                                            ? 'united_arab_emirates'
+                                            : ''
+                                    )
+                                }
+                                requiredField
+                            />
+
+                            <CustomDropdown
+                                label="Emirate"
+                                placeholder="Select Emirate"
+                                options={[
+                                    'Abu Dhabi',
+                                    'Dubai',
+                                    'Sharjah',
+                                    'Ajman',
+                                    'Umm Al Quwain',
+                                    'Ras Al Khaimah',
+                                    'Fujairah'
+                                ]}
+                                selected={
+                                    {
+                                        abu_dhabi: 'Abu Dhabi',
+                                        dubai: 'Dubai',
+                                        sharjah: 'Sharjah',
+                                        ajman: 'Ajman',
+                                        umm_al_quwain: 'Umm Al Quwain',
+                                        ras_al_khaimah: 'Ras Al Khaimah',
+                                        fujairah: 'Fujairah'
+                                    }[formData.emirate] || ''
+                                }
+                                onChange={(val) => {
+                                    const emirateMap = {
+                                        'Abu Dhabi': 'abu_dhabi',
+                                        'Dubai': 'dubai',
+                                        'Sharjah': 'sharjah',
+                                        'Ajman': 'ajman',
+                                        'Umm Al Quwain': 'umm_al_quwain',
+                                        'Ras Al Khaimah': 'ras_al_khaimah',
+                                        'Fujairah': 'fujairah'
+                                    };
+
+                                    updateField('emirate', emirateMap[val] || '');
+                                }}
+                                requiredField
+                            />
                             <InputField label="City" name="city" value={formData.city} onChange={updateField} required />
-                            <InputField label="Country" name="country" value={formData.country} onChange={updateField} required />
+                            <InputField label="Address" name="address" value={formData.address} onChange={updateField} required />
                             <InputField label="Zip/Postal Code" name="pincode" value={formData.pincode} onChange={updateField} />
                         </div>
                     </div>

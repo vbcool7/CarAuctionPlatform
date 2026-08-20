@@ -24,7 +24,7 @@ export const buyerRegistration = async (req, res) => {
         } = req.body;
 
         const baseMissing = !firstName || !lastName || !email || !mobile || !password || !confirmPassword ||
-            !dob  || !country || !emirate || !city || !address || !buyerType ||
+            !dob || !country || !emirate || !city || !address || !buyerType ||
             !identityDocType || !addressDocType || !paymentMethod;
 
         if (baseMissing) {
@@ -154,9 +154,9 @@ export const buyerRegistration = async (req, res) => {
     } catch (err) {
         if (req.files) await deleteCloudinaryFiles(req.files);
         console.error(err);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Server error" 
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
         });
     }
 };
@@ -189,6 +189,22 @@ export const buyerLogin = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 message: "Invalid Email or Password"
+            });
+        }
+
+        if (buyer.status === 'pending') {
+            return res.status(403).json({
+                success: false,
+                message: "Your account is awaiting admin approval. Please check back later.",
+                status: 'pending'
+            });
+        }
+
+        if (buyer.status === 'rejected') {
+            return res.status(403).json({
+                success: false,
+                message: "Your KYC verification was rejected. Please re-upload your documents to continue.",
+                status: 'rejected'
             });
         }
 

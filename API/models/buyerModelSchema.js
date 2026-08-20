@@ -73,6 +73,7 @@ const buyerSchema = new mongoose.Schema({
             enum: ['pending', 'approved', 'rejected'],
             default: 'pending'
         },
+        submittedAt: { type: Date },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
@@ -97,6 +98,7 @@ const buyerSchema = new mongoose.Schema({
             enum: ['pending', 'approved', 'rejected'],
             default: 'pending'
         },
+        submittedAt: { type: Date },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },

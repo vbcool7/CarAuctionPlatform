@@ -2,7 +2,11 @@
 import express from 'express';
 import { upload } from '../middlewares/imageStorage.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, getVehiclesBySeller, getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById } from '../controllers/adminController.js';
+import { 
+    adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, 
+    getAllSellers, toggleSellerVerification, getSellerById, getVehiclesBySeller, 
+    getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification 
+} from '../controllers/adminController.js';
 
 const router = express.Router();
 
@@ -50,7 +54,8 @@ router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
 
 router.get('/all-buyers-list', authMiddleware(['admin']), getAllBuyers);
 router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin']), toggleBuyerVerification);
-router.get('/get-buyer/:buyerId', authMiddleware(['admin']), getBuyerById);
+router.get('/get-buyer/:id', authMiddleware(['admin']), getBuyerById);
+router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin']), buyerDocVerification);
 
 router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
     sellerDocsUpload(req, res, (err) => {

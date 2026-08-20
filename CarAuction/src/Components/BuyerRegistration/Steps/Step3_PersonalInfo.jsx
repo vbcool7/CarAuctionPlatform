@@ -9,13 +9,25 @@ import useBuyerRegFormStore from '../../../store/useBuyerRegFormStore';
 
 function Step3_PersonalInfo({ onBack, onNext }) {
 
-  const [isOpen, setIsOpen] = useState(false);
-
-  const options = ["Indian", "Emirati", "American", "British", "Other"];
-  const countries = ["UAE", "India", "USA", "Saudi Arabia", "Qatar"];
-
-  const [isCountryOpen, setIsCountryOpen] = useState(false);
   const { formData, setField } = useBuyerRegFormStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEmirateOpen, setIsEmirateOpen] = useState(false);
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+
+  const emirates = [
+    { label: "Abu Dhabi", value: "abu_dhabi" },
+    { label: "Dubai", value: "dubai" },
+    { label: "Sharjah", value: "sharjah" },
+    { label: "Ajman", value: "ajman" },
+    { label: "Umm Al Quwain", value: "umm_al_quwain" },
+    { label: "Ras Al Khaimah", value: "ras_al_khaimah" },
+    { label: "Fujairah", value: "fujairah" }
+  ];
+
+  const nationalityOptions = ["Emirati"];
+  const countries = [
+    { label: "United Arab Emirates", value: "united_arab_emirates" }
+  ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,13 +47,14 @@ function Step3_PersonalInfo({ onBack, onNext }) {
     const age = Math.floor((new Date() - new Date(formData.dob)) / (365.25 * 24 * 60 * 60 * 1000));
     if (age < 18) return toast.error("You must be at least 18 years old to register");
 
-    if (!formData.nationality) return toast.error("Please select nationality");
-
     if (!formData.country) return toast.error("Please select country");
+
+    if (!formData.emirate) {
+      return toast.error("Please select emirate");
+    }
 
     if (!formData.city) return toast.error("City is required");
     if (!formData.address) return toast.error("Address is required");
-    if (!formData.pincode) return toast.error("Pincode is required");
 
     if (['dealer', 'business'].includes(formData.buyerType)) {
       if (!formData.companyName) return toast.error("Company Name is required");
@@ -83,7 +96,7 @@ function Step3_PersonalInfo({ onBack, onNext }) {
           {/* nationality */}
           <div className="relative w-full">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Nationality <span className='text-red-600'>*</span>
+              Nationality
             </label>
 
             {/* Dropdown Header */}
@@ -103,7 +116,7 @@ function Step3_PersonalInfo({ onBack, onNext }) {
             {/* Dropdown Menu */}
             {isOpen && (
               <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                {options.map((option) => (
+                {nationalityOptions.map((option) => (
                   <div
                     key={option}
                     onClick={() => {
@@ -123,37 +136,86 @@ function Step3_PersonalInfo({ onBack, onNext }) {
           {/* country */}
           <div className="relative w-full">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Country <span className='text-red-600'>*</span>
+              Country <span className="text-red-600">*</span>
             </label>
 
-            {/* Dropdown Header */}
             <div
               onClick={() => setIsCountryOpen(!isCountryOpen)}
               className={`w-full flex items-center justify-between px-4 py-2.5 border rounded-lg cursor-pointer transition-all duration-200
-              ${isCountryOpen ? 'border-[#D97706] ring-[#D97706]' : 'border-gray-200 hover:border-gray-300'}`}
+                ${isCountryOpen
+                  ? 'border-[#D97706] ring-[#D97706]'
+                  : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
-              <div className="flex items-center gap-2 text-gray-600">
-                <span className={!formData.country ? "text-gray-500" : "text-gray-700"}>
-                  {formData.country || "Select Country"}
-                </span>
-              </div>
-              <ChevronDown size={18} className={`text-gray-500 transition-transform ${isCountryOpen ? 'rotate-180' : ''}`} />
+              <span className={!formData.country ? "text-gray-500" : "text-gray-700"}>
+                {formData.country === "united_arab_emirates"
+                  ? "United Arab Emirates"
+                  : "Select Country"}
+              </span>
+
+              <ChevronDown
+                size={18}
+                className={`text-gray-500 transition-transform ${isCountryOpen ? 'rotate-180' : ''}`}
+              />
             </div>
 
-            {/* Dropdown Menu */}
             {isCountryOpen && (
-              <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-lg shadow-xl overflow-hidden">
                 {countries.map((option) => (
                   <div
-                    key={option}
+                    key={option.value}
                     onClick={() => {
-                      // setSelectedCountry(option);
-                      setField("country", option)
+                      setField("country", option.value);
                       setIsCountryOpen(false);
                     }}
                     className="px-4 py-3 hover:bg-orange-50 hover:text-[#D97706] cursor-pointer transition-colors"
                   >
-                    {option}
+                    {option.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* emirate */}
+          <div className="relative w-full">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Emirate <span className="text-red-600">*</span>
+            </label>
+
+            <div
+              onClick={() => setIsEmirateOpen(!isEmirateOpen)}
+              className={`w-full flex items-center justify-between px-4 py-2.5 border rounded-lg cursor-pointer transition-all duration-200
+      ${isEmirateOpen
+                  ? 'border-[#D97706] ring-[#D97706]'
+                  : 'border-gray-200 hover:border-gray-300'
+                }`}
+            >
+              <span className={!formData.emirate ? "text-gray-500" : "text-gray-700"}>
+                {formData.emirate
+                  ? emirates.find((item) => item.value === formData.emirate)?.label
+                  : "Select Emirate"}
+              </span>
+
+              <ChevronDown
+                size={18}
+                className={`text-gray-500 transition-transform ${isEmirateOpen ? 'rotate-180' : ''
+                  }`}
+              />
+            </div>
+
+            {isEmirateOpen && (
+              <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-lg shadow-xl overflow-hidden">
+                {emirates.map((option) => (
+                  <div
+                    key={option.value}
+                    onClick={() => {
+                      setField("emirate", option.value);
+                      setIsEmirateOpen(false);
+                    }}
+                    className="px-4 py-3 hover:bg-orange-50 hover:text-[#D97706] cursor-pointer transition-colors"
+                  >
+                    {option.label}
                   </div>
                 ))}
               </div>
@@ -191,7 +253,7 @@ function Step3_PersonalInfo({ onBack, onNext }) {
 
           <div className="col-span-1">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Postal Code <span className='text-red-600'>*</span>
+              Postal Code
             </label>
             <input
               type="text"

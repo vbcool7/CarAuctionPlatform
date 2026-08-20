@@ -38,7 +38,7 @@ export const useToggleBuyerVerification = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['buyers'] });
         },
-         onError: (err) => {
+        onError: (err) => {
             console.error('Toggle verification failed:', err);
             toast.error(err?.response?.data?.message || "Failed to update verification status");
         },
@@ -46,13 +46,32 @@ export const useToggleBuyerVerification = () => {
 };
 
 // get buyer by id
-export const useGetBuyerById = (buyerId) => {
+export const useGetBuyerById = (id) => {
     return useQuery({
-        queryKey: ['buyer', buyerId],
+        queryKey: ['buyer', id],
         queryFn: async () => {
-            const res = await API.get(`/admin/get-buyer/${buyerId}`);
+            const res = await API.get(`/admin/get-buyer/${id}`);
             return res.data;
         },
-        enabled: !!buyerId,
+        enabled: !!id,
+    });
+};
+
+// verify buyer doc
+export const useVerifyBuyerDoc = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, group, action, rejectionReason }) => {
+            const res = await API.patch(`/admin/buyer-document-verification/${id}/${group}`, { action, rejectionReason });
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['buyers'] });
+        },
+        onError: (err) => {
+            console.error('Error in verify buyer:', err);
+            toast.error(err?.response?.data?.message || "Failed to verify");
+        },
     });
 };

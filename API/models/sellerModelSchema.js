@@ -174,6 +174,7 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
     emiratesId: {
@@ -184,6 +185,7 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
     bankStatement: {
@@ -194,11 +196,13 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
     vatCertificate: {
-        url: { type: String }, // optional overall, so no conditional required
+        url: { type: String }, 
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
 
