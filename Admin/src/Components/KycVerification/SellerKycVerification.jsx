@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { BadgeCheck, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Download, Eye, FileText, Info, LayoutGrid, ShieldCheck, XCircle, Clock } from 'lucide-react';
-import FilterDropdown from '../SharedComponents/FilterDropdown';
-import { verificationData } from '../Data';
 import { useState } from 'react';
 import { useGetAllSellers } from '../../hooks/useSeller';
 import { getPaginationRange } from '../utils/getPaginationRange';
@@ -46,22 +44,6 @@ const sellerKycStats = [
     },
 ];
 
-const VerificationBadge = ({ status, label }) => {
-    const config = {
-        verified: { icon: CheckCircle2, classes: "bg-emerald-50/50 border-emerald-200 text-emerald-700" },
-        rejected: { icon: XCircle, classes: "bg-rose-50/50 border-rose-200 text-rose-700" },
-        pending: { icon: Clock, classes: "bg-amber-50/50 border-amber-200 text-amber-700" },
-    };
-    const { icon: Icon, classes } = config[status] || config.pending;
-    return (
-        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium ${classes}`}>
-            <FileText className="w-3 h-3" />
-            <span>{label}</span>
-            <Icon className="w-3 h-3" />
-        </div>
-    );
-};
-
 function SellerKycVerification({ setSelectedSellerKycId, setCurrentPage }) {
 
     const [page, setPage] = useState(1);
@@ -77,6 +59,9 @@ function SellerKycVerification({ setSelectedSellerKycId, setCurrentPage }) {
         { id: 'verified', label: 'Verified' },
         { id: 'rejected', label: 'Rejected' },
     ];
+
+    if (isLoading) return <p className="p-10 text-center">Loading seller list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load seller list</p>;
 
     return (
         <div>
@@ -178,9 +163,8 @@ function SellerKycVerification({ setSelectedSellerKycId, setCurrentPage }) {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="text-xs text-gray-800 uppercase bg-gray-100 border-b border-gray-200">
-                            <th className="px-6 py-4 font-semibold min-w-65">
-                                User Details
-                            </th>
+                            <th className="px-6 py-4 min-w-28">ID</th>
+                            <th className="px-6 py-4 font-semibold min-w-65">User Details</th>
 
                             <th className="px-6 py-4 font-medium min-w-55">
                                 Business Name
@@ -215,10 +199,14 @@ function SellerKycVerification({ setSelectedSellerKycId, setCurrentPage }) {
                                     key={seller._id || index}
                                     className="hover:bg-gray-50 transition-colors"
                                 >
+                                    {/* ID */}
+                                    <td className="px-6 py-4 text-xs font-medium text-[#0B1E3D]">
+                                        {seller.sellerId || '---'}
+                                    </td>
+
                                     {/* User Details */}
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            {/* Avatar */}
                                             <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 shrink-0">
                                                 {seller.profileImage ? (
                                                     <img
@@ -265,21 +253,30 @@ function SellerKycVerification({ setSelectedSellerKycId, setCurrentPage }) {
                                     {/* Documents */}
                                     <td className="px-6 py-4">
                                         <span className="text-sm font-medium text-gray-700">
-                                            {seller.documentVerification?.verifiedCount || 0}/4 verified
+                                            {(() => {
+                                                const docs = ['tradeLicense', 'emiratesId', 'bankStatement', 'vatCertificate'];
+                                                const applicable = docs.filter(d => seller[d]?.url); 
+                                                const verified = applicable.filter(d => seller[d]?.status === 'approved').length;
+                                                return `${verified}/${applicable.length} verified`;
+                                            })()}
                                         </span>
                                     </td>
 
                                     {/* Submitted On */}
                                     <td className="px-6 py-4">
                                         <p className="text-sm text-gray-700">
-                                            {seller.submittedAt
-                                                ? new Date(seller.submittedAt).toLocaleDateString("en-GB")
+                                            {seller.createdAt
+                                                ? new Date(seller.createdAt).toLocaleDateString("en-GB", {
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric"
+                                                })
                                                 : "-"}
                                         </p>
 
-                                        {seller.submittedAt && (
+                                        {seller.createdAt && (
                                             <p className="text-xs text-gray-400 mt-1">
-                                                {new Date(seller.submittedAt).toLocaleTimeString([], {
+                                                {new Date(seller.createdAt).toLocaleTimeString([], {
                                                     hour: "2-digit",
                                                     minute: "2-digit",
                                                 })}

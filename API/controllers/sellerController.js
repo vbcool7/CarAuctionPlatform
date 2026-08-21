@@ -74,10 +74,6 @@ export const registerStep1 = async (req, res) => {
         }
 
         // if draft exist - then continue from prev steps form
-        // const existingDraft = await Seller.findOne({
-        //     $or: [{ email }, { phone }],
-        //     isComplete: false
-        // });
         const existingDraft = await Seller.findOne({
             $or: [{ email }, { phone }],
             isComplete: false

@@ -346,7 +346,7 @@ export const buildBuyerWelcomeEmail = (email, rawPassword) => {
 
                                     <div style="text-align:center; margin:28px 0;">
                                         <a
-                                            href="${process.env.LOGIN_URL}"
+                                            href="${process.env.LOGIN_URL || 'http://localhost:5173/login'}"
                                             style="
                                                 display:inline-block;
                                                 background:#D97706;
@@ -565,8 +565,8 @@ export const buildPendingBuyerActivationEmail = () => {
     return { subject, html };
 };
 
-// doc re-upload 
-export const reUploadDocumentEmail = (email, group, rejectionReason) => {
+// doc re-upload : buyer / seller
+export const reUploadDocumentEmail = (email, group, rejectionReason, link) => {
     const subject = "Action Required: Please Re-upload Your Document";
     const html = `
         <!DOCTYPE html>
@@ -630,6 +630,143 @@ export const reUploadDocumentEmail = (email, group, rejectionReason) => {
 
                                                 <p style="margin:0 0 15px; font-size:15px; font-weight:bold; color:#0B1E3D;">
                                                     ${group}
+                                                </p>
+
+                                                <p style="margin:0 0 8px; font-size:13px; color:#64748b;">
+                                                    Reason for rejection
+                                                </p>
+
+                                                <p style="margin:0; font-size:14px; line-height:1.6; color:#475569;">
+                                                    ${rejectionReason}
+                                                </p>
+
+                                            </td>
+                                        </tr>
+
+                                    </table>
+
+                                    <p style="margin:20px 0; font-size:14px; line-height:1.7;">
+                                        Please re-submit the required document to complete your verification.
+                                    </p>
+
+                                    <!-- CTA -->
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td align="center" style="padding:10px 0 20px;">
+
+                                                <a href="${link}"
+                                                    style="display:inline-block; background-color:#D97706; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:7px; font-size:14px; font-weight:bold;">
+                                                    Re-upload Document
+                                                </a>
+
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <p style="margin:10px 0 0; font-size:13px; line-height:1.6; color:#64748b;">
+                                        If you believe this rejection was made in error, please
+                                        contact our support team.
+                                    </p>
+
+                                    <p style="margin:25px 0 0; font-size:14px; line-height:1.6;">
+                                        Regards,<br />
+                                        <strong style="color:#0B1E3D;">BidDrive Team</strong>
+                                    </p>
+
+                                </td>
+                            </tr>
+
+                            <!-- Footer -->
+                            <tr>
+                                <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; padding:18px 30px; text-align:center;">
+
+                                    <p style="margin:0; font-size:11px; color:#94a3b8;">
+                                        This is an automated email. Please do not reply directly to this email.
+                                    </p>
+
+                                    <p style="margin:8px 0 0; font-size:11px; color:#94a3b8;">
+                                        © ${new Date().getFullYear()} BidDrive. All rights reserved.
+                                    </p>
+
+                                </td>
+                            </tr>
+
+                        </table>
+
+                    </td>
+                </tr>
+            </table>
+
+        </body>
+        </html>
+    `;
+    return { subject, html };
+};
+
+export const reUploadSellerDocumentEmail = (email, document, rejectionReason) => {
+    const subject = "Action Required: Please Re-upload Your Document";
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Document Re-upload Required</title>
+        </head>
+
+        <body style="margin:0; padding:0; background-color:#f8fafc; font-family:Arial, Helvetica, sans-serif; color:#334155;">
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc; padding:40px 15px;">
+                <tr>
+                    <td align="center">
+
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                            style="max-width:600px; background-color:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+
+                            <!-- Header -->
+                            <tr>
+                                <td style="background-color:#0B1E3D; padding:24px 30px; text-align:center;">
+                                    <h1 style="margin:0; color:#ffffff; font-size:22px;">
+                                        BidDrive
+                                    </h1>
+
+                                    <p style="margin:8px 0 0; color:#cbd5e1; font-size:13px;">
+                                        Document Verification
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Content -->
+                            <tr>
+                                <td style="padding:35px 30px;">
+
+                                    <h2 style="margin:0 0 15px; color:#0B1E3D; font-size:20px;">
+                                        Document Re-upload Required
+                                    </h2>
+
+                                    <p style="margin:0 0 20px; font-size:14px; line-height:1.7;">
+                                        Hello,
+                                    </p>
+
+                                    <p style="margin:0 0 20px; font-size:14px; line-height:1.7;">
+                                        We reviewed your verification documents and found that
+                                        one of the submitted documents could not be approved.
+                                        Please re-upload a valid document to complete your verification.
+                                    </p>
+
+                                    <!-- Document Details -->
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                        style="background-color:#fff7ed; border:1px solid #fed7aa; border-radius:8px; margin:20px 0;">
+
+                                        <tr>
+                                            <td style="padding:18px;">
+
+                                                <p style="margin:0 0 8px; font-size:13px; color:#64748b;">
+                                                    Document
+                                                </p>
+
+                                                <p style="margin:0 0 15px; font-size:15px; font-weight:bold; color:#0B1E3D;">
+                                                    ${document}
                                                 </p>
 
                                                 <p style="margin:0 0 8px; font-size:13px; color:#64748b;">

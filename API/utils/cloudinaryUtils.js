@@ -1,7 +1,7 @@
 
 import cloudinary from '../config/cloudinary.js';
 
-//delete file or files - when err occur
+// =============== In used : delete file or files - when err occur
 export const deleteCloudinaryFiles = async (fileData) => {
     try {
         if (!fileData) return;
@@ -67,5 +67,28 @@ export const deleteProductAssetsFromCloudinary = async (urls) => {
         console.log(`Processed ${urls.length} images for deletion.`);
     } catch (error) {
         console.error("Error in deleteProductAssetsFromCloudinary:", error);
+    }
+};
+
+// ============== new: extract public_id from a Cloudinary URL and delete the file
+export const deleteOldFileFromCloudinary = async (url) => {
+    try {
+        if (!url || typeof url !== 'string') return;
+
+        // matches: .../upload/v123456789/folder/subfolder/filename.ext
+        const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
+
+        if (!match || !match[1]) {
+            console.error("Could not extract public_id from URL:", url);
+            return;
+        }
+
+        const publicId = match[1];
+        const resourceType = url.includes('.pdf') ? 'raw' : 'image';
+
+        await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+        console.log(`Deleted old file: ${publicId}`);
+    } catch (error) {
+        console.error("Error deleting old Cloudinary file:", error);
     }
 };

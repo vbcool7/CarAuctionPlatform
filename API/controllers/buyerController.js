@@ -1,6 +1,6 @@
 
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { decode } from 'jsonwebtoken';
 import Buyer from '../models/buyerModelSchema.js';
 import OTP from '../models/otpModelSchema.js';
 import sendEmail from '../utils/sendEmail.js';
@@ -418,6 +418,124 @@ export const getBuyer = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
+        });
+    }
+};
+
+// re-upload docs
+export const reuploadBuyerDocs = async (req, res) => {
+    try {
+        const { buyer_id, group, token } = req.params;
+
+        if (!['identity', 'address'].includes(group)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification group"
+            });
+        }
+
+        let decoded;
+        try {
+            const secret = process.env.JWT_SECRET_KEY;
+            decoded = jwt.verify(token, secret);
+        } catch (jwtErr) {
+            return res.status(400).json({
+                success: false,
+                message: "Reupload link is invalid or has expired"
+            });
+        }
+
+        if (decoded.purpose !== 'kyc_reupload' || decoded.id !== buyer_id || decoded.group !== group) {
+            return res.status(400).json({
+                success: false,
+                message: "Reupload link is invalid"
+            });
+        }
+
+        const buyer = await Buyer.findById(buyer_id);
+
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        // if (buyer.reuploadTokenUsed) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: "This reupload link has already been used. Please contact support for a new link."
+        //     });
+        // }
+
+        const fieldKey = group === 'identity' ? 'identityVerification' : 'addressVerification';
+
+        if (buyer[fieldKey].status !== 'rejected') {
+            return res.status(400).json({
+                success: false,
+                message: "This document is not pending reupload, or the link has already been used"
+            });
+        }
+
+        if (group === 'identity') {
+            if (!req.files?.frontImageUrl?.[0] || !req.files?.selfieImageUrl?.[0]) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Front image and selfie are required"
+                });
+            }
+
+            buyer.identityVerification.frontImageUrl = req.files.frontImageUrl[0].path;
+            buyer.identityVerification.selfieImageUrl = req.files.selfieImageUrl[0].path;
+
+            if (req.files.backImageUrl?.[0]) {
+                buyer.identityVerification.backImageUrl = req.files.backImageUrl[0].path;
+            }
+
+            if (req.body.documentType) {
+                buyer.identityVerification.documentType = req.body.documentType;
+            }
+        } else {
+            if (!req.files?.documentUrl?.[0]) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Document is required"
+                });
+            }
+
+            buyer.addressVerification.documentUrl = req.files.documentUrl[0].path;
+
+            if (req.files.landlordIdUrl?.[0]) {
+                buyer.addressVerification.landlordIdUrl = req.files.landlordIdUrl[0].path;
+            }
+
+            if (req.body.documentType) {
+                buyer.addressVerification.documentType = req.body.documentType;
+            }
+        }
+
+        buyer[fieldKey].status = 'pending';
+        buyer[fieldKey].rejectionReason = undefined;
+        // reviewedAt intentionally left untouched — confirmed earlier
+
+        // buyer.reuploadTokenUsed = true;
+
+        await buyer.save();
+
+        const buyerToReturn = buyer.toObject();
+        delete buyerToReturn.password;
+
+        return res.status(200).json({
+            success: true,
+            message: `${group} document re-submitted for review`,
+            data: buyerToReturn
+        });
+
+    } catch (err) {
+        console.log("Reupload Buyer Docs Error: ", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

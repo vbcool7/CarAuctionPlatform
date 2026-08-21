@@ -32,6 +32,7 @@ import BuyerRegistrationPage from './Pages/BuyerRegistrationPage';
 import SellerRegistration from './Components/SellerRegistration/SellerRegistration';
 import BuyerPanelPage from './Pages/BuyerPanelPage';
 import SellerPanelPage from './Pages/SellerPanelPage';
+import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 
 function App() {
   return (
@@ -77,6 +78,8 @@ function App() {
           <Route path='/login' element={<LoginForm />} />
           <Route path='/forgot-password' element={<ForgotPassword />} />
           <Route path='/reset-password/:id/:token' element={<ResetPassword />} />
+
+          <Route path='/reupload-buyer-docs/:buyer_id/:token/:group' element={<ReUploadBuyerDocs />} />
         </Route>
 
         {/* ============ auth ============= */}

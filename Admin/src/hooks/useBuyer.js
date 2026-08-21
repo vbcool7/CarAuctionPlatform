@@ -15,18 +15,18 @@ export const useAddNewBuyer = () => {
 };
 
 // all buyers list
-export const useGetAllBuyers = (page=1, limit=10) => {
+export const useGetAllBuyers = (page = 1, limit = 10) => {
     return useQuery({
         queryKey: ['buyers', page, limit],
         queryFn: async () => {
             const res = await API.get(`/admin/all-buyers-list?page=${page}&limit=${limit}`);
             return res.data;
         },
-        keepPreviousData: true, 
+        keepPreviousData: true,
     });
 };
 
-// toggle buyer verification
+// toggle buyer verification - email
 export const useToggleBuyerVerification = () => {
     const queryClient = useQueryClient();
 
@@ -48,7 +48,7 @@ export const useToggleBuyerVerification = () => {
 // get buyer by id
 export const useGetBuyerById = (id) => {
     return useQuery({
-        queryKey: ['buyer', id],
+        queryKey: ['buyerDetail', id],
         queryFn: async () => {
             const res = await API.get(`/admin/get-buyer/${id}`);
             return res.data;
@@ -68,6 +68,7 @@ export const useVerifyBuyerDoc = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['buyers'] });
+            queryClient.invalidateQueries({ queryKey: ['buyerDetail'] });
         },
         onError: (err) => {
             console.error('Error in verify buyer:', err);

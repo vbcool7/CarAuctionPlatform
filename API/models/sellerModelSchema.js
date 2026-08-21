@@ -6,6 +6,10 @@ const sellerSchema = new mongoose.Schema({
         type: String,
         default: 'seller'
     },
+    // sellerId: { 
+    //     type: String, 
+    //     unique: true 
+    // },
     registrationStep: {
         type: Number,
         default: 1

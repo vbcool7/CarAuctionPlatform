@@ -5,7 +5,8 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 import { 
     adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, 
     getAllSellers, toggleSellerVerification, getSellerById, getVehiclesBySeller, 
-    getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification 
+    getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
+    sellerDocVerification,  
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -80,6 +81,7 @@ router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
 router.get('/all-sellers-list', authMiddleware(['admin']), getAllSellers);
 router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin']), toggleSellerVerification);
 router.get('/get-seller/:sellerId', authMiddleware(['admin']), getSellerById);
+router.patch('/seller-document-verification/:id/:document', authMiddleware(['admin']), sellerDocVerification);
 
 router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehiclesBySeller);
 router.get('/get-vehicle/:vehicleId', authMiddleware(['admin']), getVehicleById);

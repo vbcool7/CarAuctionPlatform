@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, ChevronRight, XCircle, Check, X, FileText, Info, ZoomIn, X as CloseIcon } from 'lucide-react';
-import { verificationData } from '../Data';
+import { ArrowLeft,ChevronRight, Check, X, FileText, Info, ZoomIn, X as CloseIcon } from 'lucide-react';
 import { useGetBuyerById, useVerifyBuyerDoc } from '../../hooks/useBuyer';
 import toast from 'react-hot-toast';
 
@@ -26,22 +25,6 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
     const { mutate: verifyBuyerDoc, isPending: isUpdating } = useVerifyBuyerDoc();
 
     const record = buyerData?.data;
-
-    const [docStatuses, setDocStatuses] = useState({
-        identity: {
-            status: record?.identityVerification?.status || 'pending',
-            rejectionReason:
-                record?.identityVerification?.rejectionReason || null,
-            rejectionNotes: null,
-        },
-
-        address: {
-            status: record?.addressVerification?.status || 'pending',
-            rejectionReason:
-                record?.addressVerification?.rejectionReason || null,
-            rejectionNotes: null,
-        },
-    });
 
     // Reject modal state
     const [rejectModalDoc, setRejectModalDoc] = useState(null); // doc type string or null
@@ -97,33 +80,19 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
             { id: record._id, group: docType, action: 'approve', rejectionReason: undefined },
             {
                 onSuccess: () => {
-                    setDocStatuses((prev) => ({
-                        ...prev,
-                        [docType]: { status: 'approved', rejectionReason: null, rejectionNotes: null }
-                    }));
-
                     toast.success("Status Approved");
                 }
             }
         )
     };
-    
+
     // reject handler
     const confirmReject = () => {
         verifyBuyerDoc(
             { id: record._id, group: rejectModalDoc, action: 'reject', rejectionReason: reasonInput },
             {
                 onSuccess: () => {
-                    setDocStatuses((prev) => ({
-                        ...prev,
-                        [rejectModalDoc]: {
-                            status: 'rejected',
-                            rejectionReason: reasonInput,
-                            rejectionNotes: notesInput
-                        }
-                    }));
                     setRejectModalDoc(null);
-
                     toast.success("Status Rejected");
                 }
             }
@@ -134,17 +103,6 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
         setRejectModalDoc(docType);
         setReasonInput(REJECTION_REASONS[0]);
         setNotesInput('');
-    };
-
-    const handleTopApprove = () => {
-        if (approveDisabled) return;
-        // No backend yet — stub only
-        console.log('Approve application', record.id, docStatuses);
-    };
-
-    const handleTopReject = () => {
-        // No backend yet — stub only
-        console.log('Reject application', record.id, docStatuses);
     };
 
     const statusBadge = (status) => {
@@ -172,7 +130,6 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
             </span>
         );
     };
-
 
     // reject popup modal
     const groupLabel = { identity: 'Identity Verification', address: 'Address Verification' }[rejectModalDoc];
@@ -278,6 +235,7 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
 
                 {/* Right: documents */}
                 <div className="lg:col-span-2 space-y-6">
+
                     {/* Documents Submitted */}
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
@@ -286,8 +244,8 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {VERIFICATION_GROUPS.map((group) => {
-                                const current = docStatuses[group.key];
                                 const source = record[group.sourceField];
+                                const current = source || { status: 'pending', rejectionReason: null };
 
                                 return (
                                     <div
@@ -554,9 +512,7 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
                         </div>
                     </div>
 
-                    {/* =====================================================
-        FULL SIZE DOCUMENT PREVIEW MODAL
-    ===================================================== */}
+                    {/* FULL SIZE DOCUMENT PREVIEW MODAL */}
                     {previewImage && (
                         <div
                             className="fixed inset-0 z-70 flex items-center justify-center bg-black/80 p-4"

@@ -29,9 +29,9 @@ const buyerSchema = new mongoose.Schema({
     // Step 3
     dob: { type: Date },
     nationality: { type: String },
-    country: { 
-        type: String, 
-        enum: ['united_arab_emirates'], 
+    country: {
+        type: String,
+        enum: ['united_arab_emirates'],
     },
     emirate: {
         type: String,

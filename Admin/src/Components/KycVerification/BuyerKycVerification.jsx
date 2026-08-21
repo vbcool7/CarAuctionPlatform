@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { BadgeCheck, Calendar, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Download, Eye, FileText, Info, LayoutGrid, ShieldCheck, XCircle, Clock } from 'lucide-react';
-import FilterDropdown from '../SharedComponents/FilterDropdown';
-import { verificationData } from '../Data';
 import { useState } from 'react';
 import { useGetAllBuyers } from '../../hooks/useBuyer';
 import { getPaginationRange } from '../utils/getPaginationRange';
@@ -46,22 +44,6 @@ const buyerKycStats = [
     },
 ];
 
-const VerificationBadge = ({ status, label }) => {
-    const config = {
-        verified: { icon: CheckCircle2, classes: "bg-emerald-50/50 border-emerald-200 text-emerald-700" },
-        rejected: { icon: XCircle, classes: "bg-rose-50/50 border-rose-200 text-rose-700" },
-        pending: { icon: Clock, classes: "bg-amber-50/50 border-amber-200 text-amber-700" },
-    };
-    const { icon: Icon, classes } = config[status] || config.pending;
-    return (
-        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium ${classes}`}>
-            <FileText className="w-3 h-3" />
-            <span>{label}</span>
-            <Icon className="w-3 h-3" />
-        </div>
-    );
-};
-
 function BuyerKycVerification({ setSelectedBuyerKycId, setCurrentPage }) {
 
     const [page, setPage] = useState(1);
@@ -78,6 +60,9 @@ function BuyerKycVerification({ setSelectedBuyerKycId, setCurrentPage }) {
         { id: 'verified', label: 'Verified' },
         { id: 'rejected', label: 'Rejected' },
     ];
+
+    if (isLoading) return <p className="p-10 text-center">Loading buyer list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load buyer list</p>;
 
     return (
         <div>
@@ -198,7 +183,7 @@ function BuyerKycVerification({ setSelectedBuyerKycId, setCurrentPage }) {
                             >
                                 {/* ID */}
                                 <td className="px-6 py-4 text-xs font-medium text-[#0B1E3D]">
-                                    {buyer.buyerId}
+                                    {buyer.buyerId || '---'}
                                 </td>
 
                                 {/* User Details */}

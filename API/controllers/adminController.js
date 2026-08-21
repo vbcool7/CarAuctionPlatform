@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
-import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail } from '../utils/emailTemplates.js';
+import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId } from '../utils/counterHelper.js';
 
@@ -494,10 +494,17 @@ export const buyerDocVerification = async (req, res) => {
 
         if (action === 'reject') {
             try {
+                const secret = process.env.JWT_SECRET_KEY;
+                const token = jwt.sign({ id: buyer._id, group, purpose: 'kyc_reupload' }, secret, { expiresIn: '7d' });
+
+                const frontendUrl = process.env.REUPLOAD_DOC_URL || "http://localhost:5173/reupload-buyer-docs";
+                const link = `${frontendUrl}/${buyer._id}/${token}/${group}`;
+
                 const { subject, html } = reUploadDocumentEmail(
                     buyer.email,
                     group,
-                    rejectionReason.trim()
+                    rejectionReason.trim(),
+                    link
                 );
                 await sendEmail(buyer.email, subject, html);
             } catch (emailErr) {
@@ -743,8 +750,90 @@ export const getSellerById = async (req, res) => {
 
 // seller doc verification
 export const sellerDocVerification = async (req, res) => {
-    try{} catch(err){}
-}
+    try {
+        const { id, document } = req.params;
+        const { action, rejectionReason } = req.body;
+
+        const allowedDocuments = ['tradeLicense', 'emiratesId', 'bankStatement', 'vatCertificate'];
+
+        if (!allowedDocuments.includes(document)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification document"
+            });
+        }
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: "Action must be 'approve' or 'reject'"
+            });
+        }
+
+        if (action === 'reject' && !rejectionReason?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Rejection reason is required"
+            });
+        }
+
+        const seller = await Seller.findById(id);
+
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        // add here doc
+        seller[document].status = action === 'approve' ? 'approved' : 'rejected';
+        seller[document].reviewedAt = new Date();
+        seller[document].rejectionReason = action === 'reject' ? rejectionReason.trim() : '';
+
+        // --- NEW: recompute overall seller.status ---
+        const mandatoryDocs = ['tradeLicense', 'emiratesId', 'bankStatement'];
+        const allDocs = [...mandatoryDocs, 'vatCertificate'];
+
+        const hasRejected = allDocs.some(d => seller[d]?.url && seller[d].status === 'rejected');
+        const mandatoryApproved = mandatoryDocs.every(d => seller[d]?.status === 'approved');
+        const vatOk = !seller.vatCertificate?.url || seller.vatCertificate.status === 'approved';
+
+        seller.status = hasRejected ? 'pending' : (mandatoryApproved && vatOk ? 'approved' : 'pending');
+
+        await seller.save();
+
+        const sellerToReturn = seller.toObject();
+        delete sellerToReturn.password;
+
+        res.status(200).json({
+            success: true,
+            message: `${document} verification ${action}d successfully`,
+            data: sellerToReturn
+        });
+
+        if (action === 'reject') {
+            try {
+                const { subject, html } = reUploadSellerDocumentEmail(
+                    seller.email,
+                    document,
+                    rejectionReason.trim()
+                );
+                await sendEmail(seller.email, subject, html);
+            } catch (emailErr) {
+                console.error("Rejection email failed to send:", emailErr);
+            }
+        }
+    } catch (err) {
+        console.error("Seller document verification error:", err);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to update document verification",
+            error: err.message
+        });
+    }
+};
 
 // get vehicles by seller
 export const getVehiclesBySeller = async (req, res) => {

@@ -2,7 +2,6 @@
 import React from 'react';
 import { useState } from 'react';
 import { Users, CheckCircle2, UserCheck, UserX, ArrowUp, ArrowDown, SlidersHorizontal, Edit2, PauseCircle, Trash2, ShieldCheck, X, } from 'lucide-react';
-import { dummyBuyers } from '../Data';
 import UserManagementHeader from './UserManagementHeader';
 import DeleteModal from './Shared/DeleteModal';
 import SearchBar from '../SharedComponents/SearchBar';

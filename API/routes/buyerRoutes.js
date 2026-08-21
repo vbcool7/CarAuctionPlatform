@@ -3,7 +3,10 @@ import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/imageStorage.js';
 
-import { buyerRegistration, buyerLogin, buyerForgotPass, buyerResetpassword, buyerLogout, getBuyer, buyerChangePassword } from '../controllers/buyerController.js';
+import { 
+    buyerRegistration, buyerLogin, buyerForgotPass, buyerResetpassword, buyerLogout, 
+    getBuyer, buyerChangePassword, reuploadBuyerDocs 
+} from '../controllers/buyerController.js';
 
 const router = express.Router();
 
@@ -23,5 +26,7 @@ router.post('/buyer-reset-password/:buyer_id/:token', buyerResetpassword);
 router.post('/buyer-logout', authMiddleware(['buyer']), buyerLogout);
 router.get('/buyer-get/:buyer_id', authMiddleware(['buyer']), getBuyer);
 router.put('/buyer-change-password', authMiddleware(['buyer']), buyerChangePassword);
+
+router.patch('/buyer-reupload/:buyer_id/:token/:group', buyerUploads, reuploadBuyerDocs);
 
 export default router;

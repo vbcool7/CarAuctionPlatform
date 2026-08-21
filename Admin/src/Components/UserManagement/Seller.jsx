@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react'
-import { dummySeller } from '../Data';
 import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Search, Filter, Calendar, Edit2, PauseCircle, Trash2, Eye, SlidersHorizontal, ShieldCheck, X } from 'lucide-react';
 import UserManagementHeader from './UserManagementHeader';
 import SearchBar from '../SharedComponents/SearchBar';
@@ -48,24 +47,6 @@ const sellerStats = [
     subTextColor: "text-red-500",
     isPositive: false
   }
-];
-
-const filterConfig = [
-  {
-    label: 'Seller Type',
-    key: 'sellerType',
-    options: ['All', 'Dealer', 'Individual'],
-  },
-  {
-    label: 'Status',
-    key: 'status',
-    options: ['All', 'Active', 'Inactive', 'Suspended'],
-  },
-  {
-    label: 'Trade License',
-    key: 'tradeLicense',
-    options: ['All', 'Verified', 'Pending', 'Expired', "Not Applicable"],
-  },
 ];
 
 const sellerTypeConfig = {
