@@ -108,3 +108,22 @@ export const useSellerGet = () => {
         enabled: !!token,
     });
 };
+
+// reupload seller doc
+export const useReuploadSellerDoc = () => {
+    return useMutation({
+        mutationKey: ['reuploadSellerDoc'],
+        mutationFn: async ({ seller_id, token, document, file }) => {
+            const formData = new FormData();
+
+            formData.append(document, file);
+
+            const res = await API.patch(`/seller/seller-reupload/${seller_id}/${token}/${document}`, formData);
+            return res.data;
+        },
+        onError: (err) => {
+            console.error("Re-upload seller docs failed:", err);
+            toast.error( err?.response?.data?.message || "Failed to re-upload documents");
+        }
+    });
+};

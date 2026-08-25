@@ -22,19 +22,27 @@ export const useBuyerLogin = () => {
     });
 };
 
-export const useBuyerForgotPassword = () => {
+// buyer + seller
+export const useForgotPassword = () => {
     return useMutation({
-        mutationFn: async ({ email }) => {
-            const res = await API.post('/buyer/buyer-forgot-password', { email });
+        mutationFn: async ({ email, role }) => {
+            const endpoint = role === 'buyer' ? '/buyer/buyer-forgot-password' : '/seller/seller-forgot-password'
+            const res = await API.post(endpoint, { email });
             return res.data;
         }
     });
 };
 
-export const useBuyerResetpassword = () => {
+// buyer + seller
+export const useResetpassword = () => {
     return useMutation({
-        mutationFn: async ({ id, token, password, confirmPassword }) => {
-            const res = await API.post(`/buyer/buyer-reset-password/${id}/${token}`, { password, confirmPassword });
+        mutationFn: async ({ id, token, password, confirmPassword, role }) => {
+
+            const endpoint = role === 'buyer'
+                ? `/buyer/buyer-reset-password/${id}/${token}`
+                : `/seller/seller-reset-password/${id}/${token}`;
+
+            const res = await API.post(endpoint, { password, confirmPassword });
             return res.data;
         }
     });
@@ -54,7 +62,7 @@ export const useBuyerGet = (buyer_id) => {
 // reupload buyer doc
 export const useReuploadBuyerDoc = () => {
     return useMutation({
-        mutationKey: ['reuploadDoc'],
+        mutationKey: ['reuploadBuyerDoc'],
         mutationFn: async ({ buyer_id, group, token, files, documentType }) => {
             const formData = new FormData();
 

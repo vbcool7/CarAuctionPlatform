@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
 import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
-import { getNextBuyerId } from '../utils/counterHelper.js';
+import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
 
 import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
@@ -581,6 +581,7 @@ export const addNewSeller = async (req, res) => {
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
         const seller = await Seller.create({
+            sellerId: await getNextSellerId(),
             fullName, email, phone,
             password: hashedPassword,
             businessName, businessType, licenseNumber, vatNumber, businessYear, employees, website, businessDescription,
@@ -814,10 +815,21 @@ export const sellerDocVerification = async (req, res) => {
 
         if (action === 'reject') {
             try {
+                const secret = process.env.JWT_SECRET_KEY;
+                const token = jwt.sign(
+                    { id: seller._id, document, purpose: 'kyc_reupload' },
+                    secret,
+                    { expiresIn: '7d' }
+                );
+
+                const frontendUrl = process.env.SELLER_REUPLOAD_DOC_URL || "http://localhost:5173/reupload-seller-docs";
+                const link = `${frontendUrl}/${seller._id}/${token}/${document}`;
+
                 const { subject, html } = reUploadSellerDocumentEmail(
                     seller.email,
                     document,
-                    rejectionReason.trim()
+                    rejectionReason.trim(),
+                    link
                 );
                 await sendEmail(seller.email, subject, html);
             } catch (emailErr) {
@@ -835,6 +847,121 @@ export const sellerDocVerification = async (req, res) => {
     }
 };
 
+// =========================================================
+
+// get all vehicles
+export const getAllVehicles = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const { status } = req.query;
+
+        const filter = status && status !== 'all-requests' ? { adminStatus: status } : {};
+
+        const [vehicles, totalCount] = await Promise.all([
+            Vehicle.find(filter)
+                .select('listingId sellerId images year make model vin bodyType exteriorColor transmission adminStatus rejectionReason reviewedAt reviewedBy createdAt')
+                .populate({
+                    path: 'sellerId',
+                    select: 'fullName sellerId email phone profileImage'
+                })
+                .populate({
+                    path: 'reviewedBy',
+                    select: 'name profilePhoto'
+                })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Vehicle.countDocuments(filter)
+        ]);
+
+        res.status(200).json({
+            success: true,
+            vehicles,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("All Vehicles Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// review vehicle
+export const reviewVehicle = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action, rejectionReason } = req.body;
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({
+                success: false,
+                message: "Action must be 'approve' or 'reject'"
+            });
+        }
+
+        if (action === 'reject' && !rejectionReason?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Rejection reason is required"
+            });
+        }
+
+        const vehicle = await Vehicle.findById(id);
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Vehicle not found"
+            });
+        }
+
+        if (vehicle.adminStatus !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: `This vehicle has already been ${vehicle.adminStatus}`
+            });
+        }
+
+        if (action === 'approve') {
+            vehicle.adminStatus = 'approved';
+            vehicle.reviewedAt = Date.now();
+            vehicle.rejectionReason = undefined;
+            vehicle.reviewedBy = req.user.id;
+            vehicle.auctionStatus = 'upcoming';
+        } else {
+            vehicle.adminStatus = 'rejected';
+            vehicle.rejectionReason = rejectionReason.trim();
+            vehicle.reviewedAt = Date.now();
+            vehicle.reviewedBy = req.user.id;
+        }
+
+        await vehicle.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Vehicle ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+            data: vehicle
+        });
+
+    } catch (err) {
+        console.log("Review Vehicle Error :", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
 // get vehicles by seller
 export const getVehiclesBySeller = async (req, res) => {
     try {
@@ -844,7 +971,7 @@ export const getVehiclesBySeller = async (req, res) => {
 
         const [vehicles, total] = await Promise.all([
             Vehicle.find({ sellerId })
-                .select('make model year vin bodyType priceType startingBidPrice buyNowPrice reservePrice adminStatus auctionStatus images createdAt')
+                .select('listingId make model year vin bodyType priceType startingBidPrice buyNowPrice reservePrice adminStatus auctionStatus images createdAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(Number(limit)),
@@ -874,8 +1001,9 @@ export const getVehiclesBySeller = async (req, res) => {
 // get vehcile by id
 export const getVehicleById = async (req, res) => {
     try {
-        const { vehicleId } = req.params;
-        const vehicle = await Vehicle.findById(vehicleId);
+        const { id } = req.params;
+        const vehicle = await Vehicle.findById(id)
+            .populate("sellerId", "fullName email phone profileImage status");
 
         if (!vehicle) {
             return res.status(404).json({
@@ -894,6 +1022,37 @@ export const getVehicleById = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
+        });
+    }
+};
+
+// get vehicle approval summary - donut
+export const getVehicleApprovalSummary = async (req, res) => {
+    try {
+        const [approved, pending, rejected] = await Promise.all([
+            Vehicle.countDocuments({ adminStatus: "approved" }),
+            Vehicle.countDocuments({ adminStatus: "pending" }),
+            Vehicle.countDocuments({ adminStatus: "rejected" }),
+        ]);
+
+        const total = approved + pending + rejected;
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                total,
+                approved,
+                pending,
+                rejected,
+            },
+        });
+
+    } catch (err) {
+        console.error("Get Vehicle Approval Summary Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred",
         });
     }
 };

@@ -4,7 +4,7 @@ import jwt, { decode } from 'jsonwebtoken';
 import Buyer from '../models/buyerModelSchema.js';
 import OTP from '../models/otpModelSchema.js';
 import sendEmail from '../utils/sendEmail.js';
-import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { deleteCloudinaryFiles, deleteOldFileFromCloudinary } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId } from '../utils/counterHelper.js';
 
 export const buyerRegistration = async (req, res) => {
@@ -259,8 +259,8 @@ export const buyerForgotPass = async (req, res) => {
             const secret = process.env.JWT_SECRET_KEY;
             const token = jwt.sign({ id: buyer._id, role: buyer.role }, secret, { expiresIn: '15m' });
 
-            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-            const link = `${frontendUrl}/reset-password/${buyer._id}/${token}`;
+            const frontendUrl = process.env.FORGOTPASSWORD_URL || "http://localhost:5173";
+            const link = `${frontendUrl}/reset-password/${buyer._id}/${token}?role=buyer`;
 
             await sendEmail(
                 email,
@@ -428,6 +428,7 @@ export const reuploadBuyerDocs = async (req, res) => {
         const { buyer_id, group, token } = req.params;
 
         if (!['identity', 'address'].includes(group)) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
                 message: "Invalid verification group"
@@ -439,6 +440,7 @@ export const reuploadBuyerDocs = async (req, res) => {
             const secret = process.env.JWT_SECRET_KEY;
             decoded = jwt.verify(token, secret);
         } catch (jwtErr) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
                 message: "Reupload link is invalid or has expired"
@@ -446,6 +448,7 @@ export const reuploadBuyerDocs = async (req, res) => {
         }
 
         if (decoded.purpose !== 'kyc_reupload' || decoded.id !== buyer_id || decoded.group !== group) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
                 message: "Reupload link is invalid"
@@ -455,35 +458,46 @@ export const reuploadBuyerDocs = async (req, res) => {
         const buyer = await Buyer.findById(buyer_id);
 
         if (!buyer) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(404).json({
                 success: false,
                 message: "Buyer not found"
             });
         }
 
-        // if (buyer.reuploadTokenUsed) {
-        //     return res.status(400).json({
-        //         success: false,
-        //         message: "This reupload link has already been used. Please contact support for a new link."
-        //     });
-        // }
-
         const fieldKey = group === 'identity' ? 'identityVerification' : 'addressVerification';
 
         if (buyer[fieldKey].status !== 'rejected') {
+            if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
                 success: false,
                 message: "This document is not pending reupload, or the link has already been used"
             });
         }
 
+        // capture old URLs BEFORE overwriting, so we can delete them after a successful save
+        const oldUrls = [];
+
         if (group === 'identity') {
             if (!req.files?.frontImageUrl?.[0] || !req.files?.selfieImageUrl?.[0]) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
                 return res.status(400).json({
                     success: false,
                     message: "Front image and selfie are required"
                 });
             }
+
+            if (['passport', 'national_id'].includes(buyer.identityVerification.documentType) && !req.files?.backImageUrl?.[0]) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
+                return res.status(400).json({
+                    success: false,
+                    message: "Back image required for passport/national ID"
+                });
+            }
+
+            if (buyer.identityVerification.frontImageUrl) oldUrls.push(buyer.identityVerification.frontImageUrl);
+            if (buyer.identityVerification.selfieImageUrl) oldUrls.push(buyer.identityVerification.selfieImageUrl);
+            if (buyer.identityVerification.backImageUrl) oldUrls.push(buyer.identityVerification.backImageUrl);
 
             buyer.identityVerification.frontImageUrl = req.files.frontImageUrl[0].path;
             buyer.identityVerification.selfieImageUrl = req.files.selfieImageUrl[0].path;
@@ -491,26 +505,30 @@ export const reuploadBuyerDocs = async (req, res) => {
             if (req.files.backImageUrl?.[0]) {
                 buyer.identityVerification.backImageUrl = req.files.backImageUrl[0].path;
             }
-
-            if (req.body.documentType) {
-                buyer.identityVerification.documentType = req.body.documentType;
-            }
         } else {
             if (!req.files?.documentUrl?.[0]) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
                 return res.status(400).json({
                     success: false,
                     message: "Document is required"
                 });
             }
 
+            if (buyer.addressVerification.documentType === 'rental_agreement' && !req.files?.landlordIdUrl?.[0]) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
+                return res.status(400).json({
+                    success: false,
+                    message: "Landlord ID required for rental agreement"
+                });
+            }
+
+            if (buyer.addressVerification.documentUrl) oldUrls.push(buyer.addressVerification.documentUrl);
+            if (buyer.addressVerification.landlordIdUrl) oldUrls.push(buyer.addressVerification.landlordIdUrl);
+
             buyer.addressVerification.documentUrl = req.files.documentUrl[0].path;
 
             if (req.files.landlordIdUrl?.[0]) {
                 buyer.addressVerification.landlordIdUrl = req.files.landlordIdUrl[0].path;
-            }
-
-            if (req.body.documentType) {
-                buyer.addressVerification.documentType = req.body.documentType;
             }
         }
 
@@ -518,9 +536,12 @@ export const reuploadBuyerDocs = async (req, res) => {
         buyer[fieldKey].rejectionReason = undefined;
         // reviewedAt intentionally left untouched — confirmed earlier
 
-        // buyer.reuploadTokenUsed = true;
-
         await buyer.save();
+
+        // delete old files only AFTER successful save, so a failed save never loses the old doc
+        for (const url of oldUrls) {
+            await deleteOldFileFromCloudinary(url);
+        }
 
         const buyerToReturn = buyer.toObject();
         delete buyerToReturn.password;
@@ -533,6 +554,7 @@ export const reuploadBuyerDocs = async (req, res) => {
 
     } catch (err) {
         console.log("Reupload Buyer Docs Error: ", err);
+        if (req.files) await deleteCloudinaryFiles(req.files);
         res.status(500).json({
             success: false,
             message: "Server Error Occured"
@@ -649,4 +671,3 @@ export const updateBuyerProfile = async (req, res) => {
         return res.status(500).json({ success: false, message: "Server Error Occurred" });
     }
 };
-

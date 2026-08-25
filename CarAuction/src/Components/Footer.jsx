@@ -118,7 +118,7 @@ function Footer() {
                                 Upcoming Auctions
                             </NavLink>
                             <NavLink
-                                to="/how-it-works"
+                                to="/how-it-work"
                                 className={({ isActive }) => `wrap-break-word transition-all duration-300  ${isActive ? 'text-gray-300' : 'text-[#94A3B8] hover:text-[#F8FAFC]'}`}>
                                 How It Works
                             </NavLink>
@@ -128,7 +128,7 @@ function Footer() {
                                 Sell Your Car
                             </NavLink>
                             <NavLink
-                                to="/contact-us"
+                                to="/contact"
                                 className={({ isActive }) => `wrap-break-word transition-all duration-300  ${isActive ? 'text-gray-300' : 'text-[#94A3B8] hover:text-[#F8FAFC]'}`}>
                                 Contact Us
                             </NavLink>

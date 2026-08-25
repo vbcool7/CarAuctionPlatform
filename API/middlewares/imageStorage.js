@@ -5,6 +5,7 @@ import cloudinary from '../config/cloudinary.js';
 
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
+    
     params: async (req, file) => {
         let folderName = 'CarAuction/Others';
 

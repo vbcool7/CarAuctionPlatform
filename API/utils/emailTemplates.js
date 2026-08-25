@@ -703,7 +703,7 @@ export const reUploadDocumentEmail = (email, group, rejectionReason, link) => {
     return { subject, html };
 };
 
-export const reUploadSellerDocumentEmail = (email, document, rejectionReason) => {
+export const reUploadSellerDocumentEmail = (email, document, rejectionReason, link) => {
     const subject = "Action Required: Please Re-upload Your Document";
     const html = `
         <!DOCTYPE html>
@@ -791,7 +791,7 @@ export const reUploadSellerDocumentEmail = (email, document, rejectionReason) =>
                                         <tr>
                                             <td align="center" style="padding:10px 0 20px;">
 
-                                                <a href="#"
+                                                <a href="${link}"
                                                     style="display:inline-block; background-color:#D97706; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:7px; font-size:14px; font-weight:bold;">
                                                     Re-upload Document
                                                 </a>

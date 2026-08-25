@@ -211,7 +211,7 @@ const vehicleSchema = new mongoose.Schema(
 
         currentBid: { type: Number, default: null },
         views: { type: Number, default: 0 },
-        
+
         adminStatus: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],
@@ -220,7 +220,13 @@ const vehicleSchema = new mongoose.Schema(
         auctionStatus: {
             type: String,
             enum: ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'],
-            default: 'draft', // no listing-fee/payment flow built yet -> nothing can push past draft on creation
+            default: 'draft',
+        },
+        rejectionReason: { type: String },
+        reviewedAt: { type: Date },
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin'
         },
         canceledBy: {
             type: String,

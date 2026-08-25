@@ -1,10 +1,13 @@
 
-import Seller from '../models/sellerModelSchema.js';
-import OTP from '../models/otpModelSchema.js';
-import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
-import { getSellerForStep } from '../utils/sellerRegistrationHelper.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import sendEmail from '../utils/sendEmail.js';
+import Seller from '../models/sellerModelSchema.js';
+import OTP from '../models/otpModelSchema.js';
+
+import { deleteCloudinaryFiles, deleteOldFileFromCloudinary } from '../utils/cloudinaryUtils.js';
+import { getSellerForStep } from '../utils/sellerRegistrationHelper.js';
+import { getNextSellerId } from '../utils/counterHelper.js';
 
 export const registerStep1 = async (req, res) => {
     try {
@@ -149,6 +152,7 @@ export const registerStep1 = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const seller = await Seller.create({
+            sellerId: await getNextSellerId(),
             fullName,
             email,
             phone,
@@ -597,6 +601,146 @@ export const sellerLogin = async (req, res) => {
     }
 };
 
+export const sellerForgotPass = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        console.log("SELLER FORGOT EMAIL:", email);
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        const seller = await Seller.findOne({ email });
+
+        console.log("SELLER FOUND:", seller ? seller._id : "NOT FOUND");
+
+        if (!seller) {
+            return res.status(400).json({
+                success: false,
+                message: "Email not found"
+            });
+        }
+
+        try {
+            const secret = process.env.JWT_SECRET_KEY;
+            const token = jwt.sign({ id: seller._id, role: seller.role }, secret, { expiresIn: '15m' });
+
+            const frontendUrl = process.env.FORGOTPASSWORD_URL || "http://localhost:5173";
+            const link = `${frontendUrl}/reset-password/${seller._id}/${token}?role=seller`;
+
+            await sendEmail(
+                email,
+                "Reset Your BidDrive Password",
+                `
+  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+    <div style="background-color: #D97706; padding: 20px; text-align: center;">
+      <h1 style="color: white; margin: 0; font-size: 24px;">BidDrive</h1>
+    </div>
+    
+    <div style="padding: 30px; color: #374151;">
+      <h2 style="color: #111827;">Reset your password</h2>
+      <p style="font-size: 16px; line-height: 1.5;">Hello,</p>
+      <p style="font-size: 16px; line-height: 1.5;">We received a request to reset your BidDrive account password. Click the button below to set a new one. This link will expire in <strong>15 minutes</strong>.</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${link}" style="background-color: #D97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
+      </div>
+      
+      <p style="font-size: 14px; color: #6b7280;">If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
+    </div>
+    
+    <div style="background-color: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #9ca3af;">
+      <p>&copy; ${new Date().getFullYear()} BidDrive. All rights reserved.</p>
+    </div>
+  </div>
+  `
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Password reset link sent to your email.",
+                link
+            });
+        } catch (mailError) {
+            console.error("Error in Token/Email Process:", mailError.message);
+            return res.status(500).json({
+                success: false,
+                message: "Error sending email or generating link"
+            });
+        }
+
+    } catch (err) {
+        console.error("Forgot Pass:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+export const sellerResetpassword = async (req, res) => {
+    try {
+        const { seller_id, token } = req.params;
+        const { password, confirmPassword } = req.body;
+
+        if (!password || !confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Password and Confirm Password are required"
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Passwords do not match"
+            });
+        }
+
+        const secret = process.env.JWT_SECRET_KEY;
+
+        try {
+            jwt.verify(token, secret);
+        } catch (err) {
+            return res.status(400).json({
+                success: false,
+                message: "Link expired or invalid"
+            });
+        }
+
+        const seller = await Seller.findById(seller_id);
+
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        seller.password = hashedPassword;
+        await seller.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password updated!. You can login now."
+        });
+
+    } catch (err) {
+        console.error("Reset Pass:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
 export const sellerLogout = async (req, res) => {
     try {
         return res.status(200).json({
@@ -632,6 +776,112 @@ export const sellerGet = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// reupload seller doc
+export const reuploadSellerDocs = async (req, res) => {
+    try {
+        const { seller_id, document, token } = req.params;
+
+        const allowedDocuments = ['tradeLicense', 'emiratesId', 'bankStatement', 'vatCertificate'];
+
+        if (!allowedDocuments.includes(document)) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
+                success: false,
+                message: "Invalid verification document"
+            });
+        }
+
+        let decoded;
+        try {
+            const secret = process.env.JWT_SECRET_KEY;
+            decoded = jwt.verify(token, secret);
+        } catch (jwtErr) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
+                success: false,
+                message: "Reupload link is invalid or has expired"
+            });
+        }
+
+        if (decoded.purpose !== 'kyc_reupload' || decoded.id !== seller_id || decoded.document !== document) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
+                success: false,
+                message: "Reupload link is invalid"
+            });
+        }
+
+        const seller = await Seller.findById(seller_id);
+
+        if (!seller) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        if (seller[document].status !== 'rejected') {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
+                success: false,
+                message: "This document is not pending reupload, or the link has already been used"
+            });
+        }
+
+        // ASSUMPTION: multer field-name === document key itself (e.g. 'tradeLicense')
+        // confirm this matches the actual sellerUploads multer config before testing
+        if (!req.files?.[document]?.[0]) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({
+                success: false,
+                message: "Document file is required"
+            });
+        }
+
+        const oldUrl = seller[document].url;
+
+        seller[document].url = req.files[document][0].path;
+        seller[document].status = 'pending';
+        seller[document].rejectionReason = undefined;
+        // reviewedAt intentionally left untouched — same convention as buyer flow
+
+        // recompute overall seller.status (reuse same aggregation rule)
+        const mandatoryDocs = ['tradeLicense', 'emiratesId', 'bankStatement'];
+        const allDocs = [...mandatoryDocs, 'vatCertificate'];
+
+        const hasRejected = allDocs.some(d => seller[d]?.url && seller[d].status === 'rejected');
+        const mandatoryApproved = mandatoryDocs.every(d => seller[d]?.status === 'approved');
+        const vatOk = !seller.vatCertificate?.url || seller.vatCertificate.status === 'approved';
+
+        seller.status = hasRejected ? 'pending' : (mandatoryApproved && vatOk ? 'approved' : 'pending');
+
+        await seller.save();
+
+        // delete old file only AFTER successful save
+        if (oldUrl) {
+            await deleteOldFileFromCloudinary(oldUrl);
+        }
+
+        const sellerToReturn = seller.toObject();
+        delete sellerToReturn.password;
+
+        return res.status(200).json({
+            success: true,
+            message: `${document} document re-submitted for review`,
+            data: sellerToReturn
+        });
+
+    } catch (err) {
+        if (req.files) await deleteCloudinaryFiles(req.files);
+        console.error("Reupload Seller Docs Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

@@ -2,30 +2,37 @@
 import React from 'react';
 import { useState } from 'react';
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { HiOutlineCheckCircle } from "react-icons/hi2";
 import { Lock } from 'lucide-react';
 import { toast } from "react-toastify";
-
-import { useBuyerForgotPassword } from '../hook/useBuyer';
+import { useForgotPassword } from '../hook/useBuyer';
 
 function ForgotPassword() {
 
     const navigate = useNavigate();
+
+    const [searchParams] = useSearchParams();
+    const paramRole = searchParams.get('role');
+
+    const role = ['buyer', 'seller'].includes(paramRole)
+        ? paramRole
+        : 'buyer';
+
     const [email, setEmail] = useState('');
 
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [timer, setTimer] = useState(0);
 
-    const { mutate: forgotPass, isPending: isForgettingPass } = useBuyerForgotPassword();
+    const { mutate: forgotPass, isPending: isForgettingPass } = useForgotPassword();
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
         if (!email) return toast.error("Email is required");
 
-        forgotPass({ email }, {
+        forgotPass({ email, role }, {
             onSuccess: (res) => {
                 setIsSubmitted(true);
                 setTimer(60);
@@ -52,7 +59,7 @@ function ForgotPassword() {
 
         setTimer(60);
 
-        forgotPass({ email }, {
+        forgotPass({ email, role }, {
             onSuccess: (res) => {
 
                 toast.success("New reset link sent successfully!");
@@ -67,8 +74,8 @@ function ForgotPassword() {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6 selection:bg-amber-500/20 relative overflow-hidden">
 
             {/* Asymmetric Artistic Abstract Background Blobs for a premium look */}
-            {/* <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -translate-y-1/2 pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#0B1E3D]/5 rounded-full blur-3xl translate-y-1/2 pointer-events-none" /> */}
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl -translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#0B1E3D]/5 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
 
             {/* Crisp White Desktop Workspace Card */}
             <div className="relative z-10 max-w-md w-full bg-white border border-slate-100 rounded-2xl p-8 sm:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">

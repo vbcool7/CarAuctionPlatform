@@ -188,7 +188,7 @@ function LoginForm() {
                                     </label>
                                     <button
                                         type="button"
-                                        onClick={() => navigate('/forgot-password')}
+                                        onClick={() => navigate(`/forgot-password/?role=${role}`)}
                                         className="text-xs text-amber-600 font-semibold hover:text-amber-700 transition-colors"
                                     >
                                         Forgot?

@@ -57,11 +57,6 @@ function AddNewVehicle({ setCurrentPage }) {
         doors: "",
         seats: "",
         engineSize: "",
-        color: {
-            type: String,
-            enum: ['black', 'white', 'silver', 'grey', 'red', 'blue', 'green', 'brown', 'gold', 'beige', 'orange', 'yellow', 'purple', 'other'],
-            required: true
-        },
         cylinders: "",
         keyType: "",
         additionalFeatures: "",

@@ -33,3 +33,38 @@ export const useAddVehicle = () => {
         }
     });
 };
+
+// vehicle stats
+export const useVehicleStats = () => {
+    return useQuery({
+        queryKey: ['vehicleStats'],
+        queryFn: async () => {
+            const res = await API.get('/vehicle/get-vehicle-stats');
+            return res.data;
+        }
+    });
+};
+
+// all seller vehicles
+export const useSellerVehicles = (page=1, limit=10) => {
+    return useQuery({
+        queryKey: ['sellerVehicles', page, limit],
+        queryFn: async() => {
+            const res = await API.get(`/vehicle/get-my-vehicles?page=${page}&limit=${limit}`);
+            return res.data;
+        },
+        keepPreviousData: true,
+    });
+};
+
+// get vehicle
+export const useVehicleDetail = (id) => {
+    return useQuery({
+        queryKey: ['vehicleDetail', id],
+        queryFn: async() => {
+            const res = await API.get(`/vehicle/get-vehicle-detail/${id}`);
+            return res.data;
+        },
+        enabled: !!id,
+    });
+};

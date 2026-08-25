@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import Vehicle from '../models/vehicleModelSchema.js';
+
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextListingId } from '../utils/counterHelper.js';
 
@@ -48,6 +49,8 @@ export const addVehicle = async (req, res) => {
             vinDecoded,
         } = req.body;
 
+        const files = req.files || {};
+
         // Step 4 (next): map req.files.images / req.files.documents to schema shape
         const uploadedImages = (req.files.images || []).map((f) => ({
             url: f.path,
@@ -66,7 +69,7 @@ export const addVehicle = async (req, res) => {
         const vehicleData = {
             sellerId: req.user.id,
             listingId: await getNextListingId(),
-            
+
             // Step 1
             vehicleType, vin, make, model,
             year: toNumber(year),
@@ -109,6 +112,7 @@ export const addVehicle = async (req, res) => {
             vin: vin?.toUpperCase(),
             auctionStatus: { $in: ['draft', 'upcoming', 'live'] }
         });
+
         if (existingActive) {
             if (req.files) await deleteCloudinaryFiles(req.files);
             return res.status(400).json({
@@ -135,6 +139,11 @@ export const addVehicle = async (req, res) => {
                 success: false,
                 message: `Year must be between 1980 and ${currentYear + 1}`
             });
+        }
+
+        if (!auctionStartDate || isNaN(new Date(auctionStartDate).getTime())) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+            return res.status(400).json({ success: false, message: 'Valid auction start date is required' });
         }
 
         // auctionStartDate not in the past
@@ -181,4 +190,118 @@ export const addVehicle = async (req, res) => {
             message: "Server Error Occured"
         });
     };
+};
+
+// =========================== SELLER SIDE
+
+// stats - vehicles
+export const getVehicleStats = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+
+        const [totalVehicles, pendingApproval, activeListing, upcomingAuctions, soldVehicles] = await Promise.all([
+            Vehicle.countDocuments({ sellerId }),
+            Vehicle.countDocuments({ sellerId, adminStatus: "pending"}),
+            Vehicle.countDocuments({ sellerId, auctionStatus: "live"}),
+            Vehicle.countDocuments({ sellerId, auctionStatus: "upcoming" }),
+            Vehicle.countDocuments({ sellerId, auctionStatus: "sold"})
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            stats: {
+                totalVehicles,
+                pendingApproval,
+                activeListing,
+                upcomingAuctions,
+                soldVehicles
+            }
+        });
+
+    } catch (err) {
+        console.log("Vehicle Stats Error :", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// get all seller vehicles
+export const getMyVehicles = async (req, res) => {
+    try {
+        const sellerId = req.user.id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const [vehicles, totalCount] = await Promise.all([
+            Vehicle.find({ sellerId })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Vehicle.countDocuments({ sellerId })
+        ]);
+
+        if (vehicles.length === 0) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                vehicles: [],
+                pagination: {
+                    currentPage: page,
+                    totalPages: 0,
+                    totalCount: 0,
+                    limit
+                },
+                message: "No vehicles found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            count: vehicles.length,
+            vehicles,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("Get My Vehicles Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get vehcile by id
+export const getVehicleById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const vehicle = await Vehicle.findById(id);
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Vehicle Detail not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is vehicle detail",
+            data: vehicle
+        });
+    } catch (err) {
+        console.error("Get Vehicle By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
 };

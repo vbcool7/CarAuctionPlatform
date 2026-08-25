@@ -3,11 +3,17 @@ import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { IoHeartOutline, IoMenu, IoClose, IoPersonOutline } from 'react-icons/io5';
 import { IoChevronDown } from "react-icons/io5";
+import useAuthStore from '../store/useAuthStore';
+import { Car, ChevronDown, Gavel, Heart, LayoutDashboard, LogOut, User } from 'lucide-react';
 
 function Navbar() {
 
     const navigate = useNavigate();
+
+    const { user, logout } = useAuthStore();
+
     const [isOpen, setIsOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isAuctionOpen, setIsAuctionOpen] = useState(false);
     const [isAccOpen, setIsAccOpen] = useState(false);
     const [isMobileAuctionOpen, setIsMobileAuctionOpen] = useState(false);
@@ -28,7 +34,7 @@ function Navbar() {
     ];
 
     return (
-        <nav className="sticky top-0 z-50 bg-[#0F172A] border-b border-[#334155] py-4">
+        <nav className="sticky top-0 z-50 bg-[#0F172A] border-b border-[#334155] py-5">
             <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-6 flex items-center justify-between">
 
                 {/* Logo */}
@@ -84,23 +90,190 @@ function Navbar() {
                 {/* Right Side Actions (Heart + Auth Buttons) */}
                 <div className="flex items-center gap-3">
 
-                    <button className='text-white text-xl hover:text-[#D97706] transition-colors'>
+                    <button className='text-white text-xl hover:text-amber-400  transition-colors'>
                         <IoHeartOutline />
                     </button>
 
-                    <div className="hidden sm:flex items-center gap-3">
-                        <button 
-                        onClick={() => navigate('/login')}
-                        className="text-white text-sm border border-amber-600 hover:bg-amber-600/10 px-4 py-2 rounded-lg font-medium transition-all cursor-pointer">
-                            Login
-                        </button>
+                    {user ? (
+                        <div className="relative">
+                            {/* Profile Button */}
+                            <button
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                            >
+                                {/* Profile Image / Initial */}
+                                {(
+                                    user?.role === 'buyer'
+                                        ? user?.profileImageUrl
+                                        : user?.profileImage
+                                ) ? (
+                                    <img
+                                        src={
+                                            user?.role === 'buyer'
+                                                ? user?.profileImageUrl
+                                                : user?.profileImage
+                                        }
+                                        alt="Profile"
+                                        className="w-8 h-8 rounded-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-[#D97706] flex items-center justify-center text-white text-xs font-semibold">
+                                        {(user?.role === 'buyer'
+                                            ? user?.firstName
+                                            : user?.fullName
+                                        )?.charAt(0)?.toUpperCase()}
+                                    </div>
+                                )}
 
-                        <button
-                            onClick={() => navigate(`/signup`)}
-                            className="bg-[#D97706] text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-[#B45309] transition-all cursor-pointer">
-                            Register
-                        </button>
-                    </div>
+                                {/* Name */}
+                                <span className="text-sm font-semibold text-white">
+                                    {user?.role === 'buyer'
+                                        ? `${user?.firstName || ''} ${user?.lastName || ''}`
+                                        : user?.fullName || ''
+                                    }
+                                </span>
+
+                                <ChevronDown
+                                    size={15}
+                                    className={`text-slate-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''
+                                        }`}
+                                />
+                            </button>
+
+                            {/* Dropdown */}
+                            {isProfileOpen && (
+                                <div className="absolute right-0 top-full mt-3 w-56 bg-[#0B1E3D] border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+
+                                    {/* User Info */}
+                                    <div className="px-4 py-3 border-b border-slate-700">
+                                        <p className="text-sm font-semibold text-white">
+                                            {user?.role === 'buyer'
+                                                ? `${user?.firstName} ${user?.lastName}`
+                                                : user?.fullName
+                                            }
+                                        </p>
+
+                                        <p className="text-xs text-slate-400 mt-0.5 capitalize">
+                                            {user?.role}
+                                        </p>
+                                    </div>
+
+                                    {/* Buyer Menu */}
+                                    {user?.role === 'buyer' && (
+                                        <div className="py-2">
+
+                                            <button
+                                                onClick={() => {
+                                                    navigate('/buyer-dashboard');
+                                                    setIsProfileOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <LayoutDashboard size={17} />
+                                                Dashboard
+                                            </button>
+
+                                            <button
+                                                // onClick={() => {
+                                                //     navigate('/my-bids');
+                                                //     setIsProfileOpen(false);
+                                                // }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <Gavel size={17} />
+                                                My Bids
+                                            </button>
+
+                                            <button
+                                                // onClick={() => {
+                                                //     navigate('/watchlist');
+                                                //     setIsProfileOpen(false);
+                                                // }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <Heart size={17} />
+                                                Watchlist
+                                            </button>
+
+                                        </div>
+                                    )}
+
+                                    {/* Seller Menu */}
+                                    {user?.role === 'seller' && (
+                                        <div className="py-2">
+
+                                            <button
+                                                onClick={() => {
+                                                    navigate('/seller-dashboard');
+                                                    setIsProfileOpen(false);
+                                                }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <LayoutDashboard size={17} />
+                                                Dashboard
+                                            </button>
+
+                                            <button
+                                                // onClick={() => {
+                                                //     navigate('/my-vehicles');
+                                                //     setIsProfileOpen(false);
+                                                // }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <Car size={17} />
+                                                My Vehicles
+                                            </button>
+
+                                            <button
+                                                // onClick={() => {
+                                                //     navigate('/my-auctions');
+                                                //     setIsProfileOpen(false);
+                                                // }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
+                                            >
+                                                <Gavel size={17} />
+                                                My Auctions
+                                            </button>
+
+                                        </div>
+                                    )}
+
+                                    {/* Common Items */}
+                                    <div className="border-t border-slate-700 py-2">
+
+                                        <button
+                                            onClick={() => {
+                                                logout();
+                                                setIsProfileOpen(false);
+                                                navigate('/login');
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                        >
+                                            <LogOut size={17} />
+                                            Logout
+                                        </button>
+
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="hidden sm:flex items-center gap-3">
+                                <button
+                                    onClick={() => navigate('/login')}
+                                    className="px-4 py-2 text-sm font-semibold text-white border border-slate-600 hover:border-amber-500 hover:text-amber-400 rounded-lg transition-all duration-200 cursor-pointer">
+                                    Login
+                                </button>
+
+                                <button
+                                    onClick={() => navigate(`/signup`)}
+                                    className="px-4 py-2 text-sm font-semibold text-white bg-[#D97706] hover:bg-[#B45309] rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+                                    Register
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                     {/* Mobile User Icon */}
                     <div className="relative sm:hidden">

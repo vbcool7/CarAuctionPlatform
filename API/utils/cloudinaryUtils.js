@@ -70,7 +70,7 @@ export const deleteProductAssetsFromCloudinary = async (urls) => {
     }
 };
 
-// ============== new: extract public_id from a Cloudinary URL and delete the file
+// ============== new: extract public_id from a Cloudinary URL and delete the existing file
 export const deleteOldFileFromCloudinary = async (url) => {
     try {
         if (!url || typeof url !== 'string') return;

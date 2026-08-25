@@ -5,59 +5,8 @@ import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
 import { myVehiclesData } from '../SellerSharedComponents/SellerData';
 
-const statsData = [
-    {
-        id: "total-vehicles",
-        title: "Total Vehicles",
-        value: "12",
-        subtitle: "All Listings",
-        subtitleColor: "text-green-600",
-        icon: CarFront,
-        iconBg: "bg-slate-100",
-        iconColor: "text-slate-700",
-    },
-    {
-        id: "pending-approval",
-        title: "Pending Approval",
-        value: "3",
-        subtitle: "Awaiting Review",
-        subtitleColor: "text-amber-500",
-        icon: Clock,
-        iconBg: "bg-amber-50",
-        iconColor: "text-amber-600",
-    },
-    {
-        id: "active-listings",
-        title: "Active Listings",
-        value: "5",
-        subtitle: "Live Now",
-        subtitleColor: "text-green-600",
-        icon: CheckCircle2,
-        iconBg: "bg-emerald-50",
-        iconColor: "text-emerald-600",
-    },
-    {
-        id: "upcoming-auctions",
-        title: "Upcoming Auctions",
-        value: "2",
-        subtitle: "Starts Soon",
-        subtitleColor: "text-blue-600",
-        icon: Gavel,
-        iconBg: "bg-blue-50",
-        iconColor: "text-blue-600",
-    },
-    {
-        id: "sold-vehicles",
-        title: "Sold Vehicles",
-        value: "2",
-        subtitle: "Completed",
-        subtitleColor: "text-purple-600",
-        icon: Sparkles,
-        iconBg: "bg-purple-50",
-        iconColor: "text-purple-600",
-        extraClass: "sm:col-span-2 lg:col-span-1",
-    },
-];
+import { useSellerVehicles, useVehicleStats } from '../../../hook/useVehicle';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
 
 const statusOptions = [
     { value: "", label: "All Status" },
@@ -82,10 +31,73 @@ const sortOptions = [
 
 function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
 
+    const [page, setPage] = useState(1);
+    const { data: myVehicles, isLoading, isError } = useSellerVehicles(page);
+    const { data: statsData } = useVehicleStats();
+
+    const totalPages = myVehicles?.pagination?.totalPages || 1;
+
     const [search, setSearch] = useState("");
     const [status, setStatus] = useState("");
     const [auctionType, setAuctionType] = useState("");
     const [sortBy, setSortBy] = useState("newest");
+
+    const stats = [
+        {
+            id: "total-vehicles",
+            title: "Total Vehicles",
+            value: statsData?.stats?.totalVehicles ?? 0,
+            subtitle: "All Listings",
+            subtitleColor: "text-green-600",
+            icon: CarFront,
+            iconBg: "bg-slate-100",
+            iconColor: "text-slate-700",
+        },
+        {
+            id: "pending-approval",
+            title: "Pending Approval",
+            value: statsData?.stats?.pendingApproval ?? 0,
+            subtitle: "Awaiting Review",
+            subtitleColor: "text-amber-500",
+            icon: Clock,
+            iconBg: "bg-amber-50",
+            iconColor: "text-amber-600",
+        },
+        {
+            id: "active-listings",
+            title: "Active Listings",
+            value: statsData?.stats?.activeListing ?? 0,
+            subtitle: "Live Now",
+            subtitleColor: "text-green-600",
+            icon: CheckCircle2,
+            iconBg: "bg-emerald-50",
+            iconColor: "text-emerald-600",
+        },
+        {
+            id: "upcoming-auctions",
+            title: "Upcoming Auctions",
+            value: statsData?.stats?.upcomingAuctions ?? 0,
+            subtitle: "Starts Soon",
+            subtitleColor: "text-blue-600",
+            icon: Gavel,
+            iconBg: "bg-blue-50",
+            iconColor: "text-blue-600",
+        },
+        {
+            id: "sold-vehicles",
+            title: "Sold Vehicles",
+            value: statsData?.stats?.soldVehicles ?? 0,
+            subtitle: "Completed",
+            subtitleColor: "text-purple-600",
+            icon: Sparkles,
+            iconBg: "bg-purple-50",
+            iconColor: "text-purple-600",
+            extraClass: "sm:col-span-2 lg:col-span-1",
+        },
+    ];
+
+    if (isLoading) return <p className="p-10 text-center">Loading vehicles list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load vehicles list</p>;
 
     return (
         <div className='pb-6 space-y-6'>
@@ -102,7 +114,7 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
 
             {/* stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 my-6">
-                {statsData.map((stat) => {
+                {stats.map((stat) => {
                     const IconComponent = stat.icon;
                     return (
                         <div
@@ -150,15 +162,15 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                 </div>
 
                 <div className='w-full sm:w-auto'>
-                <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
+                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
                 </div>
 
                 <div className='w-full sm:w-auto'>
-                <FilterDropdown label="All Auction Types" options={auctionTypeOptions} value={auctionType} onChange={setAuctionType} />
+                    <FilterDropdown label="All Auction Types" options={auctionTypeOptions} value={auctionType} onChange={setAuctionType} />
                 </div>
 
                 <div className='w-full sm:w-auto'>
-                <FilterDropdown label="Sort By: Newest" options={sortOptions} value={sortBy} onChange={setSortBy} />
+                    <FilterDropdown label="Sort By: Newest" options={sortOptions} value={sortBy} onChange={setSortBy} />
                 </div>
             </div>
 
@@ -167,6 +179,7 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                 <table className="w-full text-left table-fixed">
                     <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                         <tr>
+                            <th className="px-6 py-4.5 w-32">Listing Id</th>
                             <th className="px-6 py-4.5 w-75">Vehicle</th>
                             <th className="px-6 py-4.5 w-50">Admin Approval</th>
                             <th className="px-6 py-4.5 w-40">Auction Status</th>
@@ -179,132 +192,290 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                     </thead>
 
                     <tbody className="divide-y divide-slate-100">
-                        {myVehiclesData.map((vehicle) => (
-                            <tr
-                                key={vehicle.id}
-                                className="hover:bg-slate-50/60 transition-colors"
-                            >
-                                {/* vehicle detail */}
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3.5">
-                                        <div className="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100 shadow-xs">
-                                            <img
-                                                src={vehicle.image}
-                                                alt={vehicle.name}
-                                                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                                            />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <h4 className="truncate text-sm font-bold text-[#0B1E3D]">
-                                                {vehicle.name}
-                                            </h4>
-                                            <p className="mt-0.5 text-xs font-medium text-slate-400 tracking-tight">
-                                                {vehicle.vin}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </td>
+                        {myVehicles?.vehicles?.length > 0 ? (
+                            myVehicles.vehicles.map((vehicle, index) => {
 
-                                {/* admin approval */}
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col items-start gap-1">
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${vehicle.adminStatus === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-200/60' :
-                                            vehicle.adminStatus === 'approved' ? 'bg-green-50 text-green-700 border border-green-200/60' :
-                                                'bg-red-50 text-red-600 border border-red-200/60' // rejected
-                                            }`}>
-                                            {vehicle.adminStatus === 'pending' ? 'Pending Approval' :
-                                                vehicle.adminStatus === 'approved' ? 'Approved' : 'Rejected'}
-                                        </span>
+                                const bidAmount =
+                                    vehicle.currentBid !== null && vehicle.currentBid !== undefined
+                                        ? vehicle.currentBid
+                                        : vehicle.startingBidPrice;
 
-                                        <span className="text-[11px] font-medium text-slate-400">
-                                            {vehicle.status.subtext}
-                                        </span>
-                                    </div>
-                                </td>
+                                const bidLabel =
+                                    vehicle.currentBid !== null && vehicle.currentBid !== undefined
+                                        ? "Current Bid"
+                                        : "Starting Bid";
 
-                                {/* auction status */}
-                                <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${vehicle.auctionStatus === 'live' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' :
-                                        vehicle.auctionStatus === 'upcoming' ? 'bg-blue-50 text-blue-600 border border-blue-200/60' :
-                                            vehicle.auctionStatus === 'draft' ? 'bg-slate-100 text-slate-600 border border-slate-200/60' :
-                                                vehicle.auctionStatus === 'sold' ? 'bg-purple-50 text-purple-700 border border-purple-200/60' :
-                                                    'bg-red-50 text-red-600 border border-red-200/60' // expired or default
-                                        }`}>
-                                        {vehicle.auctionStatus.charAt(0).toUpperCase() + vehicle.auctionStatus.slice(1)}
-                                    </span>
-                                </td>
+                                const endDate = vehicle.auctionEndDateTime
+                                    ? new Date(vehicle.auctionEndDateTime)
+                                    : null;
 
-                                {/* auction type */}
-                                <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-semibold border ${vehicle.auctionType === 'Buy Now'
-                                        ? 'bg-purple-50 text-purple-600 border-purple-200/60'
-                                        : 'bg-emerald-50 text-emerald-600 border-emerald-200/50'
-                                        }`}>
-                                        {vehicle.auctionType}
-                                    </span>
-                                </td>
+                                return (
+                                    <tr
+                                        key={vehicle._id || index}
+                                        className="hover:bg-slate-50/60 transition-colors"
+                                    >
+                                        {/* id */}
+                                        <td className="px-6 py-4 text-[14px] text-gray-600">
+                                            {vehicle.listingId}
+                                        </td>
 
-                                {/* Current Bid / Starting Bid Column */}
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-[#0B1E3D]">
-                                            {vehicle.bid.amount}
-                                        </span>
-                                        <span className="text-[11px] font-medium text-slate-400">
-                                            {vehicle.bid.label}
-                                        </span>
-                                    </div>
-                                </td>
+                                        {/* vehicle detail */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3.5">
+                                                <div className="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100 shadow-xs">
+                                                    <img
+                                                        src={vehicle.images?.[0]?.url || null}
+                                                        alt={vehicle.make}
+                                                        className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="truncate text-sm font-bold text-[#0B1E3D]">
+                                                        {vehicle.year} {vehicle.make} {vehicle.model}
+                                                    </h4>
+                                                    <p className="mt-0.5 text-xs font-medium text-slate-400 tracking-tight">
+                                                        {vehicle.vin}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
 
-                                {/* views */}
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-1.5 text-slate-500">
-                                        <Eye size={15} className="text-slate-400" />
-                                        <span className="text-xs font-semibold text-[#0B1E3D]">
-                                            {vehicle.views}
-                                        </span>
-                                    </div>
-                                </td>
+                                        {/* admin approval */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col items-start gap-1">
+                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold
+                                                 ${vehicle.adminStatus === 'pending'
+                                                        ? 'bg-amber-50 text-amber-600 border border-amber-200/60'
+                                                        : vehicle.adminStatus === 'approved'
+                                                            ? 'bg-green-50 text-green-700 border border-green-200/60'
+                                                            : 'bg-red-50 text-red-600 border border-red-200/60'
+                                                    }`}>
+                                                    {vehicle.adminStatus === 'pending' ? 'Pending Approval' :
+                                                        vehicle.adminStatus === 'approved' ? 'Approved' : 'Rejected'}
+                                                </span>
 
-                                {/* ends */}
-                                <td className="px-6 py-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-[#0B1E3D]">
-                                            {vehicle.timing.date}
-                                        </span>
-                                        <span className={`mt-0.5 text-[11px] font-semibold ${vehicle.timing.statusColor}`}>
-                                            {vehicle.timing.timeLeft}
-                                        </span>
-                                    </div>
-                                </td>
+                                                <span className="text-[11px] font-medium text-slate-400">
+                                                    {vehicle.adminStatus === "approved"
+                                                        ? vehicle.reviewedAt
+                                                            ? `Approved on ${new Date(
+                                                                vehicle.reviewedAt
+                                                            ).toLocaleDateString("en-US", {
+                                                                month: "short",
+                                                                day: "2-digit",
+                                                                year: "numeric",
+                                                            })}`
+                                                            : "Approved"
+                                                        : vehicle.adminStatus === "pending"
+                                                            ? "Awaiting admin review"
+                                                            : vehicle.rejectionReason || "Application rejected"}
+                                                </span>
+                                            </div>
+                                        </td>
 
-                                {/* actions */}
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedMyVehicleId(vehicle.id);
-                                                setCurrentPage('my-vehicles-detail')
-                                            }}
-                                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B1E3D] shadow-xs transition-all hover:bg-slate-50 hover:border-slate-300"
-                                        >
-                                            {vehicle.action.label}
-                                        </button>
+                                        {/* auction status */}
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold 
+                                            ${vehicle.auctionStatus === "live"
+                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                                                    : vehicle.auctionStatus === "upcoming"
+                                                        ? "bg-blue-50 text-blue-600 border border-blue-200/60"
+                                                        : vehicle.auctionStatus === "draft"
+                                                            ? "bg-slate-100 text-slate-600 border border-slate-200/60"
+                                                            : vehicle.auctionStatus === "sold"
+                                                                ? "bg-purple-50 text-purple-700 border border-purple-200/60"
+                                                                : vehicle.auctionStatus === "unsold" ||
+                                                                    vehicle.auctionStatus === "reserve-not-met" ||
+                                                                    vehicle.auctionStatus === "canceled"
+                                                                    ? "bg-red-50 text-red-600 border border-red-200/60"
+                                                                    : "bg-slate-100 text-slate-600 border border-slate-200/60"
+                                                }`}>
+                                                {vehicle.auctionStatus
+                                                    ? vehicle.auctionStatus
+                                                        .split("-")
+                                                        .map(
+                                                            word =>
+                                                                word.charAt(0).toUpperCase() +
+                                                                word.slice(1)
+                                                        )
+                                                        .join(" ")
+                                                    : "Unknown"}
+                                            </span>
+                                        </td>
 
-                                        <button
-                                            type="button"
-                                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-                                        >
-                                            <MoreVertical size={16} />
-                                        </button>
-                                    </div>
+                                        {/* auction type */}
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-semibold border 
+                                            ${vehicle.auctionType === 'timed'
+                                                    ? 'bg-purple-50 text-purple-600 border-purple-200/60'
+                                                    : 'bg-emerald-50 text-emerald-600 border-emerald-200/50'
+                                                }`}>
+                                                {vehicle.auctionType === 'timed' ? "Timed Auction" : "Live Auction"}
+                                            </span>
+                                        </td>
+
+                                        {/* Current Bid / Starting Bid Column */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-[#0B1E3D]">
+                                                    AED {bidAmount?.toLocaleString() || "0"}
+                                                </span>
+                                                <span className="text-[11px] font-medium text-slate-400">
+                                                    {bidLabel || '---'}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* views */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-slate-500">
+                                                <Eye size={15} className="text-slate-400" />
+                                                <span className="text-xs font-semibold text-[#0B1E3D]">
+                                                    {vehicle.views || 0}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* Ends */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                {endDate ? (
+                                                    <>
+                                                        <span className="text-xs font-bold text-[#0B1E3D]">
+                                                            {endDate.toLocaleDateString("en-US", {
+                                                                month: "short",
+                                                                day: "2-digit",
+                                                                year: "numeric",
+                                                            })}
+                                                        </span>
+
+                                                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                                                            {endDate.toLocaleTimeString("en-US", {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                                hour12: true,
+                                                            })}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-xs font-bold text-slate-400">
+                                                            Not scheduled
+                                                        </span>
+
+                                                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                                                            —
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        {/* actions */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedMyVehicleId(vehicle._id);
+                                                        setCurrentPage('my-vehicles-detail')
+                                                    }}
+                                                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#0B1E3D] shadow-xs transition-all hover:bg-slate-50 hover:border-slate-300"
+                                                >
+                                                    View Details
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                                                >
+                                                    <MoreVertical size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })
+                        ) : (
+                            <tr>
+                                <td
+                                    colSpan={9}
+                                    className="px-6 py-12 text-center text-gray-500"
+                                >
+                                    No Data Found
                                 </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                    {/* Page Info */}
+                    <p className="hidden sm:block text-xs text-slate-500">
+                        Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                        <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                    </p>
+
+                    {/* Pagination */}
+                    <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                        {/* Previous */}
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => p - 1)}
+                            disabled={page === 1}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                            hover:bg-slate-50 hover:border-slate-300
+                            disabled:opacity-40 disabled:cursor-not-allowed
+                            transition-all"
+                        >
+                            Previous
+                        </button>
+
+                        {/* Page Numbers */}
+                        {getPaginationRange(page, totalPages).map((num, idx) =>
+                            num === "..." ? (
+                                <span
+                                    key={`dot-${idx}`}
+                                    className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                >
+                                    ...
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    key={num}
+                                    onClick={() => setPage(num)}
+                                    className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                        ${page === num
+                                            ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                            : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                        }`}
+                                >
+                                    {num}
+                                </button>
+                            )
+                        )}
+
+                        {/* Next */}
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => p + 1)}
+                            disabled={page === totalPages}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                            hover:bg-slate-50 hover:border-slate-300
+                            disabled:opacity-40 disabled:cursor-not-allowed
+                            transition-all"
+                        >
+                            Next
+                        </button>
+
+                    </div>
+                </div>
+            )}
 
         </div>
     )

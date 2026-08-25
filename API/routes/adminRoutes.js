@@ -2,11 +2,11 @@
 import express from 'express';
 import { upload } from '../middlewares/imageStorage.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { 
-    adminSignup, adminLogin, adminGet, adminLogout, addNewBuyer, addNewSeller, 
-    getAllSellers, toggleSellerVerification, getSellerById, getVehiclesBySeller, 
-    getVehicleById, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
-    sellerDocVerification,  
+import {
+    adminSignup, adminLogin, adminGet, adminLogout,
+    addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
+    addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
+    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -28,11 +28,13 @@ const sellerDocsUpload = upload.fields([
     { name: 'vatCertificate', maxCount: 1 },
 ]);
 
+// ============================ ADMIN
 router.post('/admin-signup', upload.single('profilePhoto'), adminSignup);
 router.post('/admin-login', adminLogin);
 router.get('/admin-get', authMiddleware(['admin']), adminGet);
 router.post('/admin-logout', adminLogout);
 
+// ============================ BUYER
 router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
     identityDocsUpload(req, res, (err) => {
         if (err) {
@@ -58,6 +60,7 @@ router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin']), t
 router.get('/get-buyer/:id', authMiddleware(['admin']), getBuyerById);
 router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin']), buyerDocVerification);
 
+// ============================ SELLER
 router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
     sellerDocsUpload(req, res, (err) => {
         if (err) {
@@ -83,7 +86,11 @@ router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin']),
 router.get('/get-seller/:sellerId', authMiddleware(['admin']), getSellerById);
 router.patch('/seller-document-verification/:id/:document', authMiddleware(['admin']), sellerDocVerification);
 
+// ============================ VEHICLE
+router.get('/all-vehicles-list', authMiddleware(['admin']), getAllVehicles);
 router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehiclesBySeller);
-router.get('/get-vehicle/:vehicleId', authMiddleware(['admin']), getVehicleById);
+router.get('/get-vehicle/:id', authMiddleware(['admin']), getVehicleById);
+router.patch('/vehicle-review/:id', authMiddleware(['admin']), reviewVehicle);
+router.get('/vehicle-approval-summary', authMiddleware(['admin']), getVehicleApprovalSummary);
 
 export default router;

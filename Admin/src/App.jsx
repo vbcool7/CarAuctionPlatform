@@ -59,12 +59,13 @@ import BuyerKycVerification from './Components/KycVerification/BuyerKycVerificat
 import SellerKycVerification from './Components/KycVerification/SellerKycVerification';
 import BuyerKycVerificationDetail from './Components/KycVerification/BuyerKycVerificationDetail';
 import SellerKycVerificationDetail from './Components/KycVerification/SellerKycVerificationDetail';
+import VehicleApprovalsDetail from './Components/VehicleApprovals/VehicleApprovalsDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('seller-kyc');
+  const [currentPage, setCurrentPage] = useState('vehicle-approvals');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -77,6 +78,9 @@ function App() {
   const [selectedStaff, setSelectedStaff] = useState(null);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+
+  // vehicle approvals
+  const [selectedVehicleAppId, setSelectedVehicleAppId] = useState(null);
 
   // auct management
   const [selectedAuction, setSelectedAuction] = useState(null);
@@ -216,7 +220,8 @@ function App() {
                 {currentPage === 'add-new-staff' && <AddNewStaffForm setCurrentPage={setCurrentPage} />}
 
                 {/* vehicle approval */}
-                {currentPage === 'vehicle-approvals' && <VehicleApprovals setCurrentPage={setCurrentPage} />}
+                {currentPage === 'vehicle-approvals' && <VehicleApprovals setSelectedVehicleAppId={setSelectedVehicleAppId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'vehicle-approvals-detail' && <VehicleApprovalsDetail vehicleAppId={selectedVehicleAppId} setCurrentPage={setCurrentPage} />}
 
                 {/* auction management */}
                 {currentPage === 'all-auctions' && <AllAuctions setCurrentPage={setCurrentPage} setSelectedAuction={setSelectedAuction} />}

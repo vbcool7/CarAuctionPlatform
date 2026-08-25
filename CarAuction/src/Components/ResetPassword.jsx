@@ -1,18 +1,20 @@
 
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Key } from 'lucide-react';
 import { HiOutlineCheckCircle } from "react-icons/hi2";
-import { useBuyerResetpassword } from '../hook/useBuyer';
 import { toast } from "react-toastify";
+import { useResetpassword } from '../hook/useBuyer';
 
 function ResetPassword() {
 
-    const { id, token } = useParams();
     const navigate = useNavigate();
+    const { id, token } = useParams();
+    const [searchParams] = useSearchParams();
+
+    const role = searchParams.get('role') || 'buyer';
 
     const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [isSuccess, setIsSuccess] = useState(false);
     const [formData, setFormData] = useState({
@@ -20,7 +22,7 @@ function ResetPassword() {
         confirmPassword: ""
     });
 
-    const { mutate: resetpass, isPending: isResetting } = useBuyerResetpassword();
+    const { mutate: resetpass, isPending: isResetting } = useResetpassword();
 
     // input handler
     const handleChange = (e) => {
@@ -38,27 +40,27 @@ function ResetPassword() {
             return toast.error("Please fill all fields");
         }
 
-        if (formData.password.length < 8) {
-            return toast.error("Password must be at least 8 characters");
-        }
+        // if (formData.password.length < 8) {
+        //     return toast.error("Password must be at least 8 characters");
+        // }
 
-        if (!/\d/.test(formData.password)) {
-            return toast.error("Password must contain at least one number");
-        }
+        // if (!/\d/.test(formData.password)) {
+        //     return toast.error("Password must contain at least one number");
+        // }
 
-        if (!/[A-Z]/.test(formData.password)) {
-            return toast.error("Password must contain at least one uppercase letter");
-        }
+        // if (!/[A-Z]/.test(formData.password)) {
+        //     return toast.error("Password must contain at least one uppercase letter");
+        // }
 
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
-            return toast.error("Password must contain at least one special character");
-        }
+        // if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+        //     return toast.error("Password must contain at least one special character");
+        // }
 
         if (formData.password !== formData.confirmPassword) {
             return toast.error("Passwords do not match");
         }
 
-        resetpass({ ...formData, id, token }, {
+        resetpass({ ...formData, id, token, role }, {
             onSuccess: (res) => {
                 setIsSuccess(true);
             },
@@ -156,7 +158,6 @@ function ResetPassword() {
             <div className={`fixed inset-0 z-50 flex items-center justify-center px-4 transition-all duration-300 
             ${isSuccess ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
 
-                {/* Smooth Light Blurred Overlay Backdrop */}
                 <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300"></div>
 
                 {/* Modal Dialog Content Container Card */}

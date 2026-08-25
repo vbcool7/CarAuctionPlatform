@@ -5,7 +5,7 @@ import { useGetVehiclesBySeller } from "../../hooks/useVehicle";
 import { getPaginationRange } from "../utils/getPaginationRange";
 import { useState } from "react";
 
-function SellerListingTab({ data, sellerId, setSelectedVehicleId, setCurrentPage }) {
+function SellerListingTab({ sellerId, setSelectedVehicleId, setCurrentPage }) {
 
   const [page, setPage] = useState(1);
   const { data: vehicleData, isLoading, isError } = useGetVehiclesBySeller(sellerId, page);
