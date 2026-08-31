@@ -6,7 +6,9 @@ import {
     adminSignup, adminLogin, adminGet, adminLogout,
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
-    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary
+    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary,
+    getAllBids,
+    getAllAuctions
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -92,5 +94,11 @@ router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehic
 router.get('/get-vehicle/:id', authMiddleware(['admin']), getVehicleById);
 router.patch('/vehicle-review/:id', authMiddleware(['admin']), reviewVehicle);
 router.get('/vehicle-approval-summary', authMiddleware(['admin']), getVehicleApprovalSummary);
+
+// ============================ BID
+router.get('/all-bids', authMiddleware(['admin']), getAllBids);
+
+// ============================ AUCTION
+router.get('/all-auctions', authMiddleware(['admin']), getAllAuctions);
 
 export default router;

@@ -8,6 +8,7 @@ const vehicleSchema = new mongoose.Schema(
             ref: 'Seller',
             required: true
         },
+        
         listingId: { type: String, unique: true },
 
         // ============ 1st-step
@@ -199,11 +200,18 @@ const vehicleSchema = new mongoose.Schema(
         },
         auctionStartDate: { type: Date },
         auctionStartTime: { type: String },
+        auctionStartDateTime: { type: Date },
+
         auctionDuration: { type: String, enum: ["1_day", "3_days", "5_days", "7_days", "14_days"] },
+
         antiSnipingWindow: { type: Number, default: 2 },    // minutes before end — bid in this window triggers extension
         antiSnipingExtension: { type: Number, default: 2 }, // minutes added to auctionEndDateTime when triggered
+        extensionCount: { type: Number, default: 0 }, // count extension
+
         vinDecoded: { type: Boolean, default: false },
+
         auctionEndDateTime: { type: Date },
+
         allowBiddersToSave: { type: Boolean, default: false },
         shareOnSocialMedia: { type: Boolean, default: false },
         featuredListing: { type: Boolean, default: false },
@@ -246,9 +254,9 @@ const DURATION_MS = {
     '14_days': 14 * 24 * 60 * 60 * 1000,
 };
 
-const UAE_UTC_OFFSET_HOURS = 4; // HARDCODED — UAE-only platform. Revisit if/when multi-country expansion happens (see `country` field comment).
+export const UAE_UTC_OFFSET_HOURS = 4; // HARDCODED — UAE-only platform. Revisit if/when multi-country expansion happens (see `country` field comment).
 
-function parseTime12h(timeStr) {
+export const parseTime12h = (timeStr) => {
     const match = timeStr.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
     if (!match) return null;
 
@@ -289,7 +297,8 @@ vehicleSchema.pre('save', function () {
             0,
             0
         );
-
+        
+        this.auctionStartDateTime = startDateTime;
         this.auctionEndDateTime = new Date(startDateTime.getTime() + durationMs);
     }
     // no next() call needed — sync function, Mongoose 7+ handles completion automatically

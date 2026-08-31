@@ -4,6 +4,9 @@ import { CalendarDays, CircleDollarSign, Clock3, Copy, Eye, Gavel, MoreVertical,
 import { myVehiclesData } from '../SellerSharedComponents/SellerData';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+import { useGetMyAuctions } from '../../../hook/useAuction';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
+import { formatLabel } from '../../../utils/formatters';
 
 const tabs = [
     { key: 'active-auctions', label: 'Active Auctions' },
@@ -56,7 +59,196 @@ function useCountdown(targetDate) {
     return timeLeft;
 }
 
+const statusConfig = {
+    draft: { label: 'Draft', className: 'bg-gray-400 text-white' },
+    upcoming: { label: 'Upcoming', className: 'bg-blue-500 text-white' },
+    live: { label: 'Live', className: 'bg-green-500 text-white' },
+    sold: { label: 'Sold', className: 'bg-emerald-600 text-white' },
+    unsold: { label: 'Unsold', className: 'bg-red-500 text-white' },
+    'reserve-not-met': { label: 'Reserve Not Met', className: 'bg-orange-500 text-white' },
+    canceled: { label: 'Canceled', className: 'bg-gray-500 text-white' },
+};
+
+function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
+    const isLive = vehicle.auctionStatus === 'live';
+    const isEnded = ['sold', 'unsold', 'reserve-not-met', 'canceled'].includes(vehicle.auctionStatus);
+
+    const countdown = useCountdown(isLive ? vehicle.auctionEndDateTime : null);
+
+    const formatDate = (d) =>
+        d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+    const bidAmount = isLive ? (vehicle.currentBid ?? vehicle.startingBidPrice) : vehicle.startingBidPrice;
+
+    return (
+        <div className='bg-white border border-gray-200 rounded-xl p-3 md:p-4 shadow-sm'>
+            <div className='flex flex-col md:flex-row gap-4 items-start'>
+
+                {/* Vehicle Image */}
+                <div className='relative w-full md:w-40 lg:w-48 h-44 md:h-32 lg:h-36 shrink-0 rounded-lg overflow-hidden bg-gray-100'>
+                    <img
+                        src={vehicle.images?.[0]?.url}
+                        alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                        className='w-full h-full object-cover'
+                    />
+                    <span
+                        className={`absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-semibold ${statusConfig[vehicle.auctionStatus]?.className || 'bg-gray-400 text-white'
+                            }`}
+                    >
+                        {statusConfig[vehicle.auctionStatus]?.label || vehicle.auctionStatus}
+                    </span>
+                    <span className='absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 text-white text-[10px] px-2 py-1 rounded-md'>
+                        <Eye className='w-3 h-3' />
+                        {vehicle.images?.length || 0} Photos
+                    </span>
+                </div>
+
+                {/* Vehicle Content */}
+                <div className='flex-1 min-w-0 w-full'>
+                    <div className='flex flex-wrap items-center gap-2 mb-4'>
+                        <h3 className='text-base md:text-lg font-bold text-[#0B1E3D]'>
+                            {`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
+                        </h3>
+                    </div>
+
+                    <div className='grid grid-cols-2 sm:grid-cols-2 gap-4 mb-4'>
+                        <div>
+                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                <Gavel className='w-3.5 h-3.5' />
+                                {isLive ? 'Current Bid' : 'Starting Bid'}
+                            </div>
+                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>
+                                AED {Number(bidAmount ?? 0).toLocaleString('en-AE')}
+                            </p>
+                        </div>
+
+                        <div>
+                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                <CircleDollarSign className='w-3.5 h-3.5' />
+                                Reserve Price
+                            </div>
+                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>
+                                {vehicle.reservePrice ? `AED ${vehicle.reservePrice.toLocaleString('en-AE')}` : '—'}
+                            </p>
+                        </div>
+
+                        <div>
+                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                <Users className='w-3.5 h-3.5' />
+                                Bids
+                            </div>
+                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>{vehicle.bids ?? 0}</p>
+                        </div>
+
+                        <div>
+                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                <Eye className='w-3.5 h-3.5' />
+                                Watchers
+                            </div>
+                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>{vehicle.watchers ?? 0}</p>
+                        </div>
+                    </div>
+
+                    <div className='border-t border-gray-100 pt-3'>
+                        <div className='flex gap-8'>
+                            {/* Auction Timing */}
+                            <div>
+                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                    {isLive ? (
+                                        <Clock3 className='w-3.5 h-3.5 text-amber-600' />
+                                    ) : isEnded ? (
+                                        <Clock3 className='w-3.5 h-3.5 text-gray-400' />
+                                    ) : (
+                                        <CalendarDays className='w-3.5 h-3.5 text-blue-500' />
+                                    )}
+                                    {isLive ? 'Auction Ends' : isEnded ? 'Auction Ended' : 'Auction Starts'}
+                                </div>
+
+                                {isLive ? (
+                                    <>
+                                        <p className='text-xs font-bold text-amber-600'>
+                                            {countdown.days}d {countdown.hours}h {countdown.mins}m
+                                        </p>
+                                        <p className='text-[10px] text-gray-400 mt-0.5'>
+                                            {formatDate(vehicle.auctionEndDateTime)}
+                                        </p>
+                                    </>
+                                ) : isEnded ? (
+                                    <p className='text-xs font-semibold text-gray-500'>
+                                        {formatDate(vehicle.auctionEndDateTime)}
+                                    </p>
+                                ) : (
+                                    <p className='text-xs font-semibold text-[#0B1E3D]'>
+                                        {formatDate(vehicle.auctionStartDate)} {vehicle.auctionStartTime}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Listing ID / Duration */}
+                            <div>
+                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
+                                    {isLive ? 'Listing ID' : 'Duration'}
+                                </div>
+                                {isLive ? (
+                                    <div className='flex items-center gap-2'>
+                                        <p className='text-xs font-semibold text-[#0B1E3D]'>
+                                            {vehicle.listingId || vehicle._id}
+                                        </p>
+                                        <Copy className='w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-[#D97706]' />
+                                    </div>
+                                ) : (
+                                    <p className='text-xs font-semibold text-[#0B1E3D]'>
+                                        {formatLabel(vehicle.auctionDuration)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className='w-full md:w-30 shrink-0 flex md:flex-col gap-2 justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-3 md:pt-0 md:pl-4'>
+                    <button
+                        onClick={() => {
+                            setSelectedAuctionId(vehicle._id);
+                            setCurrentPage('my-auctions-detail');
+                        }}
+                        className='flex-1 md:w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-2 py-2.5 text-xs font-semibold text-[#0B1E3D] hover:bg-gray-50 transition'
+                    >
+                        {isLive ? 'View Auction' : 'View Details'}
+                    </button>
+                    <button className='flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2.5 text-gray-600 hover:bg-gray-50 transition'>
+                        <MoreVertical className='w-4 h-4' />
+                    </button>
+                </div>
+            </div>
+
+            {/* Tags */}
+            <div className='flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100'>
+                {[vehicle.vin, vehicle.vehicleType, vehicle.transmission, vehicle.drivetrain, `${vehicle.mileage} miles`, vehicle.fuelType]
+                    .filter(Boolean)
+                    .map((tag, index) => (
+                        <span
+                            key={index}
+                            className='px-3 py-1 rounded-md bg-gray-50 text-[10px] sm:text-xs font-medium text-gray-500'
+                        >
+                            {index === 0 ? `VIN: ${tag}` : formatLabel(tag)}
+                        </span>
+                    ))}
+            </div>
+        </div>
+    );
+}
+
 function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
+
+    const [page, setPage] = useState(1);
+    const { data: myAuctionsData, isLoading, isError } = useGetMyAuctions(page);
+
+    const myAuctions = myAuctionsData?.vehicles || [];
+    const auctionVehicles = myAuctions;
+
+    const totalPages = myAuctionsData?.pagination?.totalPages || 1;
 
     const [activeTab, setActiveTab] = useState('live');
     const [search, setSearch] = useState('');
@@ -64,13 +256,11 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
     const [auctionType, setAuctionType] = useState('');
     const [date, setDate] = useState('');
 
-    const auctionVehicles = myVehiclesData.filter((v) => v.adminStatus === 'approved');
-
     const tabFilters = {
         live: (v) => v.auctionStatus === 'live',
         upcoming: (v) => v.auctionStatus === 'upcoming',
         ended: (v) => ['sold', 'unsold', 'reserve-not-met'].includes(v.auctionStatus),
-        canceled: (v) => v.adminStatus === 'rejected', // pending confirm — sir se poochna hai
+        canceled: (v) => v.auctionStatus === 'canceled', // was checking adminStatus==='rejected', wrong field entirely
     };
 
     const tabs = [
@@ -82,7 +272,9 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
 
     const filteredVehicles = auctionVehicles
         .filter(tabFilters[activeTab])
-        .filter((v) => v.name?.toLowerCase().includes(search.toLowerCase()));
+        .filter((v) =>
+            `${v.year} ${v.make} ${v.model} ${v.vin}`.toLowerCase().includes(search.toLowerCase())
+        );
 
     const upcomingVehicle = auctionVehicles.find((v) => v.auctionStatus === 'upcoming');
 
@@ -184,181 +376,76 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                         )}
 
                         {filteredVehicles.map((vehicle) => (
-                            <div
-                                key={vehicle.id}
-                                className='bg-white border border-gray-200 rounded-xl p-3 md:p-4 shadow-sm'
-                            >
-                                <div className='flex flex-col md:flex-row gap-4 items-start'>
-
-                                    {/* Vehicle Image */}
-                                    <div className='relative w-full md:w-40 lg:w-48 h-44 md:h-32 lg:h-36 shrink-0 rounded-lg overflow-hidden bg-gray-100'>
-                                        <img
-                                            src={vehicle.images?.[0]?.previewUrl || vehicle.image}
-                                            alt={vehicle.name}
-                                            className='w-full h-full object-cover'
-                                        />
-
-                                        <span
-                                            className={`absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-semibold 
-                                                ${vehicle.auctionStatus === 'live'
-                                                    ? 'bg-green-500 text-white'
-                                                    : 'bg-blue-500 text-white'
-                                                }`}
-                                        >
-                                            {vehicle.auctionStatus === 'live' ? 'Live' : 'Scheduled'}
-                                        </span>
-
-                                        <span className='absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 text-white text-[10px] px-2 py-1 rounded-md'>
-                                            <Eye className='w-3 h-3' />
-                                            {vehicle.images?.length || 0} Photos
-                                        </span>
-                                    </div>
-
-                                    {/* Vehicle Content */}
-                                    <div className='flex-1 min-w-0 w-full'>
-
-                                        {/* Title */}
-                                        <div className='flex flex-wrap items-center gap-2 mb-4'>
-                                            <h3 className='text-base md:text-lg font-bold text-[#0B1E3D]'>
-                                                {vehicle.name}
-                                            </h3>
-                                            <span
-                                                className={`text-[10px] font-semibold px-2 py-1 rounded-md ${vehicle.auctionStatus === 'live'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-blue-100 text-blue-600'
-                                                    }`}
-                                            >
-                                                {vehicle.auctionType}
-                                            </span>
-                                        </div>
-
-                                        {/* Stats — 4 items: 2 cols on mobile, 4 in a row from sm+ */}
-                                        <div className='grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4'>
-                                            <div>
-                                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                    <Gavel className='w-3.5 h-3.5' />
-                                                    {vehicle.auctionStatus === 'live' ? 'Current Bid' : 'Starting Bid'}
-                                                </div>
-                                                <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>
-                                                    {vehicle.bid?.amount}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                    <CircleDollarSign className='w-3.5 h-3.5' />
-                                                    Reserve Price
-                                                </div>
-                                                <p className='pl-3 text-xs font-bold text-[#0B1E3D]'>
-                                                    {vehicle.reservePrice || '—'}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                    <Users className='w-3.5 h-3.5' />
-                                                    Bids
-                                                </div>
-                                                <p className='text-xs font-bold text-[#0B1E3D]'>
-                                                    {vehicle.bids ?? 0}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                    <Eye className='w-3.5 h-3.5' />
-                                                    Watchers
-                                                </div>
-                                                <p className='text-xs font-bold text-[#0B1E3D]'>
-                                                    {vehicle.watchers ?? 0}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className='border-t border-gray-100 pt-3'>
-                                            <div className='flex gap-8'>
-
-                                                {/* Auction Timing */}
-                                                <div>
-                                                    <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                        {vehicle.auctionStatus === 'live' ? (
-                                                            <Clock3 className='w-3.5 h-3.5 text-amber-600' />
-                                                        ) : (
-                                                            <CalendarDays className='w-3.5 h-3.5 text-blue-500' />
-                                                        )}
-                                                        {vehicle.auctionStatus === 'live' ? 'Auction Ends' : 'Auction Starts'}
-                                                    </div>
-
-                                                    {vehicle.auctionStatus === 'live' ? (
-                                                        <>
-                                                            <p className='text-xs font-bold text-amber-600'>
-                                                                {vehicle.timing?.timeLeft}
-                                                            </p>
-                                                            <p className='text-[10px] text-gray-400 mt-0.5'>
-                                                                {vehicle.timing?.date}
-                                                            </p>
-                                                        </>
-                                                    ) : (
-                                                        <p className='text-xs font-semibold text-[#0B1E3D]'>
-                                                            {vehicle.auctionStartDate} {vehicle.auctionStartTime}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                {/* Listing ID / Duration */}
-                                                <div>
-                                                    <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                                        {vehicle.auctionStatus === 'live' ? 'Listing ID' : 'Duration'}
-                                                    </div>
-
-                                                    {vehicle.auctionStatus === 'live' ? (
-                                                        <div className='flex items-center gap-2'>
-                                                            <p className='text-xs font-semibold text-[#0B1E3D]'>
-                                                                {vehicle.id}
-                                                            </p>
-                                                            <Copy className='w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-[#D97706]' />
-                                                        </div>
-                                                    ) : (
-                                                        <p className='text-xs font-semibold text-[#0B1E3D]'>
-                                                            {vehicle.auctionDuration}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className='w-full md:w-30 shrink-0 flex md:flex-col gap-2 justify-center border-t md:border-t-0 md:border-l border-gray-100 pt-3 md:pt-0 md:pl-4'>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedAuctionId(vehicle.id)
-                                                setCurrentPage('my-auctions-detail')
-                                            }}
-                                            className='flex-1 md:w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-2 py-2.5 text-xs font-semibold text-[#0B1E3D] hover:bg-gray-50 transition'
-                                        >
-                                            {vehicle.auctionStatus === 'live' ? 'View Auction' : 'View Details'}
-                                        </button>
-
-                                        <button className='flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2.5 text-gray-600 hover:bg-gray-50 transition'>
-                                            <MoreVertical className='w-4 h-4' />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Tags */}
-                                <div className='flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100'>
-                                    {[vehicle.vehicleType, vehicle.transmission, vehicle.driveType, `${vehicle.mileage} miles`, vehicle.fuelType]
-                                        .filter(Boolean)
-                                        .map((tag, index) => (
-                                            <span key={index} className='px-3 py-1 rounded-md bg-gray-50 text-[10px] sm:text-xs font-medium text-gray-500'>
-                                                {tag}
-                                            </span>
-                                        ))}
-                                </div>
-                            </div>
+                            <AuctionCard
+                                key={vehicle._id}
+                                vehicle={vehicle}
+                                setSelectedAuctionId={setSelectedAuctionId}
+                                setCurrentPage={setCurrentPage}
+                            />
                         ))}
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                            {/* Page Info */}
+                            <p className="hidden sm:block text-xs text-slate-500">
+                                Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                                <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                            </p>
+
+                            {/* Pagination */}
+                            <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                                {/* Previous */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p - 1)}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Previous
+                                </button>
+
+                                {/* Page Numbers */}
+                                {getPaginationRange(page, totalPages).map((num, idx) =>
+                                    num === "..." ? (
+                                        <span
+                                            key={`dot-${idx}`}
+                                            className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                        >
+                                            ...
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            key={num}
+                                            onClick={() => setPage(num)}
+                                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                ${page === num
+                                                    ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                                }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    )
+                                )}
+
+                                {/* Next */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Next
+                                </button>
+
+                            </div>
+                        </div>
+                    )}
 
                 </div>
 

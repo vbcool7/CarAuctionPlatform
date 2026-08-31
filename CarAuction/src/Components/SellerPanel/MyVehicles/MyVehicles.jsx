@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { CarFront, CheckCircle2, Clock, Eye, Gavel, MoreVertical, Sparkles } from 'lucide-react';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
-import { myVehiclesData } from '../SellerSharedComponents/SellerData';
 
 import { useSellerVehicles, useVehicleStats } from '../../../hook/useVehicle';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
@@ -186,7 +185,8 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                             <th className="px-6 py-4.5 w-40">Auction Type</th>
                             <th className="px-6 py-4.5 w-40">Current / Starting Bid</th>
                             <th className="px-6 py-4.5 w-30">Views</th>
-                            <th className="px-6 py-4.5 w-40">Ends In / Start Date</th>
+                            <th className="px-6 py-4.5 w-30">Start Date</th>
+                            <th className="px-6 py-4.5 w-40">Ends Date</th>
                             <th className="px-6 py-4.5 w-50 pl-10">Actions</th>
                         </tr>
                     </thead>
@@ -335,38 +335,49 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                                             </div>
                                         </td>
 
-                                        {/* Ends */}
+                                        {/* auction start */}
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                {endDate ? (
-                                                    <>
-                                                        <span className="text-xs font-bold text-[#0B1E3D]">
-                                                            {endDate.toLocaleDateString("en-US", {
-                                                                month: "short",
-                                                                day: "2-digit",
-                                                                year: "numeric",
-                                                            })}
-                                                        </span>
+                                            <div>
+                                                <p className="text-xs font-semibold text-[#0B1E3D]">
+                                                    {vehicle.auctionStartDate
+                                                        ? new Date(vehicle.auctionStartDate).toLocaleDateString('en-GB', {
+                                                            timeZone: 'Asia/Dubai',
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            year: 'numeric'
+                                                        })
+                                                        : '----'}
+                                                </p>
 
-                                                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
-                                                            {endDate.toLocaleTimeString("en-US", {
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
-                                                                hour12: true,
-                                                            })}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="text-xs font-bold text-slate-400">
-                                                            Not scheduled
-                                                        </span>
+                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                    {vehicle.auctionStartTime || '----'}
+                                                </p>
+                                            </div>
+                                        </td>
 
-                                                        <span className="mt-0.5 text-[11px] font-semibold text-slate-400">
-                                                            —
-                                                        </span>
-                                                    </>
-                                                )}
+                                        {/* auction end */}
+                                        <td className="px-6 py-4">
+                                            <div>
+                                                <p className="text-xs font-semibold text-[#0B1E3D]">
+                                                    {vehicle.auctionEndDateTime
+                                                        ? new Date(vehicle.auctionEndDateTime).toLocaleDateString('en-GB', {
+                                                            timeZone: 'Asia/Dubai',
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            year: 'numeric'
+                                                        })
+                                                        : '----'}
+                                                </p>
+
+                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                    {vehicle.auctionEndDateTime
+                                                        ? new Date(vehicle.auctionEndDateTime).toLocaleTimeString('en-US', {
+                                                            timeZone: 'Asia/Dubai',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })
+                                                        : '----'}
+                                                </p>
                                             </div>
                                         </td>
 

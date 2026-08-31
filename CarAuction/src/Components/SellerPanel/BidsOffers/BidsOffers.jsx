@@ -4,6 +4,8 @@ import { ArrowDown, ArrowUp, Clock3, Headphones, MoreVertical, Trophy } from 'lu
 import { bidsData } from '../SellerSharedComponents/SellerData';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+import { useGetMyBids } from '../../../hook/useBid';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
 
 const statusOptions = [
     { value: "", label: "All Status" },
@@ -55,22 +57,57 @@ const recentActivities = [
     },
 ];
 
+export const getAuctionStatusStyle = (status) => {
+    switch (status) {
+        case 'draft':
+            return 'text-gray-500';
+
+        case 'upcoming':
+            return 'text-blue-600';
+
+        case 'live':
+            return 'text-green-600';
+
+        case 'sold':
+            return 'text-emerald-600';
+
+        case 'unsold':
+            return 'text-orange-600';
+
+        case 'reserve-not-met':
+            return 'text-red-600';
+
+        case 'canceled':
+            return 'text-gray-500';
+
+        default:
+            return 'text-[#0B1E3D]';
+    }
+};
+
 function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
 
+    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState('all');
+
+    const { data: myBids, isLoading, isError } = useGetMyBids(page, activeTab === 'all' ? '' : activeTab);
+
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const [auctionType, setAuctionType] = useState('');
     const [date, setDate] = useState('');
 
+    const totalPages = myBids?.pagination?.totalPages || 1;
+
     const tabs = [
         { key: 'all', label: 'All', count: 0 },
-        { key: 'active-bids', label: 'Active Bids', count: 0 },
-        { key: 'offers-made', label: 'Offers Made', count: 0 },
+        { key: 'active', label: 'Active Bids', count: 0 },
         { key: 'won', label: 'Won', count: 0 },
         { key: 'outbid', label: 'Outbid', count: 0 },
-        { key: 'declined', label: 'Declined', count: 0 },
     ];
+
+    if (isLoading) return <p className="p-10 text-center">Loading my bids list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load bids list</p>;
 
     return (
         <div className='pb-6 space-y-6'>
@@ -90,7 +127,10 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                 {tabs.map((tab) => (
                     <button
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
+                        onClick={() => {
+                            setActiveTab(tab.key);
+                            setPage(1);
+                        }}
                         className={`py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.key
                             ? 'border-[#D97706] text-[#D97706]'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -131,150 +171,239 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                         <table className="w-full text-left table-fixed">
                             <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4.5 w-85">Vehicle / Auction</th>
+                                    <th className="px-6 py-4.5 w-80">Vehicle / Auction</th>
                                     <th className="px-6 py-4.5 w-50">Your Bid / Offer</th>
-                                    <th className="px-6 py-4.5 w-40">Status</th>
-                                    <th className="px-6 py-4.5 w-40 pl-10">Auction Ends</th>
+                                    <th className="px-6 py-4.5 w-40 pl-10">Status</th>
+                                    <th className="px-6 py-4.5 w-40">Auction Ends</th>
                                     <th className="px-6 py-4.5 w-45 pl-12">Actions</th>
                                 </tr>
                             </thead>
 
                             <tbody>
-                                {bidsData.map((bid) => (
-                                    <tr
-                                        key={bid.id}
-                                        className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'
-                                    >
-                                        {/* Vehicle / Auction */}
-                                        <td className='px-3 py-3'>
-                                            <div className='flex items-center gap-3'>
-                                                <img
-                                                    src={bid.image}
-                                                    alt={bid.name}
-                                                    className='w-16 h-12 rounded-md object-cover shrink-0'
-                                                />
+                                {myBids?.bids?.length > 0 ? (
+                                    myBids.bids.map((bid, index) => {
+                                        return (
+                                            <tr
+                                                key={bid._id || index}
+                                                className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'
+                                            >
+                                                {/* Vehicle / Auction */}
+                                                <td className='px-3 py-3'>
+                                                    <div className='flex items-center gap-3'>
+                                                        <img
+                                                            src={bid.vehicleId?.images?.[0]?.url || null}
+                                                            alt={bid.vehicleId?.model}
+                                                            className='w-16 h-12 rounded-md object-cover shrink-0'
+                                                        />
 
-                                                <div className='min-w-0'>
-                                                    <div className='flex items-center gap-2'>
-                                                        <p className='text-sm font-semibold text-[#0B1E3D] truncate'>
-                                                            {bid.name}
+                                                        <div className='min-w-0'>
+                                                            <div className='flex items-center gap-2'>
+                                                                <p className='text-sm font-semibold text-[#0B1E3D] truncate'>
+                                                                    {bid.vehicleId?.year} {bid.vehicleId?.make} {bid.vehicleId?.model}
+                                                                </p>
+                                                            </div>
+
+                                                            <p className='text-[11px] text-gray-500 mt-1'>
+                                                                Listing ID: {bid.vehicleId?.listingId}
+                                                            </p>
+
+                                                            <p className='text-[11px] text-gray-500'>
+                                                                VIN: {bid.vehicleId?.vin}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Your Bid / Offer */}
+                                                <td className='px-3 py-3'>
+                                                    <div className=''>
+                                                        <p
+                                                            className={`text-sm font-bold ${bid.status === 'highestBid' || bid.status === 'won'
+                                                                ? 'text-green-600'
+                                                                : 'text-[#0B1E3D]'
+                                                                }`}
+                                                        >
+                                                            AED {bid.amount?.toLocaleString()}
                                                         </p>
 
-                                                        {bid.auctionStatus === 'live' && (
-                                                            <span className='px-1.5 py-0.5 rounded bg-green-100 text-green-600 text-[11px] font-semibold'>
-                                                                Live Auction
-                                                            </span>
-                                                        )}
+                                                        <p className='text-[12px] text-gray-500 mt-1'>
+                                                            Your Bid
+                                                        </p>
 
-                                                        {bid.auctionStatus === 'ended' && (
-                                                            <span className='px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-[11px] font-semibold'>
-                                                                Ended
-                                                            </span>
+                                                        <p className='text-[12px] text-gray-500'>
+                                                            Reserve: AED {bid.vehicleId?.reservePrice?.toLocaleString()}
+                                                        </p>
+
+                                                        {bid.status === 'outbid' && (
+                                                            <p className='text-[12px] text-amber-600 font-medium mt-1'>
+                                                                Current Highest: AED {bid.vehicleId?.currentBid?.toLocaleString()}
+                                                            </p>
                                                         )}
                                                     </div>
+                                                </td>
 
-                                                    <p className='text-[11px] text-gray-500 mt-1'>
-                                                        Listing ID: {bid.listingId}
-                                                    </p>
+                                                {/* Status */}
+                                                <td className='pl-10 px-3 py-3'>
+                                                    <div className=''>
+                                                        <span
+                                                            className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold ${bid.status === 'active'
+                                                                ? 'bg-green-100 text-green-600'
+                                                                : bid.status === 'outbid'
+                                                                    ? 'bg-red-100 text-red-600'
+                                                                    : bid.status === 'won'
+                                                                        ? 'bg-green-100 text-green-600'
+                                                                        : 'bg-gray-100 text-gray-500'
+                                                                }`}
+                                                        >
+                                                            {bid.status === 'active' ? 'Highest Bid' : bid.status === 'outbid' ? 'Outbid' : bid.status === 'won' ? 'Won' : bid.status}
+                                                        </span>
+                                                    </div>
+                                                </td>
 
-                                                    <p className='text-[11px] text-gray-500'>
-                                                        VIN: {bid.vin}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
+                                                {/* Auction Ends */}
+                                                <td className='px-3 py-3  pl-10'>
+                                                    <div className=''>
+                                                        <p
+                                                            className={`text-sm font-semibold ${getAuctionStatusStyle(
+                                                                bid.vehicleId?.auctionStatus
+                                                            )}`}
+                                                        >
+                                                            {bid.vehicleId?.auctionStatus === 'reserve-not-met'
+                                                                ? 'Reserve Not Met'
+                                                                : bid.vehicleId?.auctionStatus
+                                                                    ? bid.vehicleId.auctionStatus.charAt(0).toUpperCase() +
+                                                                    bid.vehicleId.auctionStatus.slice(1)
+                                                                    : 'N/A'}
+                                                        </p>
 
-                                        {/* Your Bid / Offer */}
-                                        <td className='px-3 py-3'>
-                                            <div className=''>
-                                                <p
-                                                    className={`text-sm font-bold ${bid.status === 'highestBid' || bid.status === 'won'
-                                                        ? 'text-green-600'
-                                                        : 'text-[#0B1E3D]'
-                                                        }`}
-                                                >
-                                                    {bid.bid}
-                                                </p>
+                                                        <p className='text-[12px] text-gray-500 mt-1'>
+                                                            {new Date(bid.vehicleId.auctionEndDateTime).toLocaleDateString(
+                                                                'en-US',
+                                                                {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric',
+                                                                    timeZone: 'Asia/Dubai',
+                                                                }
+                                                            )}
+                                                        </p>
 
-                                                <p className='text-[12px] text-gray-500 mt-1'>
-                                                    {bid.bidLabel}
-                                                </p>
+                                                        <p className='text-[12px] text-gray-500'>
+                                                            {new Date(bid.vehicleId.auctionEndDateTime).toLocaleTimeString(
+                                                                'en-US',
+                                                                {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    timeZone: 'Asia/Dubai',
+                                                                }
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </td>
 
-                                                <p className='text-[12px] text-gray-500'>
-                                                    Reserve: {bid.reserve}
-                                                </p>
-                                            </div>
-                                        </td>
+                                                {/* Action */}
+                                                <td className='px-3 py-3 pl-10'>
+                                                    <div className='flex items-center gap-2'>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedBidsOfferId(bid._id)
+                                                                setCurrentPage('bids-offers-detail')
+                                                            }}
+                                                            className='whitespace-nowrap px-3 py-2 rounded-md border border-gray-200 text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50 transition-colors'>
+                                                            View Details
+                                                        </button>
 
-                                        {/* Status */}
-                                        <td className='px-3 py-3'>
-                                            <div className=''>
-                                                <span
-                                                    className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold ${bid.status === 'highestBid'
-                                                        ? 'bg-green-100 text-green-600'
-                                                        : bid.status === 'upcoming'
-                                                            ? 'bg-blue-100 text-blue-600'
-                                                            : bid.status === 'outbid'
-                                                                ? 'bg-red-100 text-red-600'
-                                                                : bid.status === 'won'
-                                                                    ? 'bg-green-100 text-green-600'
-                                                                    : 'bg-gray-100 text-gray-500'
-                                                        }`}
-                                                >
-                                                    {bid.statusLabel}
-                                                </span>
-
-                                                <p className='text-[12px] text-gray-500 mt-1 line-clamp-2'>
-                                                    {bid.statusText}
-                                                </p>
-                                            </div>
-                                        </td>
-
-                                        {/* Auction Ends */}
-                                        <td className='px-3 py-3  pl-10'>
-                                            <div className=''>
-                                                <p
-                                                    className={`text-sm font-semibold ${bid.auctionStatus === 'live'
-                                                        ? 'text-amber-600'
-                                                        : 'text-[#0B1E3D]'
-                                                        }`}
-                                                >
-                                                    {bid.auctionEnds}
-                                                </p>
-
-                                                <p className='text-[12px] text-gray-500 mt-1'>
-                                                    {bid.date}
-                                                </p>
-
-                                                <p className='text-[12px] text-gray-500'>
-                                                    {bid.time}
-                                                </p>
-                                            </div>
-                                        </td>
-
-                                        {/* Action */}
-                                        <td className='px-3 py-3 pl-10'>
-                                            <div className='flex items-center gap-2'>
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedBidsOfferId(bid.id)
-                                                        setCurrentPage('bids-offers-detail')
-                                                    }}
-                                                    className='whitespace-nowrap px-3 py-2 rounded-md border border-gray-200 text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50 transition-colors'>
-                                                    {bid.action}
-                                                </button>
-
-                                                <button
-                                                    className='w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50'>
-                                                    <MoreVertical className='w-4 h-4' />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                        <button
+                                                            className='w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50'>
+                                                            <MoreVertical className='w-4 h-4' />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
+                                )
+                                    : (
+                                        <tr>
+                                            <td
+                                                colSpan={5}
+                                                className="px-6 py-12 text-center text-gray-500"
+                                            >
+                                                No Data Found
+                                            </td>
+                                        </tr>
+                                    )}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                            {/* Page Info */}
+                            <p className="hidden sm:block text-xs text-slate-500">
+                                Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                                <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                            </p>
+
+                            {/* Pagination */}
+                            <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                                {/* Previous */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p - 1)}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                                                hover:bg-slate-50 hover:border-slate-300
+                                                disabled:opacity-40 disabled:cursor-not-allowed
+                                                transition-all"
+                                >
+                                    Previous
+                                </button>
+
+                                {/* Page Numbers */}
+                                {getPaginationRange(page, totalPages).map((num, idx) =>
+                                    num === "..." ? (
+                                        <span
+                                            key={`dot-${idx}`}
+                                            className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                        >
+                                            ...
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            key={num}
+                                            onClick={() => setPage(num)}
+                                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                            ${page === num
+                                                    ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                                }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    )
+                                )}
+
+                                {/* Next */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                                                hover:bg-slate-50 hover:border-slate-300
+                                                disabled:opacity-40 disabled:cursor-not-allowed
+                                                transition-all"
+                                >
+                                    Next
+                                </button>
+
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* right  */}

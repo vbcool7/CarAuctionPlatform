@@ -1,29 +1,8 @@
 
 import React, { useState } from 'react';
-import { myVehiclesData } from '../SellerSharedComponents/SellerData';
-import { Copy, Edit3, Undo2 } from 'lucide-react';
+import { Copy, Edit3, File, Undo2 } from 'lucide-react';
 import { useVehicleDetail } from '../../../hook/useVehicle';
-
-const getAuctionPhase = (vehicle) => {
-    if (vehicle.adminStatus !== 'approved') {
-        return 'draft'; // draft: never submitted / not yet approved
-    }
-
-    // status 
-    const now = new Date();
-    const startDateTime = new Date(`${vehicle.auctionStartDate}T${vehicle.auctionStartTime}`);
-
-    if (vehicle.auctionEndedManually) {
-        // manual end action — seller/admin ne "End Auction" click kiya
-        return vehicle.hasBids ? 'sold' : 'expired';
-    }
-
-    if (now < startDateTime) {
-        return 'upcoming';
-    }
-
-    return 'live';
-};
+import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
 
 const auctionPhaseLabels = {
     draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700' },
@@ -45,6 +24,7 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
     const vehicle = vehicleData?.data;
 
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedImage, setSelectedImage] = useState(0);
 
     if (isLoading) return <p className="p-10 text-center">Loading vehicle details....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load vehicle details</p>;
@@ -57,8 +37,14 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
         { key: 'documents', label: `Documents (${vehicle.documents?.length || 0})` },
     ];
 
-    const phase = getAuctionPhase(vehicle);
-    const phaseInfo = auctionPhaseLabels[phase];
+    const hasCurrentBid =
+        vehicle.currentBid !== null && vehicle.currentBid !== undefined;
+
+    const bidLabel = hasCurrentBid ? "Current Bid" : "Starting Bid";
+
+    const bidValue = hasCurrentBid
+        ? vehicle.currentBid
+        : vehicle.startingBid;
 
     return (
         <div className='pb-6 space-y-6'>
@@ -113,36 +99,48 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                     {/* cover image + basic specs card */}
                     <div className='bg-white rounded-xl border border-gray-200 p-5'>
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
-                            {/* cover image + thumbnails */}
                             <div>
-                                <div className='relative rounded-xl overflow-hidden h-64 md:h-72 bg-gray-100'>
-                                    <img
-                                        src={vehicle?.images?.[0].url || null}
-                                        alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                                        className='w-full h-full object-cover'
-                                    />
-                                    <div className='absolute top-3 left-3 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-md'>
-                                        {vehicle.images?.length || 0} Photos
+                                <div className='space-y-3'>
+                                    {/* Cover Image */}
+                                    <div className='relative rounded-xl overflow-hidden h-64 md:h-72 bg-gray-100'>
+                                        {vehicle?.images?.length > 0 ? (
+                                            <img
+                                                src={vehicle.images[selectedImage]?.url}
+                                                alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                                                className='w-full h-full object-cover'
+                                            />
+                                        ) : (
+                                            <div className='flex items-center justify-center h-full text-sm text-gray-400'>
+                                                No image available
+                                            </div>
+                                        )}
+
+                                        <div className='absolute top-3 left-3 flex items-center gap-1 bg-black/60 text-white text-xs px-2 py-1 rounded-md'>
+                                            {vehicle?.images?.length || 0} Photos
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className='grid grid-cols-6 gap-2 mt-3'>
-                                    {vehicle.images?.slice(1, 6).map((img, index) => (
-                                        <img
-                                            key={index}
-                                            src={img.url}
-                                            alt={`Vehicle ${index + 2}`}
-                                            className='h-14 w-full rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-[#D97706]'
-                                        />
-                                    ))}
-
-                                    {vehicle.images?.length > 6 && (
-                                        <button
-                                            onClick={() => setActiveTab('images')}
-                                            className='h-14 w-full rounded-lg bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600 hover:bg-gray-200'
-                                        >
-                                            +{vehicle.images.length - 6} More
-                                        </button>
+                                    {/* Thumbnails */}
+                                    {vehicle?.images?.length > 0 && (
+                                        <div className='flex gap-2 overflow-x-auto pb-1'>
+                                            {vehicle.images.map((image, index) => (
+                                                <button
+                                                    key={image._id || index}
+                                                    type='button'
+                                                    onClick={() => setSelectedImage(index)}
+                                                    className={`relative shrink-0 w-20 h-16 rounded-lg overflow-hidden border-2 transition ${selectedImage === index
+                                                        ? 'border-[#D97706]'
+                                                        : 'border-gray-200'
+                                                        }`}
+                                                >
+                                                    <img
+                                                        src={image.url}
+                                                        alt={`${vehicle.make} ${vehicle.model} ${index + 1}`}
+                                                        className='w-full h-full object-cover'
+                                                    />
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -167,7 +165,7 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                                 <div className='grid grid-cols-2 gap-y-4 gap-x-2'>
                                     <div>
                                         <p className='text-xs text-gray-400'>Drive Type</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.drivetrain || "---"}</p>
+                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.drivetrain || "---")}</p>
                                     </div>
                                     <div>
                                         <p className='text-xs text-gray-400'>Engine</p>
@@ -184,16 +182,16 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                                     </div>
                                     <div>
                                         <p className='text-xs text-gray-400'>Title Status</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.titleStatus?.replace("_", " ") || "---"}</p>
+                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.titleStatus?.replace("_", " ") || "---")}</p>
                                     </div>
                                     <div>
                                         <p className='text-xs text-gray-400'>Location</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.city}, {vehicle.emirate?.replaceAll("_", " ")}</p>
+                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.city)}, {formatLabel(vehicle.emirate?.replaceAll("_", " "))}</p>
                                     </div>
                                 </div>
-
-                                <div className='pt-2 border-t border-gray-100'>
-                                    <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.vin}</p>
+                                <div>
+                                    <p className='text-xs text-gray-400'>VIN</p>
+                                    <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.vin)}</p>
                                 </div>
                             </div>
                         </div>
@@ -202,6 +200,7 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                     {/* tabs */}
                     <div className='bg-white rounded-xl border border-gray-200'>
                         <div className='flex gap-4 border-b border-gray-200 px-5 overflow-x-auto '>
+
                             <div className='flex gap-9 border-b border-gray-200 px-5 overflow-x-auto no-scrollbar'>
                                 {tabs.map((tab) => (
                                     <button
@@ -236,14 +235,14 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                                         <div>
                                             <p className='text-xs text-gray-400'>Title Status</p>
                                             <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {vehicle.titleStatus?.replaceAll('_', ' ') || '----'}
+                                                {formatLabel(vehicle.titleStatus || '----')}
                                             </p>
                                         </div>
 
                                         <div>
                                             <p className='text-xs text-gray-400'>Drive Type</p>
                                             <p className='text-sm font-medium text-[#0B1E3D] uppercase'>
-                                                {vehicle.drivetrain || '----'}
+                                                {formatLabel(vehicle.drivetrain || '----')}
                                             </p>
                                         </div>
 
@@ -279,15 +278,16 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                                         <div>
                                             <p className='text-xs text-gray-400'>Location</p>
                                             <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {vehicle.city || '----'}
-                                                {vehicle.emirate && `, ${vehicle.emirate.replaceAll('_', ' ')}`}
+                                                {formatLabel(vehicle.city) || '----'}
+                                                {vehicle.emirate && `, ${formatLabel(vehicle.emirate)}`}
+
                                             </p>
                                         </div>
 
                                         <div>
                                             <p className='text-xs text-gray-400'>Vehicle Type</p>
                                             <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {vehicle.vehicleType?.replaceAll('_', ' ') || '----'}
+                                                {formatLabel(vehicle.vehicleType)}
                                             </p>
                                         </div>
 
@@ -296,109 +296,188 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                             )}
 
                             {activeTab === 'condition' && (
-                                <div className='space-y-8'>
+                                <div className='space-y-10'>
 
                                     {/* Vehicle Condition */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Vehicle Condition</h3>
+                                        <div className='flex items-center gap-3 mb-5'>
+                                            <div className='w-1 h-5 bg-[#D97706] rounded-full'></div>
+                                            <h3 className='text-sm font-semibold text-[#0B1E3D]'>Vehicle Condition</h3>
+                                            <div className='flex-1 h-px bg-gray-200'></div>
+                                        </div>
+
                                         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-4 gap-x-2'>
                                             <div>
                                                 <p className='text-xs text-gray-400'>Overall Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.overallCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.overallCondition) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Exterior Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.exteriorCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.exteriorCondition) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Interior Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.interiorCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.interiorCondition) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Mechanical Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.mechanicalCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.mechanicalCondition) || '----'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Exterior Details */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Exterior Details</h3>
+                                        <div className='flex items-center gap-3 mb-5'>
+                                            <div className='w-1 h-5 bg-[#D97706] rounded-full'></div>
+                                            <h3 className='text-sm font-semibold text-[#0B1E3D]'>Exterior Details</h3>
+                                            <div className='flex-1 h-px bg-gray-200'></div>
+                                        </div>
+
                                         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-4 gap-x-2'>
                                             <div>
                                                 <p className='text-xs text-gray-400'>Paint Type</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.paintType}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.paintType) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Glass Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.glassCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.glassCondition) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Tires Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.tiresCondition}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.tiresCondition) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Tire Brand</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.tireBrand}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.tireBrand) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Tire Size</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.tireSize}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.tireSize) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Repainted</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.repainted}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.repainted) || '----'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Interior Details */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Interior Details</h3>
+                                        <div className='flex items-center gap-3 mb-5'>
+                                            <div className='w-1 h-5 bg-[#D97706] rounded-full'></div>
+
+                                            <h3 className='text-sm font-semibold text-[#0B1E3D]'>
+                                                Interior Details
+                                            </h3>
+
+                                            <div className='flex-1 h-px bg-gray-200'></div>
+                                        </div>
+
                                         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-4 gap-x-2'>
                                             <div>
                                                 <p className='text-xs text-gray-400'>Seat Material</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.seatMaterial}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.seatMaterial) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Interior Color</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.interiorColor}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.interiorColor) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Sunroof</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.sunroof}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.sunroof) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>AC/Heater</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.acHeater}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.acHeater) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Audio System</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.audioSystem}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.audioSystem) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Navigation</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.navigation}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.navigation) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Power Windows</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.powerWindows}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.powerWindows) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Power Locks</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.powerLocks}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.powerLocks) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Number of Keys</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.numberOfKeys}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {vehicle.numberOfKeys ?? '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Smoke Odor</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.smokeOdor}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.smokeOdor) || '----'}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Pet Friendly</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.petFriendly}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.petFriendly) || '----'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -418,22 +497,33 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
 
                                     {/* Pricing Details */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Pricing Details</h3>
+                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
+                                            Pricing Details
+                                        </h3>
+
                                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-2'>
                                             <div>
                                                 <p className='text-xs text-gray-400'>Starting Bid Price</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.startingBidPrice}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatPrice(vehicle.startingBidPrice)}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Buy Now Price</p>
                                                 <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.priceType === 'fixed_price' ? vehicle.buyNowPrice : '----'}
+                                                    {vehicle.priceType === 'fixed_price'
+                                                        ? formatPrice(vehicle.buyNowPrice)
+                                                        : '----'}
                                                 </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Reserve Price</p>
                                                 <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.priceType === 'reserve_price' ? vehicle.reservePrice : '----'}
+                                                    {vehicle.priceType === 'reserve_price'
+                                                        ? formatPrice(vehicle.reservePrice)
+                                                        : '----'}
                                                 </p>
                                             </div>
                                         </div>
@@ -441,34 +531,52 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
 
                                     {/* Auction Details */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Auction Details</h3>
+                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
+                                            Auction Details
+                                        </h3>
+
                                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-2'>
                                             <div>
                                                 <p className='text-xs text-gray-400'>Auction Type</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.auctionType}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.auctionType)}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Auction Starts</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.auctionStartDate} {vehicle.auctionStartTime}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatDateTime(
+                                                        vehicle.auctionStartDate,
+                                                        vehicle.auctionStartTime
+                                                    )}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Auction Duration</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.auctionDuration}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {formatLabel(vehicle.auctionDuration)}
+                                                </p>
                                             </div>
+
                                             <div>
                                                 <p className='text-xs text-gray-400'>Time Extension</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.antiSnipingExtension}</p>
+                                                <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                    {vehicle.antiSnipingExtension ?? '----'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Current Bid (from list-card dummy data, if available) */}
-                                    {/* {myVehicles.bid && (
-                                        <div className='rounded-xl border border-amber-200 bg-amber-50 p-4'>
-                                            <p className='text-xs text-gray-500'>{myVehicles.bid.label}</p>
-                                            <p className='text-lg font-bold text-[#0B1E3D]'>{myVehicles.bid.amount}</p>
-                                        </div>
-                                    )} */}
+                                    {/* Current / Starting Bid */}
+                                    <div className='rounded-xl border border-amber-200 bg-amber-50 p-4'>
+                                        <p className='text-xs text-gray-500'>{bidLabel}</p>
+
+                                        <p className='text-lg font-bold text-[#0B1E3D]'>
+                                            {bidValue ?? "----"}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
@@ -500,58 +608,58 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                             )}
 
                             {activeTab === 'documents' && (
-    <div>
-        <p className='text-xs text-gray-500 mb-4'>
-            All documents related to this vehicle listing.
-        </p>
-        {vehicle.documents?.length > 0 ? (
-            <div className='space-y-3'>
-                {vehicle.documents.map((doc, index) => (
-                    <div
-                        key={index}
-                        className='flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3'
-                    >
-                        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50'>
-                            {/* file icon */}
-                        </div>
+                                <div>
+                                    <p className='text-xs text-gray-500 mb-4'>
+                                        All documents related to this vehicle listing.
+                                    </p>
+                                    {vehicle.documents?.length > 0 ? (
+                                        <div className='space-y-3'>
+                                            {vehicle.documents.map((doc, index) => (
+                                                <div
+                                                    key={index}
+                                                    className='flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3'
+                                                >
+                                                    <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50'>
+                                                        <File className='text-[#D97706] w-5 h-5' />
+                                                    </div>
 
-                        <div className='flex-1 min-w-0'>
-                            <p className='text-sm font-medium text-[#0B1E3D]'>
-                                {doc.name}
-                            </p>
-                            <p className='text-xs text-gray-400'>
-                                {doc.resourceType}
-                            </p>
-                        </div>
+                                                    <div className='flex-1 min-w-0'>
+                                                        <p className='text-sm font-medium text-[#0B1E3D]'>
+                                                            {doc.name}
+                                                        </p>
+                                                        <p className='text-xs text-gray-400'>
+                                                            {doc.resourceType}
+                                                        </p>
+                                                    </div>
 
-                        <div className='flex gap-2'>
-                            <a
-                                href={doc.url}
-                                target='_blank'
-                                rel='noreferrer'
-                                className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300'
-                            >
-                                View
-                            </a>
+                                                    <div className='flex gap-2'>
+                                                        <a
+                                                            href={doc.url}
+                                                            target='_blank'
+                                                            rel='noreferrer'
+                                                            className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300'
+                                                        >
+                                                            View
+                                                        </a>
 
-                            <a
-                                href={doc.url}
-                                download
-                                className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300'
-                            >
-                                Download
-                            </a>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        ) : (
-            <p className='text-sm text-gray-400'>
-                No documents uploaded.
-            </p>
-        )}
-    </div>
-)}
+                                                        <a
+                                                            href={doc.url}
+                                                            download
+                                                            className='px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300'
+                                                        >
+                                                            Download
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className='text-sm text-gray-400'>
+                                            No documents uploaded.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
                         </div>
                     </div>
@@ -561,106 +669,150 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                 {/* right column */}
                 <div className='space-y-6'>
 
-    {/* listing status card */}
-    <div className='bg-white rounded-xl border border-gray-200 p-5'>
-        <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-sm font-semibold text-[#0B1E3D]'>Listing Status</h3>
-            <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${adminStatusLabels[vehicle.adminStatus]?.className}`}>
-                {adminStatusLabels[vehicle.adminStatus]?.label}
-            </span>
-        </div>
-        <p className='text-xs text-gray-500'>{vehicle.adminStatus}</p>
-    </div>
+                    {/* Listing Status */}
+                    <div className='bg-white rounded-xl border border-gray-200 p-5'>
+                        <div className='flex items-center justify-between mb-4'>
+                            <h3 className='text-sm font-semibold text-[#0B1E3D]'>
+                                Listing Status
+                            </h3>
 
-    {/* auction & pricing summary card */}
-    <div className='bg-white rounded-xl border border-gray-200 p-5'>
-        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>Auction & Pricing Summary</h3>
-        <div className='space-y-3'>
-            <div className='flex justify-between text-sm'>
-                <span className='text-gray-500'>Current Bid</span>
-                <span className='font-medium text-[#0B1E3D]'>{vehicle.currentBid ?? "---"}</span>
-            </div>
-            <div className='flex justify-between text-sm'>
-                <span className='text-gray-500'>Buy Now Price</span>
-                <span className='font-medium text-[#0B1E3D]'>{vehicle.buyNowPrice ?? "---"}</span>
-            </div>
-            <div className='flex justify-between text-sm'>
-                <span className='text-gray-500'>Reserve Price</span>
-                <span className='font-medium text-[#0B1E3D]'>{vehicle.reservePrice ?? "---"}</span>
-            </div>
-            <div className='flex justify-between text-sm'>
-                <span className='text-gray-500'>Auction Type</span>
-                <span className='font-medium text-green-600'>{vehicle.auctionType}</span>
-            </div>
-            <div className='flex justify-between text-sm'>
-                <span className='text-gray-500'>Views</span>
-                <span className='font-medium text-[#0B1E3D]'>{vehicle.views}</span>
-            </div>
-            {vehicle.auctionEndDateTime && (
-                <div className='flex justify-between text-sm'>
-                    <span className='text-gray-500'>Ends</span>
-                    <span className='font-medium text-[#0B1E3D]'>
-                        {new Date(vehicle.auctionEndDateTime).toLocaleDateString('en-GB')} • {new Date(vehicle.auctionEndDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                            <span
+                                className={`px-2.5 py-1 text-xs font-medium rounded-full ${adminStatusLabels[vehicle.adminStatus]?.className
+                                    }`}
+                            >
+                                {adminStatusLabels[vehicle.adminStatus]?.label}
+                            </span>
+                        </div>
+
+                        <p className='text-xs text-gray-500'>
+                            {formatLabel(vehicle.adminStatus)}
+                        </p>
+                    </div>
+
+                    {/* Auction & Pricing Summary */}
+                    <div className='bg-white rounded-xl border border-gray-200 p-5'>
+                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
+                            Auction & Pricing Summary
+                        </h3>
+
+                        <div className='space-y-3'>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Auction Type</span>
+                                <span className='font-medium text-green-600'>
+                                    {formatLabel(vehicle.auctionType)}
+                                </span>
+                            </div>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Starting Bid Price</span>
+                                <span className='font-medium text-[#0B1E3D]'>
+                                    {formatPrice(vehicle.startingBidPrice)}
+                                </span>
+                            </div>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Current Bid</span>
+                                <span className='font-medium text-[#0B1E3D]'>
+                                    {vehicle.currentBid !== null && vehicle.currentBid !== undefined
+                                        ? formatPrice(vehicle.currentBid)
+                                        : '----'}
+                                </span>
+                            </div>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Buy Now Price</span>
+                                <span className='font-medium text-[#0B1E3D]'>
+                                    {vehicle.buyNowPrice !== null && vehicle.buyNowPrice !== undefined
+                                        ? formatPrice(vehicle.buyNowPrice)
+                                        : '----'}
+                                </span>
+                            </div>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Reserve Price</span>
+                                <span className='font-medium text-[#0B1E3D]'>
+                                    {vehicle.reservePrice !== null && vehicle.reservePrice !== undefined
+                                        ? formatPrice(vehicle.reservePrice)
+                                        : '----'}
+                                </span>
+                            </div>
+
+                            <div className='flex justify-between text-sm'>
+                                <span className='text-gray-500'>Views</span>
+                                <span className='font-medium text-[#0B1E3D]'>
+                                    {vehicle.views ?? '----'}
+                                </span>
+                            </div>
+
+                            {vehicle.auctionEndDateTime && (
+                                <div className='flex justify-between text-sm'>
+                                    <span className='text-gray-500'>Ends</span>
+
+                                    <span className='font-medium text-[#0B1E3D]'>
+                                        {formatDateTime(
+                                            vehicle.auctionEndDateTime
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* actions card */}
+                    <div className='bg-white rounded-xl border border-gray-200 p-5'>
+                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-2'>Actions</h3>
+
+                        <div className='space-y-1.5'>
+                            <button
+                                onClick={() => setCurrentPage('edit-vehicle', vehicle._id)}
+                                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-50'
+                            >
+                                <Edit3 className='h-4 w-4 text-[#D97706] shrink-0' />
+
+                                <div>
+                                    <p className='text-[13px] font-medium text-[#0B1E3D]'>
+                                        Edit Listing
+                                    </p>
+                                    <p className='text-xs text-gray-400'>
+                                        Update your vehicle information
+                                    </p>
+                                </div>
+                            </button>
+
+                            <button
+                                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-50'
+                            >
+                                <Copy className='h-4 w-4 text-[#D97706] shrink-0' />
+
+                                <div>
+                                    <p className='text-[13px] font-medium text-[#0B1E3D]'>
+                                        Duplicate Listing
+                                    </p>
+                                    <p className='text-xs text-gray-400'>
+                                        Create a copy of this listing
+                                    </p>
+                                </div>
+                            </button>
+
+                            <button
+                                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-red-50'
+                            >
+                                <Undo2 className='h-4 w-4 text-red-500 shrink-0' />
+
+                                <div>
+                                    <p className='text-[13px] font-medium text-red-600'>
+                                        Withdraw Listing
+                                    </p>
+                                    <p className='text-xs text-gray-400'>
+                                        Withdraw this listing from review
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
-            )}
-        </div>
-    </div>
-
-    {/* actions card */}
-    <div className='bg-white rounded-xl border border-gray-200 p-5'>
-        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-2'>Actions</h3>
-
-        <div className='space-y-1.5'>
-            <button
-                onClick={() => setCurrentPage('edit-vehicle', vehicle._id)}
-                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-50'
-            >
-                <Edit3 className='h-4 w-4 text-[#D97706] shrink-0' />
-
-                <div>
-                    <p className='text-[13px] font-medium text-[#0B1E3D]'>
-                        Edit Listing
-                    </p>
-                    <p className='text-xs text-gray-400'>
-                        Update your vehicle information
-                    </p>
-                </div>
-            </button>
-
-            <button
-                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-gray-50'
-            >
-                <Copy className='h-4 w-4 text-[#D97706] shrink-0' />
-
-                <div>
-                    <p className='text-[13px] font-medium text-[#0B1E3D]'>
-                        Duplicate Listing
-                    </p>
-                    <p className='text-xs text-gray-400'>
-                        Create a copy of this listing
-                    </p>
-                </div>
-            </button>
-
-            <button
-                className='w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-red-50'
-            >
-                <Undo2 className='h-4 w-4 text-red-500 shrink-0' />
-
-                <div>
-                    <p className='text-[13px] font-medium text-red-600'>
-                        Withdraw Listing
-                    </p>
-                    <p className='text-xs text-gray-400'>
-                        Withdraw this listing from review
-                    </p>
-                </div>
-            </button>
-        </div>
-    </div>
-
-</div>
             </div>
 
         </div>

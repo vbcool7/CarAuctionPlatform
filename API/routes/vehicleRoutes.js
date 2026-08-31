@@ -2,7 +2,9 @@
 import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/imageStorage.js';
-import { decodeVin, addVehicle, getMyVehicles, getVehicleStats, getVehicleById } from '../controllers/vehicleController.js';
+import {
+    decodeVin, addVehicle, getMyVehicles, getVehicleStats, getVehicleById,
+} from '../controllers/vehicleController.js';
 
 const router = express.Router();
 

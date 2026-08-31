@@ -27,7 +27,7 @@ const menuItems = [
     {
         id: "bids-offers",
         icon: FileText,
-        label: "Bids & Offers",
+        label: "My Bids & Offers",
         active: false,
     },
     {

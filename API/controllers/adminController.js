@@ -11,6 +11,7 @@ import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
+import Bid from '../models/bidModelSchema.js';
 
 export const adminSignup = async (req, res) => {
     try {
@@ -847,8 +848,6 @@ export const sellerDocVerification = async (req, res) => {
     }
 };
 
-// =========================================================
-
 // get all vehicles
 export const getAllVehicles = async (req, res) => {
     try {
@@ -1053,6 +1052,113 @@ export const getVehicleApprovalSummary = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred",
+        });
+    }
+};
+
+// get all auctions
+export const getAllAuctions = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const { status } = req.query;
+
+        const validStatuses = ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'];
+
+        const filter = {
+            adminStatus: 'approved',
+        };
+
+        if (status === 'completed') {
+            filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
+        } else if (status && status !== 'all' && validStatuses.includes(status)) {
+            filter.auctionStatus = status;
+        }
+        // status === 'all' ya missing -> koi auctionStatus filter nahi, sab dikhega
+
+        const [vehicles, totalCount] = await Promise.all([
+            Vehicle.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Vehicle.countDocuments(filter)
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            count: vehicles.length,
+            vehicles,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+    } catch (err) {
+        console.error("Get All Auctions Error:", err);
+        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+    }
+};
+
+// not done with route =========================================================
+
+// get all bids - not done with proper
+export const getAllBids = async(req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const [bids, totalCount] = await Promise.all([
+            Bid.find()
+                .select('bidId vehicleId bidderId bidderType amount status createdAt')
+                .populate({
+                    path: 'vehicleId',
+                    select: 'listingId images vin make model year startingBidPrice'
+                })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Bid.countDocuments()
+        ]);
+
+        const formattedBids = await Promise.all(
+            bids.map(async (bid) => {
+                let bidder = null;
+
+                if (bid.bidderType === 'Buyer') {
+                    bidder = await Buyer.findById(bid.bidderId)
+                        .select('buyerId profileImageUrl firstName lastName email mobile');
+                }
+
+                if (bid.bidderType === 'Seller') {
+                    bidder = await Seller.findById(bid.bidderId)
+                        .select('sellerId profileImage fullName email phone');
+                }
+
+                return {
+                    ...bid.toObject(),
+                    bidder
+                };
+            })
+        );
+
+        res.status(200).json({
+            success: true,
+            bids: formattedBids,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("All Bids Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

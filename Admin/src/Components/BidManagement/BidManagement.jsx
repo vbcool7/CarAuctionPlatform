@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
-import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History } from 'lucide-react';
+import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History, Eye } from 'lucide-react';
 import { bidsList } from '../Data';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
-import BidManagementList from './BidManagementList';
+
+import { useGetAllBids } from '../../hooks/useBid';
+import { getPaginationRange } from '../utils/getPaginationRange';
 
 const bidStats = [
     {
@@ -46,12 +48,44 @@ const bidStats = [
     }
 ];
 
+// tabs
+const tabs = [
+    { id: 'all-bids', label: 'All Bids', },
+    { id: 'active-bids', label: 'Active Bids', },
+    { id: 'won-bids', label: 'Won Bids', },
+    { id: 'outbid-bids', label: 'Outbid Bids', },
+    { id: 'withdrawn-bids', label: 'Withdrawn Bids', },
+];
+
 function BidManagement({ setCurrentPage }) {
+
+    const [page, setPage] = useState(1);
+    const { data: allBids, isLoading, isError } = useGetAllBids(page);
+
+    const bids = allBids?.bids || [];
+
+    console.log(allBids?.bids);
+
+    const [activeTab, setActiveTab] = useState("all-bids");
 
     const [selectedAuction, setSelectedAuction] = useState("");
     const [selectedType, setSelectedType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedBidder, setSelectedBidder] = useState("");
+
+    const totalPages = allBids?.pagination?.totalPages || 1;
+
+    const filteredBids = bids.filter((bid) => {
+        if (activeTab === 'all-bids') return true;
+        if (activeTab === 'active-bids') return bid.status === 'active';
+        if (activeTab === 'won-bids') return bid.status === 'won';
+        if (activeTab === 'outbid-bids') return bid.status === 'outbid';
+        // if (activeTab === 'withdrawn-bids') return bid.status === 'withdrawn';  // withdrawn abhi scope mein nahi
+        return true;
+    }) || [];
+
+    if (isLoading) return <p className="p-10 text-center">Loading bid list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load bid list</p>;
 
     return (
         <div>
@@ -216,7 +250,253 @@ function BidManagement({ setCurrentPage }) {
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    <BidManagementList />
+                    <div>
+                        {/* tabs */}
+                        <div className="flex gap-10 border-b border-slate-100 my-6 overflow-x-auto no-scrollbar">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`pb-3 text-[14px] font-medium whitespace-nowrap border-b-2 transition-colors 
+                                                ${activeTab === tab.id
+                                            ? 'border-[#D97706] text-[#D97706]'
+                                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* table */}
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table className="w-full text-left table-fixed">
+                                <thead className="bg-gray-100 border-b border-gray-200 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
+                                    <tr>
+                                        <th className="px-6 py-4 w-38">Bid ID</th>
+                                        <th className="px-6 py-4 w-75">Auction / Vehicle</th>
+                                        <th className="px-6 py-4 w-55">Bidder</th>
+                                        <th className="px-6 py-4 w-45">Bid Amount</th>
+                                        <th className="px-6 py-4 w-40">Bid Time</th>
+                                        <th className="px-6 py-4 w-35">Status</th>
+                                        <th className="px-6 py-4 w-35">Bid Type</th>
+                                        <th className="px-6 py-4 w-25">Actions</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-amber-50">
+                                    {filteredBids.length > 0 ? (
+                                        filteredBids.map((bid, index) => (
+                                            <tr
+                                                key={bid._id || index}
+                                                className="hover:bg-gray-50/50 transition-colors">
+
+                                                {/* bid id */}
+                                                <td className='px-6 py-4'>
+                                                    <span className='text-[13px] font-semibold text-gray-500'>
+                                                        {bid.bidId || "---"}
+                                                    </span>
+                                                </td>
+
+                                                {/* vehicle detail */}
+                                                <td className="px-6 py-4 flex items-center gap-4">
+                                                    <img
+                                                        src={bid.vehicleId?.images?.[0]?.url || null}
+                                                        alt={bid.model}
+                                                        className="w-16 h-10 object-cover rounded-lg shrink-0" />
+                                                    <div className="truncate">
+                                                        <div className="text-gray-900 font-bold text-sm truncate">{bid.vehicleId?.year} {bid.vehicleId?.make} {bid.vehicleId?.model}</div>
+                                                        <div className="text-[11px] text-gray-500">VIN: {bid.vehicleId?.vin}</div>
+                                                        <div className="text-[10px] text-gray-400">ID: {bid.vehicleId?.listingId}</div>
+                                                    </div>
+                                                </td>
+
+                                                {/* bidder */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+
+                                                        <img
+                                                            src={
+                                                                bid.bidderType === 'Buyer'
+                                                                    ? bid.bidder?.profileImageUrl || "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-image-182145777.jpg"
+                                                                    : bid.bidder?.profileImage || "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-image-182145777.jpg"
+                                                            }
+                                                            alt="Bidder"
+                                                            className="w-8 h-8 rounded-full object-cover"
+                                                        />
+
+                                                        <div>
+                                                            <div className="font-semibold text-slate-900 text-[14px]">
+                                                                {bid.bidderType === 'Buyer'
+                                                                    ? `${bid.bidder?.firstName || '---'} ${bid.bidder?.lastName || ''}`.trim()
+                                                                    : bid.bidder?.fullName || '---'
+                                                                }
+                                                            </div>
+
+                                                            <div className="text-xs text-slate-500 font-medium">
+                                                                {bid.bidderType === 'Buyer'
+                                                                    ? bid.bidder?.buyerId || "NA"
+                                                                    : bid.bidder?.sellerId || "NA"
+                                                                }
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </td>
+
+                                                {/* bid amount */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="">
+                                                            <span className="text-sm font-bold text-[#0B1E3D]">
+                                                                AED {bid.amount?.toLocaleString() || 0}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* starting bid */}
+                                                        <div className="text-[11px] text-slate-400">
+                                                            Starting bid:{" "}
+                                                            <span className="font-medium text-slate-500">
+                                                                AED {bid.vehicleId?.startingBidPrice?.toLocaleString() || 0}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* bid time */}
+                                                <td className="px-6 py-4 text-[13px] text-slate-700 leading-tight">
+                                                    <div>
+                                                        {bid.createdAt
+                                                            ? new Date(bid.createdAt).toLocaleDateString('en-GB', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })
+                                                            : "---"
+                                                        }
+                                                    </div>
+
+                                                    <div className="font-semibold">
+                                                        {bid.createdAt
+                                                            ? new Date(bid.createdAt).toLocaleTimeString([], {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })
+                                                            : "---"
+                                                        }
+                                                    </div>
+                                                </td>
+
+                                                {/* status */}
+                                                <td className="px-6 py-4">
+                                                    <span
+                                                        className={`px-2 py-1 rounded text-[11px] font-medium border
+                                                    ${bid.status === 'active'
+                                                                ? 'border-green-200 bg-green-50 text-green-700'
+                                                                : 'border-red-200 bg-red-50 text-red-600'
+                                                            }`}
+                                                    >
+                                                        {bid.status === 'active' ? 'Active' : 'Outbid'}
+                                                    </span>
+                                                </td>
+
+                                                {/* bid type */}
+                                                <td className='px-6 py-4'>
+                                                    <span className="px-2 py-1 rounded text-[11px] font-medium border border-gray-200 bg-gray-50 text-gray-600">
+                                                        {bid.bidderType || "---"}
+                                                    </span>
+                                                </td>
+
+                                                {/* actions */}
+                                                <td className="px-6 py-4">
+                                                    <div className="">
+                                                        <button
+                                                            // onClick={() => onSelectVehicle(auction)}
+                                                            className="p-1 text-slate-400 hover:text-slate-600">
+                                                            <Eye size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={8} className="py-10 text-center text-sm text-gray-500">
+                                                No bids found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                            {/* Page Info */}
+                            <p className="hidden sm:block text-xs text-slate-500">
+                                Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                                <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                            </p>
+
+                            {/* Pagination */}
+                            <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                                {/* Previous */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p - 1)}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                                    hover:bg-slate-50 hover:border-slate-300
+                                    disabled:opacity-40 disabled:cursor-not-allowed
+                                    transition-all"
+                                >
+                                    Previous
+                                </button>
+
+                                {/* Page Numbers */}
+                                {getPaginationRange(page, totalPages).map((num, idx) =>
+                                    num === "..." ? (
+                                        <span
+                                            key={`dot-${idx}`}
+                                            className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                        >
+                                            ...
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            key={num}
+                                            onClick={() => setPage(num)}
+                                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                ${page === num
+                                                    ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                                }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    )
+                                )}
+
+                                {/* Next */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600
+                                    hover:bg-slate-50 hover:border-slate-300
+                                    disabled:opacity-40 disabled:cursor-not-allowed
+                                    transition-all"
+                                >
+                                    Next
+                                </button>
+
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* right side - section */}

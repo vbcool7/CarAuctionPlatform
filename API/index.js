@@ -6,6 +6,8 @@ import http from 'http';
 import connectDb from './config/connectDb.js';
 import rootRouter from './routes/mainRoutes.js';
 
+import { startAuctionCron } from './cron/auctionCron.js';
+
 dotenv.config();
 
 const app = express();
@@ -27,6 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 connectDb();
+startAuctionCron();
 
 app.use('/api/v1', rootRouter);
 
