@@ -6,6 +6,7 @@ import sendEmail from '../utils/sendEmail.js';
 import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail } from '../utils/emailTemplates.js';
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
+import { UAE_UTC_OFFSET_HOURS } from '../models/vehicleModelSchema.js';
 
 import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
@@ -159,6 +160,8 @@ export const adminGet = async (req, res) => {
         });
     }
 };
+
+// ============================================ BUYER
 
 // add new buyer
 export const addNewBuyer = async (req, res) => {
@@ -522,6 +525,8 @@ export const buyerDocVerification = async (req, res) => {
     }
 };
 
+// ============================================ SELLER
+
 // add new seller
 export const addNewSeller = async (req, res) => {
     try {
@@ -848,6 +853,8 @@ export const sellerDocVerification = async (req, res) => {
     }
 };
 
+// ============================================ VEHICLES
+
 // get all vehicles
 export const getAllVehicles = async (req, res) => {
     try {
@@ -1056,13 +1063,15 @@ export const getVehicleApprovalSummary = async (req, res) => {
     }
 };
 
+// ============================================ AUCTIONS
+
 // get all auctions
 export const getAllAuctions = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-        const { status } = req.query;
+        const { status, dateRange } = req.query;
 
         const validStatuses = ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'];
 
@@ -1070,22 +1079,83 @@ export const getAllAuctions = async (req, res) => {
             adminStatus: 'approved',
         };
 
+        if (dateRange && status === 'upcoming') {
+            const nowUAE = new Date(Date.now() + UAE_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+
+            let startUAE, endUAE;
+
+            if (dateRange === 'today') {
+                startUAE = new Date(Date.UTC(nowUAE.getUTCFullYear(), nowUAE.getUTCMonth(), nowUAE.getUTCDate()));
+                endUAE = new Date(startUAE.getTime() + 24 * 60 * 60 * 1000);
+            } else if (dateRange === 'week') {
+                const dayOfWeek = nowUAE.getUTCDay(); // 0 = Sunday
+                startUAE = new Date(Date.UTC(nowUAE.getUTCFullYear(), nowUAE.getUTCMonth(), nowUAE.getUTCDate() - dayOfWeek));
+                endUAE = new Date(startUAE.getTime() + 7 * 24 * 60 * 60 * 1000);
+            } else if (dateRange === 'month') {
+                startUAE = new Date(Date.UTC(nowUAE.getUTCFullYear(), nowUAE.getUTCMonth(), 1));
+                endUAE = new Date(Date.UTC(nowUAE.getUTCFullYear(), nowUAE.getUTCMonth() + 1, 1));
+            }
+
+            if (startUAE && endUAE) {
+                // UAE local boundaries ko wapas UTC mein convert karo, kyunki DB mein UTC store hai
+                filter.auctionStartDateTime = {
+                    $gte: new Date(startUAE.getTime() - UAE_UTC_OFFSET_HOURS * 60 * 60 * 1000),
+                    $lt: new Date(endUAE.getTime() - UAE_UTC_OFFSET_HOURS * 60 * 60 * 1000)
+                };
+            }
+        }
+
         if (status === 'completed') {
             filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
         } else if (status && status !== 'all' && validStatuses.includes(status)) {
             filter.auctionStatus = status;
         }
-        // status === 'all' ya missing -> koi auctionStatus filter nahi, sab dikhega
 
         const [vehicles, totalCount] = await Promise.all([
             Vehicle.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
             Vehicle.countDocuments(filter)
         ]);
 
+        // bids + bidders count + sller/buyer bid info
+        const vehiclesWithBids = await Promise.all(
+            vehicles.map(async (v) => {
+                const bidCount = await Bid.countDocuments({ vehicleId: v._id });
+                const bidderCount = (await Bid.distinct('bidderId', { vehicleId: v._id })).length;
+
+                let soldTo = null;
+                if (v.auctionStatus === 'sold') {
+                    const winningBid = await Bid.findOne({ vehicleId: v._id, status: 'won' });
+                    if (winningBid) {
+                        if (winningBid.bidderType === 'Buyer') {
+                            const bidder = await Buyer.findById(winningBid.bidderId).select('firstName lastName email profileImageUrl');
+                            if (bidder) {
+                                soldTo = {
+                                    name: `${bidder.firstName} ${bidder.lastName}`,
+                                    email: bidder.email,
+                                    profileImageUrl: bidder.profileImageUrl,
+                                };
+                            }
+                        } else if (winningBid.bidderType === 'Seller') {
+                            const bidder = await Seller.findById(winningBid.bidderId).select('fullName email profileImage');
+                            if (bidder) {
+                                soldTo = {
+                                    name: bidder.fullName,
+                                    email: bidder.email,
+                                    profileImageUrl: bidder.profileImage,
+                                };
+                            }
+                        }
+                    }
+                }
+
+                return { ...v.toObject(), bids: bidCount, bidders: bidderCount, soldTo };
+            })
+        );
+
         return res.status(200).json({
             success: true,
             count: vehicles.length,
-            vehicles,
+            vehicles: vehiclesWithBids,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalCount / limit),
@@ -1095,14 +1165,460 @@ export const getAllAuctions = async (req, res) => {
         });
     } catch (err) {
         console.error("Get All Auctions Error:", err);
-        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
     }
 };
 
+// CHATGPT - Get all auction stats 
+export const getAllAuctionStats = async (req, res) => {
+    try {
+        const now = new Date();
+
+        // Current month
+        const currentMonthStart = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1
+        );
+
+        // Previous month
+        const previousMonthStart = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1
+        );
+
+        const previousMonthEnd = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            0,
+            23,
+            59,
+            59,
+            999
+        );
+
+        const completedStatuses = [
+            "sold",
+            "unsold",
+            "reserve-not-met"
+        ];
+
+        const [
+            totalAuctions,
+            liveAuctions,
+            upcomingAuctions,
+            completedAuctions,
+            canceledAuctions,
+
+            previousTotalAuctions,
+            previousLiveAuctions,
+            previousUpcomingAuctions,
+            previousCompletedAuctions,
+            previousCanceledAuctions
+        ] = await Promise.all([
+
+            // ================= CURRENT MONTH =================
+
+            // Total Auctions
+            Vehicle.countDocuments({
+                adminStatus: "approved"
+            }),
+
+            // Live Auctions
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: "live",
+                auctionStartDateTime: { $lte: now },
+                auctionEndDateTime: { $gt: now }
+            }),
+
+            // Upcoming Auctions
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStartDateTime: { $gt: now },
+                auctionStatus: { $nin: ["canceled"] }
+            }),
+
+            // Completed Auctions
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: { $in: completedStatuses },
+                auctionEndDateTime: { $lte: now }
+            }),
+
+            // Canceled Auctions
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: "canceled"
+            }),
+
+            // ================= PREVIOUS MONTH =================
+
+            // Previous Total
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd
+                }
+            }),
+
+            // Previous Live
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: "live",
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd
+                }
+            }),
+
+            // Previous Upcoming
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStartDateTime: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd
+                },
+                auctionStatus: { $nin: ["canceled"] }
+            }),
+
+            // Previous Completed
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: { $in: completedStatuses },
+                auctionEndDateTime: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd
+                }
+            }),
+
+            // Previous Canceled
+            Vehicle.countDocuments({
+                adminStatus: "approved",
+                auctionStatus: "canceled",
+                updatedAt: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd
+                }
+            })
+        ]);
+
+        // ================= PERCENTAGE CALCULATION =================
+
+        const calculatePercentage = (current, previous) => {
+            if (previous === 0) {
+                return current > 0 ? 100 : 0;
+            }
+
+            return Number(
+                (((current - previous) / previous) * 100).toFixed(1)
+            );
+        };
+
+        const getTrend = (current, previous) => {
+            if (previous === 0) {
+                return {
+                    percentage: null,
+                    isPositive: null
+                };
+            }
+
+            const percentage = calculatePercentage(current, previous);
+
+            return {
+                percentage: Math.abs(percentage),
+                isPositive: percentage >= 0
+            };
+        };
+
+        const totalTrend = getTrend(
+            totalAuctions,
+            previousTotalAuctions
+        );
+
+        const liveTrend = getTrend(
+            liveAuctions,
+            previousLiveAuctions
+        );
+
+        const upcomingTrend = getTrend(
+            upcomingAuctions,
+            previousUpcomingAuctions
+        );
+
+        const completedTrend = getTrend(
+            completedAuctions,
+            previousCompletedAuctions
+        );
+
+        const canceledTrend = getTrend(
+            canceledAuctions,
+            previousCanceledAuctions
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "All auction stats fetched successfully",
+            data: {
+                totalAuctions: {
+                    count: totalAuctions,
+                    percentage: totalTrend.percentage,
+                    isPositive: totalTrend.isPositive
+                },
+
+                liveAuctions: {
+                    count: liveAuctions,
+                    percentage: liveTrend.percentage,
+                    isPositive: liveTrend.isPositive
+                },
+
+                upcomingAuctions: {
+                    count: upcomingAuctions,
+                    percentage: upcomingTrend.percentage,
+                    isPositive: upcomingTrend.isPositive
+                },
+
+                completedAuctions: {
+                    count: completedAuctions,
+                    percentage: completedTrend.percentage,
+                    isPositive: completedTrend.isPositive
+                },
+
+                canceledAuctions: {
+                    count: canceledAuctions,
+                    percentage: canceledTrend.percentage,
+                    isPositive: canceledTrend.isPositive
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Get all auction stats error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch all auction stats",
+            error: error.message
+        });
+    }
+};
+
+// CHATGPT - Get live auction stats
+export const getLiveAuctionStats = async (req, res) => {
+    try {
+        const now = new Date();
+
+        // Next 5 minutes
+        const fiveMinutesLater = new Date(
+            now.getTime() + 5 * 60 * 1000
+        );
+
+        // Get all currently live auctions
+        const liveAuctions = await Vehicle.find({
+            adminStatus: "approved",
+            auctionStatus: "live",
+            auctionStartDateTime: { $lte: now },
+            auctionEndDateTime: { $gt: now }
+        }).select("_id currentBid auctionEndDateTime");
+
+        const liveVehicleIds = liveAuctions.map(
+            auction => auction._id
+        );
+
+        // Total bids + unique participants
+        const [totalBids, participants] = await Promise.all([
+            Bid.countDocuments({
+                vehicleId: { $in: liveVehicleIds }
+            }),
+
+            Bid.distinct("bidderId", {
+                vehicleId: { $in: liveVehicleIds }
+            })
+        ]);
+
+        // Total current bid value
+        const totalValue = liveAuctions.reduce(
+            (total, auction) => {
+                return total + (auction.currentBid || 0);
+            },
+            0
+        );
+
+        // Auctions ending in next 5 minutes
+        const endingSoon = liveAuctions.filter(
+            auction =>
+                auction.auctionEndDateTime > now &&
+                auction.auctionEndDateTime <= fiveMinutesLater
+        ).length;
+
+        return res.status(200).json({
+            success: true,
+            message: "Live auction stats fetched successfully",
+            data: {
+                liveAuctions: liveAuctions.length,
+                totalBids,
+                totalParticipants: participants.length,
+                totalValue,
+                endingSoon
+            }
+        });
+
+    } catch (error) {
+        console.error("Get live auction stats error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch live auction stats",
+            error: error.message
+        });
+    }
+};
+
+// CHATGPT - Get upcoming auction stats
+export const getUpcomingAuctionStats = async (req, res) => {
+    try {
+        const now = new Date();
+
+        // Dubai is UTC +4
+        const DUBAI_OFFSET = 4 * 60 * 60 * 1000;
+
+        const dubaiNow = new Date(now.getTime() + DUBAI_OFFSET);
+
+        // Current Dubai date parts
+        const year = dubaiNow.getUTCFullYear();
+        const month = dubaiNow.getUTCMonth();
+        const date = dubaiNow.getUTCDate();
+
+        // Start of today in Dubai
+        const todayStart = new Date(
+            Date.UTC(year, month, date) - DUBAI_OFFSET
+        );
+
+        // Start of tomorrow
+        const tomorrowStart = new Date(
+            Date.UTC(year, month, date + 1) - DUBAI_OFFSET
+        );
+
+        // Start of current week (Monday)
+        const dayOfWeek = dubaiNow.getUTCDay();
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+        const weekStart = new Date(
+            Date.UTC(year, month, date - daysFromMonday) - DUBAI_OFFSET
+        );
+
+        // Start of next week
+        const weekEnd = new Date(
+            weekStart.getTime() + 7 * 24 * 60 * 60 * 1000
+        );
+
+        // Start of current month
+        const monthStart = new Date(
+            Date.UTC(year, month, 1) - DUBAI_OFFSET
+        );
+
+        // Start of next month
+        const monthEnd = new Date(
+            Date.UTC(year, month + 1, 1) - DUBAI_OFFSET
+        );
+
+        // Common upcoming filter
+        const upcomingFilter = {
+            adminStatus: "approved",
+            auctionStatus: { $nin: ["canceled"] },
+            auctionStartDateTime: { $gt: now }
+        };
+
+        const [
+            totalUpcoming,
+            startingToday,
+            startingThisWeek,
+            startingThisMonth,
+            averageStartingPrice
+        ] = await Promise.all([
+
+            // Total upcoming
+            Vehicle.countDocuments(upcomingFilter),
+
+            // Starting today
+            Vehicle.countDocuments({
+                ...upcomingFilter,
+                auctionStartDateTime: {
+                    $gte: todayStart,
+                    $lt: tomorrowStart
+                }
+            }),
+
+            // Starting this week
+            Vehicle.countDocuments({
+                ...upcomingFilter,
+                auctionStartDateTime: {
+                    $gte: weekStart,
+                    $lt: weekEnd
+                }
+            }),
+
+            // Starting this month
+            Vehicle.countDocuments({
+                ...upcomingFilter,
+                auctionStartDateTime: {
+                    $gte: monthStart,
+                    $lt: monthEnd
+                }
+            }),
+
+            // Average starting price
+            Vehicle.aggregate([
+                {
+                    $match: upcomingFilter
+                },
+                {
+                    $group: {
+                        _id: null,
+                        average: {
+                            $avg: "$startingBidPrice"
+                        }
+                    }
+                }
+            ])
+        ]);
+
+        const avgStartingPrice = Math.round(
+            averageStartingPrice[0]?.average || 0
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Upcoming auction stats fetched successfully",
+            data: {
+                totalUpcoming,
+                startingToday,
+                startingThisWeek,
+                startingThisMonth,
+                avgStartingPrice
+            }
+        });
+
+    } catch (error) {
+        console.error("Get upcoming auction stats error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch upcoming auction stats",
+            error: error.message
+        });
+    }
+};
+
+// ============================================ BIDS
 // not done with route =========================================================
 
 // get all bids - not done with proper
-export const getAllBids = async(req, res) => {
+export const getAllBids = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;

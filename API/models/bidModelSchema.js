@@ -33,7 +33,7 @@ const bidSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ['active', 'outbid', 'won', 'withdrawn'],   
+            enum: ['active', 'outbid', 'won', 'withdrawn', 'cancelled'],    // cancelled by only admin or seller
             default: 'active'
         }
     },

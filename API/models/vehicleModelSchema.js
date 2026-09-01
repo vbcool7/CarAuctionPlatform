@@ -8,7 +8,7 @@ const vehicleSchema = new mongoose.Schema(
             ref: 'Seller',
             required: true
         },
-        
+
         listingId: { type: String, unique: true },
 
         // ============ 1st-step
@@ -236,11 +236,17 @@ const vehicleSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Admin'
         },
+
+        // if auct cancelled by admin/seller
         canceledBy: {
             type: String,
             enum: ['seller', 'admin', null],
-            default: null, // only meaningful when auctionStatus === 'canceled'
+            default: null, 
         },
+        cancellationReason: {
+            type: String,
+            default: null,
+        }
     },
     { timestamps: true }
 );
@@ -297,7 +303,7 @@ vehicleSchema.pre('save', function () {
             0,
             0
         );
-        
+
         this.auctionStartDateTime = startDateTime;
         this.auctionEndDateTime = new Date(startDateTime.getTime() + durationMs);
     }

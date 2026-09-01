@@ -38,25 +38,6 @@ export const runAuctionStatusUpdate = async () => {
     return updatedCount;
 };
 
-// API wrapper for manual auction status testing
-// export const updateAuctionStatuses = async (req, res) => {
-//     try {
-//         const updatedCount = await runAuctionStatusUpdate();
-//         return res.status(200).json({
-//             success: true,
-//             message: `${updatedCount} vehicle(s) moved to live`,
-//             updatedCount
-//         });
-
-//     } catch (err) {
-//         console.log("Auction Updated Status Err :", err);
-//         res.status(500).json({
-//             success: false,
-//             message: "Server Error Occured"
-//         });
-//     }
-// };
-
 // Moves live auctions to sold/unsold/reserve-not-met when end time passes
 export const runAuctionEndUpdate = async () => {
     const now = new Date();
@@ -108,7 +89,6 @@ export const updateAuctionStatuses = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Server Error Occured' });
     }
 };
-
 
 // get seller vehicles that are in auction stage (approved + has auctionStatus)
 export const getMyAuctions = async (req, res) => {
@@ -183,6 +163,75 @@ export const getMyAuctionById = async (req, res) => {
         });
     } catch (err) {
         console.error("Get My Auction Detail Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// auction cancel - admin / seller
+export const cancelAuction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const userId  = req.user.id; 
+        const role = req.user.role;
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Cancellation reason is required"
+            });
+        }
+
+        const vehicle = await Vehicle.findById(id);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Auction not found"
+            });
+        }
+
+        // ownership check — seller sirf apni auction cancel kar sakta hai
+        if (role === 'seller' && vehicle.sellerId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to cancel this auction"
+            });
+        }
+
+        // stage check — sirf upcoming/live cancel ho sakti hai
+        if (!['upcoming', 'live'].includes(vehicle.auctionStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot cancel an auction with status '${vehicle.auctionStatus}'`
+            });
+        }
+
+        const wasLive = vehicle.auctionStatus === 'live';
+
+        vehicle.auctionStatus = 'canceled';
+        vehicle.canceledBy = role; // 'seller' ya 'admin'
+        vehicle.cancellationReason = reason.trim();
+        await vehicle.save();
+
+        // agar live thi, saari active/outbid bids ko cancelled maro
+        if (wasLive) {
+            await Bid.updateMany(
+                { vehicleId: vehicle._id, status: { $in: ['active', 'outbid'] } },
+                { $set: { status: 'cancelled' } }
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Auction cancelled successfully",
+            vehicle
+        });
+
+    } catch (err) {
+        console.error("Cancel Auction Error:", err);
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
