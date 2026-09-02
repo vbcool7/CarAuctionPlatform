@@ -362,10 +362,12 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                                                     key={auction._id || index}
                                                     className="hover:bg-gray-50/50 transition-colors"
                                                 >
+                                                    {/* id */}
                                                     <td className="px-6 py-4 text-[13px] font-medium text-slate-700 truncate">
                                                         {auction.listingId || "N/A"}
                                                     </td>
 
+                                                    {/* auc detail */}
                                                     <td className="px-6 py-4 flex items-center gap-4">
                                                         <img
                                                             src={auction.images?.[0]?.url || null}
@@ -390,6 +392,7 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                                                         </div>
                                                     </td>
 
+                                                    {/* price type */}
                                                     <td className="px-6 py-4">
                                                         <span
                                                             className={`px-2 py-1 rounded text-[11px] font-medium border 
@@ -637,14 +640,13 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
                     <SummaryDonutCard
                         title="Quick Stats"
-                        centerValue="48"
                         centerLabel="Total"
                         showPercentage={true}
                         segments={[
-                            { name: 'Live', value: 60, color: '#10B981' },
-                            { name: 'Upcoming', value: 6, color: '#3B82F6' },
-                            { name: 'Completed', value: 8, color: '#34D399' },
-                            { name: 'Canceled', value: 8, color: '#EF4444' },
+                            { name: 'Live', value: statsData?.liveAuctions?.count ?? 0, color: '#10B981' },
+                            { name: 'Upcoming', value: statsData?.upcomingAuctions?.count ?? 0, color: '#3B82F6' },
+                            { name: 'Completed', value: statsData?.completedAuctions?.count ?? 0, color: '#34D399' },
+                            { name: 'Canceled', value: statsData?.canceledAuctions?.count ?? 0, color: '#EF4444' },
                         ]}
                     />
 

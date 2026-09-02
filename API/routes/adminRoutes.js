@@ -8,7 +8,7 @@ import {
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary,
     getAllBids,
-    getAllAuctions, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats
+    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -100,6 +100,7 @@ router.get('/all-bids', authMiddleware(['admin']), getAllBids);
 
 // ============================ AUCTION
 router.get('/all-auctions', authMiddleware(['admin']), getAllAuctions);
+router.get('/auction-detail/:id', authMiddleware(['admin']), getAuctionDetail);
 router.get("/all-auction-stats", authMiddleware(['admin']), getAllAuctionStats);
 router.get("/live-auction-stats", authMiddleware(['admin']), getLiveAuctionStats);
 router.get("/upcoming-auction-stats", authMiddleware(['admin']), getUpcomingAuctionStats);

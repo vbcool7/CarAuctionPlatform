@@ -3,23 +3,21 @@ import React from 'react'
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 
-function ParticipantSidebar({ auction }) {
-    const participants = auction.participants || [];
-    const countByStatus = (status) => participants.filter(p => p.status === status).length;
-    const countByVerification = (v) => participants.filter(p => p.verification === v).length;
+function ParticipantSidebar({ vehicle, participants = [], bids = [] }) {
 
     const total = participants.length;
-    const active = countByStatus('Active');
-    const outbid = countByStatus('Outbid');
-    const disconnected = countByStatus('Disconnected');
-    const cancelled = countByStatus('Cancelled');
 
-    const verified = countByVerification('Verified');
-    const pendingVerification = countByVerification('Pending Verification');
-    const notEligible = countByVerification('Not Eligible');
+    // Kitne participants ki koi active (abhi valid) bid hai
+    const activeParticipantIds = new Set(
+        bids
+            .filter((b) => b.status === 'active' || b.status === 'won')
+            .map((b) => b.bidderId?.toString())
+    );
+    const activeCount = activeParticipantIds.size;
+    const inactiveCount = total - activeCount;
 
     const topParticipants = [...participants]
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .sort((a, b) => (b.totalBids || 0) - (a.totalBids || 0))
         .slice(0, 5);
 
     return (
@@ -27,23 +25,13 @@ function ParticipantSidebar({ auction }) {
 
             <SummaryDonutCard
                 title="Participant Summary"
-                centerValue={total}
-                centerLabel="Total"
+                centerLabel="Participants"
                 showPercentage={true}
                 segments={[
-                    { name: 'Active', value: active, color: '#10B981' },
-                    { name: 'Outbid', value: outbid, color: '#F59E0B' },
-                    { name: 'Disconnected', value: disconnected, color: '#6B7280' },
-                    { name: 'Cancelled', value: cancelled, color: '#EF4444' },
+                    { name: 'Currently Bidding', value: activeCount, color: '#10B981' },
+                    { name: 'Not Currently Bidding', value: inactiveCount, color: '#F59E0B' },
                 ]}
             />
-
-            <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-2 text-sm">
-                <h3 className="font-semibold text-slate-700 mb-2">Eligibility Summary</h3>
-                <div className="flex justify-between"><span className="text-slate-500">Verified</span><span className="font-medium text-green-600">{verified}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Pending Verification</span><span className="font-medium text-amber-600">{pendingVerification}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Not Eligible</span><span className="font-medium text-red-600">{notEligible}</span></div>
-            </div>
 
             <div className="bg-white border border-slate-200 rounded-xl p-5">
                 <div className="flex justify-between items-center mb-3">
@@ -53,9 +41,9 @@ function ParticipantSidebar({ auction }) {
                 {topParticipants.length > 0 ? (
                     <div className="space-y-3">
                         {topParticipants.map((p, i) => (
-                            <div key={p.email || i} className="flex justify-between text-sm">
-                                <span>{i + 1}. {p.name}</span>
-                                <span className="font-medium">{p.score} bids</span>
+                            <div key={p.bidderId || i} className="flex justify-between text-sm">
+                                <span>{i + 1}. {p.bidder?.name || "Unknown"}</span>
+                                <span className="font-medium">{p.totalBids} bids</span>
                             </div>
                         ))}
                     </div>

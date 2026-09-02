@@ -19,7 +19,104 @@ const STATE_STYLES = {
     },
 };
 
-function AuctionsDetailTimeline({ steps = [] }) {
+function buildTimelineSteps(vehicle) {
+    const status = vehicle.auctionStatus;
+
+    const isTerminal = [
+        "sold",
+        "unsold",
+        "reserve-not-met"
+    ].includes(status);
+
+    const isCanceled = status === "canceled";
+
+    const fmtDate = (d) =>
+        d
+            ? new Date(d).toLocaleDateString("en-GB", {
+                timeZone: "Asia/Dubai",
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            })
+            : "—";
+
+    const fmtTime = (d) =>
+        d
+            ? new Date(d).toLocaleTimeString("en-US", {
+                timeZone: "Asia/Dubai",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+            })
+            : "—";
+
+    const steps = [
+        {
+            label: "Listed",
+            date: fmtDate(vehicle.createdAt),
+            time: fmtTime(vehicle.createdAt),
+            state: "completed",
+        },
+        {
+            label: "Approved",
+            date: fmtDate(vehicle.reviewedAt),
+            time: fmtTime(vehicle.reviewedAt),
+            state: vehicle.reviewedAt
+                ? "completed"
+                : "future",
+        },
+    ];
+
+    if (isCanceled) {
+        steps.push({
+            label: "Cancelled",
+            date: fmtDate(vehicle.updatedAt),
+            time: fmtTime(vehicle.updatedAt),
+            state: "completed",
+        });
+
+        return steps;
+    }
+
+    steps.push({
+        label: "Auction Started",
+        date: fmtDate(vehicle.auctionStartDateTime),
+        time: fmtTime(vehicle.auctionStartDateTime),
+        state:
+            status === "upcoming"
+                ? "active"
+                : status === "live" || isTerminal
+                    ? "completed"
+                    : "future",
+    });
+
+    steps.push({
+        label: "Auction Ended",
+        date: fmtDate(
+            isTerminal
+                ? vehicle.updatedAt
+                : vehicle.auctionEndDateTime
+        ),
+        time: fmtTime(
+            isTerminal
+                ? vehicle.updatedAt
+                : vehicle.auctionEndDateTime
+        ),
+        state:
+            isTerminal
+                ? "completed"
+                : status === "live"
+                    ? "active"
+                    : "future",
+    });
+
+    return steps;
+}
+
+function AuctionsDetailTimeline({ vehicle }) {
+
+    const steps = buildTimelineSteps(vehicle);
+
     return (
         <div className="bg-white rounded-xl border border-slate-100 p-5">
             <h3 className="text-[15px] font-semibold text-[#0B1E3D] mb-5">

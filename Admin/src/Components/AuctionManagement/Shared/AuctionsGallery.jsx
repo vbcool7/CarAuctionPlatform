@@ -58,7 +58,7 @@ function AuctionsGallery({ images = [], video = null, status = null }) {
             <div className="flex flex-col gap-3 h-full">
 
                 {/* Main Viewer — flex-1 instead of aspect ratio */}
-                <div className="relative w-full flex-1 min-h-80 rounded-xl overflow-hidden bg-[#0F172A] group">
+                <div className="relative w-full flex-1 min-h-70 rounded-xl overflow-hidden bg-[#0F172A] group">
 
                     {badgeConfig && (
                         <div className={`absolute top-3 left-3 z-10 flex items-center gap-1 ${badgeConfig.className} text-white text-[10px] font-semibold px-2 py-0.5 rounded-full`}>

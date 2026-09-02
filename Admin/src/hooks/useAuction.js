@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
-// get all auction + live + upcoming + completed
+// get all auction + live + upcoming + completed + cancel
 export const useGetAllAuctions = (page = 1, limit = 10, status = 'all', dateRange = null) => {
     return useQuery({
         queryKey: ['allAuctions', page, limit, status, dateRange],
@@ -15,6 +15,18 @@ export const useGetAllAuctions = (page = 1, limit = 10, status = 'all', dateRang
             return res.data;
         },
         placeholderData: keepPreviousData,
+    });
+};
+
+// get auction detail
+export const useGetAuctionDetail = (id) => {
+    return useQuery({
+        queryKey: ['auctionDetail', id],
+        queryFn: async () => {
+            const res = await API.get(`/admin/auction-detail/${id}`);
+            return res.data;
+        },
+        enabled: !!id,
     });
 };
 

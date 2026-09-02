@@ -1065,7 +1065,7 @@ export const getVehicleApprovalSummary = async (req, res) => {
 
 // ============================================ AUCTIONS
 
-// get all auctions
+// get - all + live + upcoming + completed + canceled auctions 
 export const getAllAuctions = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -1168,6 +1168,126 @@ export const getAllAuctions = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
+        });
+    }
+};
+
+// get auction detail
+export const getAuctionDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const vehicle = await Vehicle.findById(id);
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Auction not found"
+            });
+        }
+
+        // find all bids of this vehicle
+        const allBids = await Bid.find({ vehicleId: vehicle._id }).sort({ createdAt: -1 });
+
+        // resolve bidder info with each bid
+        const bidsWithBidderInfo = await Promise.all(
+            allBids.map(async (bid) => {
+                let bidderInfo = null;
+
+                if (bid.bidderType === 'Buyer') {
+                    const bidder = await Buyer.findById(bid.bidderId).select('firstName lastName email mobile profileImageUrl');
+
+                    if (bidder) {
+                        bidderInfo = {
+                            name: `${bidder.firstName} ${bidder.lastName}`,
+                            email: bidder.email,
+                            phone: bidder.mobile,
+                            profileImageUrl: bidder.profileImageUrl,
+                        };
+                    }
+                } else if (bid.bidderType === 'Seller') {
+                    const bidder = await Seller.findById(bid.bidderId).select('fullName email phone profileImage');
+
+                    if (bidder) {
+                        bidderInfo = {
+                            name: bidder.fullName,
+                            email: bidder.email,
+                            phone: bidder.phone,
+                            profileImageUrl: bidder.profileImage,
+                        };
+                    }
+                }
+
+                return {
+                    _id: bid._id,
+                    bidId: bid.bidId,
+                    amount: bid.amount,
+                    status: bid.status,
+                    bidderType: bid.bidderType,
+                    bidderId: bid.bidderId,
+                    bidder: bidderInfo,
+                    createdAt: bid.createdAt,
+                    updatedAt: bid.updatedAt,
+                };
+            })
+        );
+
+        // find only unique bidders
+        const participantsMap = {};
+
+        bidsWithBidderInfo.forEach((bid) => {
+            const key = bid.bidderId?.toString();
+            if (!key) return;
+
+            if (!participantsMap[key]) {
+                participantsMap[key] = {
+                    bidderId: bid.bidderId,
+                    bidderType: bid.bidderType,
+                    bidder: bid.bidder,
+                    totalBids: 0,
+                    firstBidAt: bid.createdAt,
+                };
+            }
+
+            participantsMap[key].totalBids += 1;
+            // firstBidAt ko earliest rakho (kyunki bids latest-first sorted hain)
+            if (bid.createdAt < participantsMap[key].firstBidAt) {
+                participantsMap[key].firstBidAt = bid.createdAt;
+            }
+        });
+
+        const participants = Object.values(participantsMap);
+
+        // soldTo (if solded) - find only winning bidder
+        let soldTo = null;
+
+        if (vehicle.auctionStatus === 'sold') {
+            const winningBid = bidsWithBidderInfo.find(
+                (b) => b.status === 'won'
+            );
+            if (winningBid) {
+                soldTo = winningBid.bidder;
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Here is the auction detail",
+            data: {
+                vehicle,
+                bids: bidsWithBidderInfo,
+                participants,
+                soldTo,
+                bidsCount: bidsWithBidderInfo.length,
+                bidderCount: participants.length,
+            }
+        });
+
+    } catch (err) {
+        console.log("Get Auction Detail Error :", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

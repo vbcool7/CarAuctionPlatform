@@ -2,12 +2,20 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-function SummaryDonutCard({ title, segments, centerValue, centerLabel, showPercentage, prefix = "" }) {
+function SummaryDonutCard({
+    title,
+    segments,
+    centerLabel,
+    showPercentage,
+    prefix = ""
+}) {
     const total = segments.reduce((acc, s) => acc + s.value, 0);
 
-    const centerValueSize = centerValue.length > 9
+    const formattedTotal = total.toLocaleString();
+
+    const centerValueSize = formattedTotal.length > 9
         ? "text-[11px] sm:text-sm"
-        : centerValue.length > 6
+        : formattedTotal.length > 6
             ? "text-sm sm:text-base"
             : "text-lg sm:text-xl";
 
@@ -18,6 +26,7 @@ function SummaryDonutCard({ title, segments, centerValue, centerLabel, showPerce
             </h3>
 
             <div className="flex flex-col sm:flex-row items-center sm:items-center gap-3">
+
                 {/* Donut Chart */}
                 <div className="relative w-30 h-30 md:w-32 md:h-32">
                     <ResponsiveContainer width="100%" height="100%">
@@ -31,17 +40,23 @@ function SummaryDonutCard({ title, segments, centerValue, centerLabel, showPerce
                                 stroke="none"
                             >
                                 {segments.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={entry.color}
+                                    />
                                 ))}
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
 
-                    {/* Center text  */}
+                    {/* Center text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className={`${centerValueSize} font-bold text-slate-900 leading-tight text-center px-1`}>
-                            {centerValue}
+                        <span
+                            className={`${centerValueSize} font-bold text-slate-900 leading-tight text-center px-1`}
+                        >
+                            {prefix}{formattedTotal}
                         </span>
+
                         <span className="text-[7px] sm:text-[8px] font-bold text-green-600 uppercase tracking-wider">
                             {centerLabel}
                         </span>
@@ -50,20 +65,32 @@ function SummaryDonutCard({ title, segments, centerValue, centerLabel, showPerce
 
                 {/* Legend */}
                 <div className="w-full flex-1 min-w-0 space-y-2.5 sm:space-y-3">
-                    {segments.map(item => (
+                    {segments.map((item) => (
                         <div
                             key={item.name}
-                            className="flex items-center justify-between">
+                            className="flex items-center justify-between"
+                        >
                             <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-2.5 h-2.5 rounded-full"
+                                <div
+                                    className="w-2.5 h-2.5 rounded-full"
                                     style={{ backgroundColor: item.color }}
                                 />
+
                                 <span className="text-xs sm:text-sm font-medium text-slate-600 truncate">
                                     {item.name}
                                 </span>
                             </div>
-                            <span className="text-xs sm:text-sm font-bold text-slate-900 whitespace-nowrap">
-                                {prefix}{item.value.toLocaleString()}{showPercentage && ` (${Math.round(item.value / total * 100)}%)`}
+
+                            <span className="text-xs sm:text-sm font-semibold text-slate-900 whitespace-nowrap">
+                                {prefix}
+                                {item.value.toLocaleString()}
+
+                                {showPercentage &&
+                                    ` (${total > 0
+                                        ? Math.round((item.value / total) * 100)
+                                        : 0
+                                    }%)`
+                                }
                             </span>
                         </div>
                     ))}

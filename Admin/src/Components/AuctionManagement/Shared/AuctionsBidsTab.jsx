@@ -1,12 +1,11 @@
 
 import React from 'react';
 import { Filter, Download, Trophy } from 'lucide-react';
+import { formatLabel, formatPrice } from '../../utils/formatter';
 
-function LiveAuctionsBidsTab({ auction }) {
+function AuctionsBidsTab({ bids }) {
 
-  if (!auction) return null;
-
-  const bids = auction.biddersData || [];
+  if (!bids) return null;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -30,7 +29,7 @@ function LiveAuctionsBidsTab({ auction }) {
         </div>
       </div>
 
-      {/* table */}
+      {/* Table */}
       {bids.length === 0 ? (
         <div className="px-5 py-10 text-center text-sm text-slate-400">
           No bids yet.
@@ -43,8 +42,8 @@ function LiveAuctionsBidsTab({ auction }) {
                 <th className="px-5 py-3 font-medium min-w-20">SN</th>
                 <th className="px-4 py-3 font-medium min-w-50">Bidder</th>
                 <th className="px-4 py-3 font-medium min-w-30">Bid Amount</th>
-                <th className="px-4 py-3 font-medium min-w-30">Bid Time</th>
-                <th className="px-4 py-3 font-medium min-w-30">Bid Type</th>
+                <th className="px-4 py-3 font-medium min-w-40">Bid Time</th>
+                <th className="px-4 py-3 font-medium min-w-30">Bidder Type</th>
                 <th className="px-4 py-3 font-medium min-w-30">Status</th>
               </tr>
             </thead>
@@ -52,9 +51,10 @@ function LiveAuctionsBidsTab({ auction }) {
             <tbody>
               {bids.map((bid, index) => (
                 <tr
-                  key={bid.id}
+                  key={bid._id}
                   className="border-b last:border-0 border-slate-100 hover:bg-slate-50"
                 >
+
                   {/* SN */}
                   <td className="px-5 py-4">
                     {index === 0 ? (
@@ -64,68 +64,94 @@ function LiveAuctionsBidsTab({ auction }) {
                     ) : index === 2 ? (
                       <Trophy size={18} className="text-orange-700" />
                     ) : (
-                      <span className="text-slate-400 font-medium ml-1.5">{index + 1}</span>
+                      <span className="text-slate-400 font-medium ml-1.5">
+                        {index + 1}
+                      </span>
                     )}
                   </td>
 
-                  {/* Bidder Detail */}
+                  {/* Bidder */}
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      {/* Avatar Circle */}
+
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold border border-blue-200">
-                        {bid.bidderName.charAt(0).toUpperCase()}
+                        {bid.bidder?.name?.charAt(0).toUpperCase() || "?"}
                       </div>
 
-                      {/* Name and Bids */}
                       <div className="flex flex-col">
-                        <div className="font-medium text-[#0B1E3D] flex items-center gap-1">
-                          {bid.bidderName}
-                          {bid.isYou && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">You</span>}
+                        <div className="font-medium text-[#0B1E3D]">
+                          {bid.bidder?.name || "Unknown Bidder"}
                         </div>
-                        <div className="text-xs text-slate-400">{bid.totalBids} bids</div>
+
+                        <div className="text-xs text-slate-400">
+                          {bid.bidId}
+                        </div>
                       </div>
+
                     </div>
                   </td>
 
                   {/* Bid Amount */}
                   <td className="px-4 py-4 font-semibold text-[#0B1E3D]">
-                    {bid.bidAmount}
+                    {formatPrice(bid.amount)}
                   </td>
 
                   {/* Bid Time */}
                   <td className="px-4 py-4">
-                    <div>{bid.bidDate}</div>
-                    <div className="text-slate-400">{bid.bidTime}</div>
+                    {bid.createdAt ? (
+                      <>
+                        <div>
+                          {new Date(bid.createdAt).toLocaleDateString("en-GB", {
+                            timeZone: "Asia/Dubai",
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </div>
+
+                        <div className="text-slate-500 text-[11px] mt-1">
+                          {new Date(bid.createdAt).toLocaleTimeString("en-GB", {
+                            timeZone: "Asia/Dubai",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
 
-                  {/* Bid Type */}
+                  {/* Bidder Type */}
                   <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[11px] font-medium border
-                      ${bid.bidType === 'Manual Bid'
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}
-                    >
-                      {bid.bidType}
+                    <span className="px-2 py-1 rounded-md text-[11px] font-medium border bg-slate-50 text-slate-700 border-slate-200">
+                      {formatLabel(bid.bidderType) || "—"}
                     </span>
                   </td>
 
                   {/* Status */}
                   <td className="px-4 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[11px] 
-                      ${bid.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
-                      {bid.status}
+                    <span
+                      className={`px-2 py-1 rounded-md text-[11px] ${bid.status === "active"
+                        ? "bg-green-50 text-green-600"
+                        : bid.status === "won"
+                          ? "bg-purple-50 text-purple-600"
+                          : "bg-slate-100 text-slate-600"
+                        }`}
+                    >
+                      {formatLabel(bid.status) || "—"}
                     </span>
                   </td>
+
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )
-      }
+      )}
     </div>
-  )
+  );
 }
 
-export default LiveAuctionsBidsTab;
+export default AuctionsBidsTab;
