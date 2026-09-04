@@ -27,3 +27,19 @@ export const useGetAuctionDetail = (id) => {
         enabled: !!id,
     });
 };
+
+// cancel auction
+export const useCancelAuction = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, reason }) => {
+            const res = await API.patch(`/auction/cancel-auction/${id}`, { reason });
+            return res.data;
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['myAuctions'] });
+            queryClient.invalidateQueries({ queryKey: ['auctionDetail', variables.id] });
+        },
+    });
+};

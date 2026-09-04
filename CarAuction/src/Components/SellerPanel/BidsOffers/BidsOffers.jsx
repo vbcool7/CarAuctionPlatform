@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Clock3, Headphones, MoreVertical, Trophy } from 'lucide-react';
-import { bidsData } from '../SellerSharedComponents/SellerData';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
 import { useGetMyBids } from '../../../hook/useBid';
@@ -104,6 +103,8 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
         { key: 'active', label: 'Active Bids', count: 0 },
         { key: 'won', label: 'Won', count: 0 },
         { key: 'outbid', label: 'Outbid', count: 0 },
+        { key: 'withdrawn', label: 'Withdrawn', count: 0 },
+        { key: 'canceled', label: 'Canceled', count: 0 },
     ];
 
     if (isLoading) return <p className="p-10 text-center">Loading my bids list....</p>;

@@ -23,7 +23,7 @@ function BidsSidebar({ vehicle, bids = [] }) {
     ).length;
 
     const cancelledBids = bids.filter(
-        (bid) => bid.status === "cancelled"
+        (bid) => bid.status === "canceled"
     ).length;
 
     const validBidAmounts = bids

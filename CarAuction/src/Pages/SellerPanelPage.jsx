@@ -2,14 +2,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, ShieldCheck, X } from 'lucide-react';
+import { toast } from 'react-toastify';
 import SellerSidebar from '../Components/SellerPanel/SellerSidebar';
 import SellerNavbar from '../Components/SellerPanel/SellerNavbar';
 import SellerDashboard from '../Components/SellerPanel/SellerDashboard/SellerDashboard';
 import AddNewVehicle from '../Components/SellerPanel/AddNewVehicle/AddNewVehicle';
-
-import { useSellerLogout } from '../hook/useSeller';
-import useAuthStore from '../store/useAuthStore';
-import { toast } from 'react-toastify';
 import MyVehicles from '../Components/SellerPanel/MyVehicles/MyVehicles';
 import MyVehiclesDetail from '../Components/SellerPanel/MyVehicles/MyVehiclesDetail';
 import MyAuctions from '../Components/SellerPanel/MyAuctions/MyAuctions';
@@ -21,10 +18,13 @@ import SalesHistoryDetail from '../Components/SellerPanel/SalesHistory/SalesHist
 import Payouts from '../Components/SellerPanel/Payouts/Payouts';
 import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 
+import { useSellerLogout } from '../hook/useSeller';
+import useAuthStore from '../store/useAuthStore';
+
 function SellerPanelPage() {
 
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('payouts');
+  const [currentPage, setCurrentPage] = useState('bids-offers');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

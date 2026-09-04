@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 const STATUS_BADGE_CONFIG = {
     live: { label: "LIVE", className: "bg-[#DC2626]", pulse: true },
     upcoming: { label: "UPCOMING", className: "bg-[#2563EB]", pulse: false },
-    cancelled: { label: "CANCELLED", className: "bg-[#DC2626]", pulse: false },
+    canceled: { label: "CANCELLED", className: "bg-[#DC2626]", pulse: false },
     completed: { label: "COMPLETED", className: "bg-[#16A34A]", pulse: false },
 };
 

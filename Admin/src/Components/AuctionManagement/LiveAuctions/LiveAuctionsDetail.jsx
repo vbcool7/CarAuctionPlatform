@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react'
-import { Share2, Pause, XCircle } from 'lucide-react';
+import { Share2, XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import AuctionsDetailHeader from '../Shared/AuctionsDetailHeader';
 import AuctionsDetailTimeline from '../Shared/AuctionsDetailTimeline';
@@ -14,11 +15,12 @@ import AuctionsDocumentsTab from '../Shared/AuctionsDocumentsTab';
 import AuctionsParticipantsTab from '../Shared/AuctionsParticipantsTab';
 import AuctionsBidsTab from '../Shared/AuctionsBidsTab';
 import AuctionsGallery from '../Shared/AuctionsGallery';
-
-import { useGetAuctionDetail } from '../../../hooks/useAuction';
-import { formatLabel, formatPrice } from '../../utils/formatter';
-import { UseCountDown } from '../../SharedComponents/UseCountDown';
 import ContactSupport from '../../SharedComponents/ContactSupport';
+import CancelAuctionModal from '../Shared/CancelAuctionModal';
+
+import { useCancelAuction, useGetAuctionDetail } from '../../../hooks/useAuction';
+import { formatLabel } from '../../utils/formatter';
+import { UseCountDown } from '../../SharedComponents/UseCountDown';
 
 // tabs
 const tabs = [
@@ -51,7 +53,12 @@ const Tag = ({ children }) => {
 function LiveAuctionsDetail({ auction, setCurrentPage }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelError, setCancelError] = useState("");
+
     const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
+    const { mutate: cancelAuction, isPending: isUpdating } = useCancelAuction();
 
     const vehicle = auctionDetail?.data?.vehicle;
 
@@ -70,7 +77,6 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
 
     const bids = auctionDetail?.data?.bids || [];
     const participants = auctionDetail?.data?.participants || [];
-    const soldTo = auctionDetail?.data?.soldTo;
 
     return (
         <div>
@@ -113,14 +119,9 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
 
                         {/* Details */}
                         <div className="grid grid-cols-3 gap-x-8 gap-y-4 mb-6">
-                            <Info label="VIN" value={formatLabel(vehicle.vin)} />
                             <Info label="Auction ID" value={formatLabel(vehicle.listingId)} />
                             <Info label="Category" value={formatLabel(vehicle.vehicleType)} />
-                            <Info label="Auction Type" value={formatLabel(vehicle.auctionType)} />
-                            <Info label="Mileage" value={formatLabel(vehicle.mileage)} />
-                            <Info label="Current Bid" value={formatPrice(vehicle.currentBid)} />
-                            <Info label="Location" value={formatLabel(`${vehicle.city}, ${vehicle.emirate}`)} />
-                            <Info label="Reserve Price" value={formatPrice(vehicle.reservePrice)} />
+                            <Info label="VIN" value={formatLabel(vehicle.vin)} />
                         </div>
 
                         {/* Countdown */}
@@ -188,14 +189,21 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
 
                             {/* Buttons */}
                             <div className="grid grid-cols-2 gap-3 mt-5">
-                                <button className="h-11 rounded-xl border border-slate-200 flex items-center justify-center gap-2 text-sm font-medium hover:bg-white transition">
+                                <button
+                                    className="h-11 rounded-xl border border-slate-200 flex items-center justify-center gap-2 text-sm text-white font-medium bg-[#D97706] hover:bg-[#D97706]/90 active:bg-[#B45309] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706]/40 transition-all duration-150">
                                     <Share2 size={16} />
                                     Share
                                 </button>
 
-                                <button className="h-11 rounded-xl bg-[#0B1E3D] text-white flex items-center justify-center gap-2 text-sm font-medium hover:bg-[#132d59] transition">
+                                <button
+                                    onClick={() => {
+                                        setCancelReason("");
+                                        setCancelError("");
+                                        setIsCancelModalOpen(true);
+                                    }}
+                                    className="h-11 rounded-xl bg-[#0B1E3D] text-white flex items-center justify-center gap-2 text-sm font-medium hover:bg-[#132d59] active:bg-[#08162d] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B1E3D]/40 transition-all duration-150">
                                     <XCircle size={16} />
-                                    Cancel
+                                    Cancel Auction
                                 </button>
                             </div>
                         </div>
@@ -233,7 +241,7 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
                     <AuctionsDetailTimeline vehicle={vehicle} />
                 </div>
 
-                {/* left side - section */}
+                {/* right side - section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
                     {activeTab === 'auction-overview' && <OverviewSidebar vehicle={vehicle} bids={bids} participants={participants} setCurrentPage={setCurrentPage} />}
                     {activeTab === 'vehicles-detail' && <ContactSupport />}
@@ -244,6 +252,40 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
 
             </div>
 
+            {/* auction cancel modal */}
+            <CancelAuctionModal
+                isOpen={isCancelModalOpen}
+                onClose={() => {
+                    if (isUpdating) return;
+                    setIsCancelModalOpen(false);
+                    setCancelReason("");
+                    setCancelError("");
+                }}
+                onConfirm={() => {
+                    setCancelError("");
+                    cancelAuction(
+                        { id: vehicle._id, reason: cancelReason },
+                        {
+                            onSuccess: (data) => {
+                                setIsCancelModalOpen(false);
+                                setCancelReason("");
+                                toast.success(data?.message || "Auction canceled successfully");
+                                setCurrentPage('live-auctions')
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to cancel auction. Please try again.";
+                                setCancelError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                reason={cancelReason}
+                setReason={setCancelReason}
+                loading={isUpdating}
+                error={cancelError}
+            />
         </div>
     )
 }

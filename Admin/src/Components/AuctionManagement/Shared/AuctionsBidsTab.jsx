@@ -133,13 +133,19 @@ function AuctionsBidsTab({ bids }) {
                   {/* Status */}
                   <td className="px-4 py-4">
                     <span
-                      className={`px-2 py-1 rounded-md text-[11px] ${bid.status === "active"
-                        ? "bg-green-50 text-green-600"
-                        : bid.status === "won"
-                          ? "bg-purple-50 text-purple-600"
-                          : "bg-slate-100 text-slate-600"
+                      className={`px-2 py-1 text-[10px] font-medium rounded-full 
+                        ${bid.status === "active"
+                          ? "bg-green-100 text-green-700"
+                          : bid.status === "outbid"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : bid.status === "won"
+                              ? "bg-purple-100 text-purple-700"
+                              : bid.status === "canceled"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-600"
                         }`}
                     >
+
                       {formatLabel(bid.status) || "—"}
                     </span>
                   </td>

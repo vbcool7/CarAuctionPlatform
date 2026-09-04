@@ -1,19 +1,12 @@
 
 import React, { useState } from 'react';
 import { Download, File, Share2 } from 'lucide-react';
-import { myVehiclesData } from '../SellerSharedComponents/SellerData';
-import { UseCountdown } from '../SellerSharedComponents/useCountDown';
+import CancelAuctionModal from '../SellerSharedComponents/CancelAuctionModal';
 
-import { useVehicleDetail } from '../../../hook/useVehicle';
+import { UseCountDown } from '../SellerSharedComponents/UseCountDown';
 import { formatLabel, formatPrice } from '../../../utils/formatters';
-import { useGetAuctionDetail } from '../../../hook/useAuction';
-import { useGetVehicleBids } from '../../../hook/useBid';
-
-const adminStatusLabels = {
-    pending: { label: 'Pending Approval', className: 'bg-amber-100 text-amber-700' },
-    approved: { label: 'Approved', className: 'bg-green-100 text-green-700' },
-    rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },
-};
+import { useCancelAuction, useGetAuctionDetail } from '../../../hook/useAuction';
+import { toast } from 'react-toastify';
 
 const auctionPhaseLabels = {
     draft: {
@@ -52,23 +45,38 @@ const auctionPhaseLabels = {
     },
 };
 
+const renderDetailItem = (label, value) => (
+    <div>
+        <p className="text-xs text-gray-400">
+            {label}
+        </p>
+
+        <p className="mt-0.5 text-sm font-medium text-[#0B1E3D]">
+            {value || "---"}
+        </p>
+    </div>
+);
+
 function MyAuctionsDetail({ setCurrentPage, auctionId }) {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedImage, setSelectedImage] = useState(0);
-    const [page, setPage] = useState(1);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelError, setCancelError] = useState("");
 
-    const { data: vehicleBidsData } = useGetVehicleBids();
-    const { data: auctionData, isLoading, isError } = useGetAuctionDetail(auctionId);
+    const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auctionId);
+    const { mutate: cancelAuction, isPending: isCanceling } = useCancelAuction();
 
-    const totalPages = vehicleBidsData?.pagination?.totalPages || 1;
-    const vehicle = auctionData?.data;
+    const vehicle = auctionDetail?.data?.vehicle;
+    const bids = auctionDetail?.data?.bids || [];
+    const soldTo = auctionDetail?.data?.soldTo || [];
 
     const tabs = [
         { key: 'overview', label: 'Overview' },
-        { key: 'bids', label: 'Bids' },
-        { key: 'watchers', label: 'Watchers' },
         { key: 'vehicle-details', label: 'Vehicle Details' },
+        { key: 'bids', label: `Bids (${bids?.length || 0})` },
+        { key: 'watchers', label: 'Watchers' },
         { key: 'images', label: `Images (${vehicle?.images?.length || 0})` },
         { key: 'documents', label: `Documents (${vehicle?.documents?.length || 0})` },
     ];
@@ -79,36 +87,51 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
             countdownLabel: 'Starts In',
             targetDateTime: vehicle?.auctionStartDateTime,
             showCountdown: true,
-            primaryAction: null,
+            primaryAction: 'Cancel Auction',
         },
         live: {
             heading: 'This auction is currently live. Place your bid before it ends.',
             countdownLabel: 'Auction Ends In',
             targetDateTime: vehicle?.auctionEndDateTime,
             showCountdown: true,
-            primaryAction: 'End Auction',
+            primaryAction: 'Cancel Auction',
         },
-        sold: { heading: 'This auction has ended — vehicle sold.', showCountdown: false, primaryAction: 'View Payout' },
-        unsold: { heading: 'This auction ended with no bids.', showCountdown: false, primaryAction: 'Relist Vehicle' },
-        'reserve-not-met': { heading: "Reserve price wasn't met. Vehicle wasn't sold.", showCountdown: false, primaryAction: 'Relist Vehicle' },
-        canceled: { heading: 'This auction was canceled.', showCountdown: false, primaryAction: null },
+        sold: {
+            heading: 'This auction has ended — vehicle sold.',
+            showCountdown: false,
+            primaryAction: 'View Payout'
+        },
+        unsold: {
+            heading: 'This auction ended with no bids.',
+            showCountdown: false,
+            primaryAction: 'Relist Vehicle'
+        },
+        'reserve-not-met': {
+            heading: "Reserve price wasn't met. Vehicle wasn't sold.",
+            showCountdown: false,
+            primaryAction: 'Relist Vehicle'
+        },
+        canceled: {
+            heading: 'This auction was canceled.',
+            showCountdown: false,
+            primaryAction: null
+        },
     };
 
     const statusInfo = auctionStatusContent[vehicle?.auctionStatus];
 
-    const countdown = UseCountdown(statusInfo?.showCountdown ? statusInfo.targetDateTime : null);
-
-    const hasCurrentBid =
-        vehicle?.currentBid !== null && vehicle?.currentBid !== undefined;
-
-    const bidLabel = hasCurrentBid ? "Current Bid" : "Starting Bid";
-
-    const bidValue = hasCurrentBid
-        ? vehicle?.currentBid
-        : vehicle?.startingBidPrice;
+    const countdown = UseCountDown(statusInfo?.showCountdown ? statusInfo.targetDateTime : null);
 
     if (isLoading) return <p className="p-10 text-center">Loading auction details....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load auction details</p>;
+
+    if (!vehicle) {
+        return (
+            <p className="p-10 text-center text-red-500">
+                Auction details not found
+            </p>
+        );
+    }
 
     return (
         <div className='pb-6 space-y-6'>
@@ -152,6 +175,7 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                         <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
                             <div>
                                 <div className='space-y-3'>
+
                                     {/* Cover Image */}
                                     <div className='relative rounded-xl overflow-hidden h-64 md:h-72 bg-gray-100'>
                                         {vehicle?.images?.length > 0 ? (
@@ -197,44 +221,97 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                             </div>
 
                             {/* title + quick specs */}
-                            <div className='flex flex-col gap-4'>
-                                <div className='flex items-start justify-between gap-2'>
-                                    <h2 className='text-lg md:text-xl font-bold text-[#0B1E3D]'>
-                                        {vehicle.year} {formatLabel(vehicle.make)} {formatLabel(vehicle.model)}
+                            <div className="flex flex-col gap-5">
+
+                                {/* Vehicle Title */}
+                                <div>
+                                    <h2 className="text-xl md:text-2xl font-bold leading-tight text-[#0B1E3D]">
+                                        {vehicle.year} {formatLabel(vehicle.make)}{" "}
+                                        {formatLabel(vehicle.model)}
                                     </h2>
+
+                                    <p className="mt-1 text-xs text-gray-400">
+                                        Vehicle Details
+                                    </p>
                                 </div>
 
-                                <div className='grid grid-cols-2 gap-y-4 gap-x-2'>
+                                {/* Vehicle Details */}
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-5 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Drive Type</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.drivetrain || "---")}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Auction ID
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {vehicle.listingId || '--'}
+                                        </p>
                                     </div>
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Engine</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.engineSize || "---"}
-                                            {vehicle.cylinders && ` • ${vehicle.cylinders}-Cyl`}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Engine
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {vehicle.engineSize || "---"}
+                                            {vehicle.cylinders && ` • ${vehicle.cylinders}-Cyl`}
+                                        </p>
                                     </div>
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Seats</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.seats || "---"}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Mileage
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : "---"}
+                                        </p>
                                     </div>
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Doors</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{vehicle.doors || '---'}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Transmission
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {formatLabel(vehicle.transmission || "---")}
+                                        </p>
                                     </div>
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Title Status</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.titleStatus?.replace("_", " ") || "---")}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Title Status
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {formatLabel(
+                                                vehicle.titleStatus?.replace("_", " ") || "---"
+                                            )}
+                                        </p>
                                     </div>
+
                                     <div>
-                                        <p className='text-xs text-gray-400'>Location</p>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.city)}, {formatLabel(vehicle.emirate?.replaceAll("_", " "))}</p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Location
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                            {formatLabel(vehicle.city || "---")},{" "}
+                                            {formatLabel(
+                                                vehicle.emirate?.replaceAll("_", " ") || "---"
+                                            )}
+                                        </p>
+                                    </div>
+
+                                </div>
+
+                                {/* VIN */}
+                                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3">
+                                    <div>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                            Vehicle Identification Number
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold tracking-wider text-[#0B1E3D] break-all">
+                                            {vehicle.vin || "---"}
+                                        </p>
                                     </div>
                                 </div>
-                                <div>
-                                    <p className='text-xs text-gray-400'>VIN</p>
-                                    <p className='text-sm font-medium text-[#0B1E3D]'>{formatLabel(vehicle.vin)}</p>
-                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -259,80 +336,345 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                         </div>
 
                         <div className='p-5'>
-                            {activeTab === 'overview' && (
-                                <div className='space-y-6'>
+                            {activeTab === "overview" && (
+                                <div className="space-y-7">
+
+                                    {/* Vehicle Description */}
                                     <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-2'>
+                                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-2">
                                             Vehicle Description
                                         </h3>
 
-                                        <p className='text-sm text-gray-600'>
-                                            {vehicle.vehicleDescription || '----'}
+                                        <p className="text-sm leading-6 text-gray-600">
+                                            {vehicle.vehicleDescription || "----"}
                                         </p>
                                     </div>
 
-                                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4'>
+                                    {/* Vehicle Information */}
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">
+                                            Vehicle Information
+                                        </h3>
 
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Title Status</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {formatLabel(vehicle.titleStatus || '----')}
-                                            </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-10 gap-y-5">
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Vehicle Type</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.vehicleType || "----")}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Title Status</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.titleStatus || "----")}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Drive Type</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.drivetrain || "----")}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Transmission</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.transmission || "----")}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Mileage</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.mileage
+                                                        ? `${vehicle.mileage.toLocaleString()} km`
+                                                        : "----"}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Engine</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.engineSize || "----"}
+                                                    {vehicle.cylinders &&
+                                                        ` • ${vehicle.cylinders}-Cylinder`}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Accident History</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.accidentHistory || "----")}
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <p className="text-xs text-gray-400">Location</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.city || "----")}
+                                                    {vehicle.emirate &&
+                                                        `, ${formatLabel(vehicle.emirate)}`}
+                                                </p>
+                                            </div>
+
                                         </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Drive Type</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D] uppercase'>
-                                                {formatLabel(vehicle.drivetrain || '----')}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Accident History</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {vehicle.accidentHistory?.replaceAll('_', ' ') || '----'}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Engine</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                {vehicle.engineSize || '----'}
-                                                {vehicle.cylinders && ` • ${vehicle.cylinders}-Cylinder`}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Seating Capacity</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                {vehicle.seats || '----'}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Doors</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                {vehicle.doors || '----'}
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Location</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {formatLabel(vehicle.city) || '----'}
-                                                {vehicle.emirate && `, ${formatLabel(vehicle.emirate)}`}
-
-                                            </p>
-                                        </div>
-
-                                        <div>
-                                            <p className='text-xs text-gray-400'>Vehicle Type</p>
-                                            <p className='text-sm font-medium text-[#0B1E3D] capitalize'>
-                                                {formatLabel(vehicle.vehicleType)}
-                                            </p>
-                                        </div>
-
                                     </div>
+
+                                    {/* Auction Information */}
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">
+                                            Auction Information
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-10 gap-y-5">
+
+                                            {/* Auction Type */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">Auction Type</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {formatLabel(vehicle.auctionType || "----")} Auction
+                                                </p>
+                                            </div>
+
+                                            {/* Price Type */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">Price Type</p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.priceType === "fixed_price"
+                                                        ? "Fixed Price"
+                                                        : "Reserve Price"}
+                                                </p>
+                                            </div>
+
+                                            {/* Start Date */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    Start Date & Time
+                                                </p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.auctionStartDateTime
+                                                        ? new Date(
+                                                            vehicle.auctionStartDateTime
+                                                        ).toLocaleString("en-GB", {
+                                                            day: "2-digit",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true,
+                                                        })
+                                                        : "----"}
+                                                </p>
+                                            </div>
+
+                                            {/* End Date */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    End Date & Time
+                                                </p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.auctionEndDateTime
+                                                        ? new Date(
+                                                            vehicle.auctionEndDateTime
+                                                        ).toLocaleString("en-GB", {
+                                                            day: "2-digit",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true,
+                                                        })
+                                                        : "----"}
+                                                </p>
+                                            </div>
+
+                                            {/* Extension Rule */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    Extension Rule
+                                                </p>
+                                                <p className="mt-1 text-sm font-medium text-[#0B1E3D]">
+                                                    {vehicle.antiSnipingExtension || 0} min extension
+                                                </p>
+                                            </div>
+
+                                            {/* Starting Bid */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    Starting Bid
+                                                </p>
+                                                <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                                    {formatPrice(vehicle.startingBidPrice)}
+                                                </p>
+                                            </div>
+
+                                            {/* Buy Now / Reserve */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    {vehicle.priceType === "fixed_price"
+                                                        ? "Buy Now Price"
+                                                        : "Reserve Price"}
+                                                </p>
+
+                                                <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                                    {vehicle.priceType === "fixed_price"
+                                                        ? formatPrice(vehicle.buyNowPrice)
+                                                        : formatPrice(vehicle.reservePrice)}
+                                                </p>
+                                            </div>
+
+                                            {/* Current Bid */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">
+                                                    Current Bid
+                                                </p>
+
+                                                <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
+                                                    {vehicle.currentBid
+                                                        ? formatPrice(vehicle.currentBid)
+                                                        : "—"}
+                                                </p>
+                                            </div>
+
+                                            {/* Status */}
+                                            <div>
+                                                <p className="text-xs text-gray-400">Status</p>
+
+                                                <span
+                                                    className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${vehicle.auctionStatus === "live"
+                                                        ? "bg-green-50 text-green-600"
+                                                        : vehicle.auctionStatus === "upcoming"
+                                                            ? "bg-blue-50 text-blue-600"
+                                                            : vehicle.auctionStatus === "canceled"
+                                                                ? "bg-red-50 text-red-600"
+                                                                : "bg-gray-100 text-gray-600"
+                                                        }`}
+                                                >
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                                    {formatLabel(vehicle.auctionStatus || "----")}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+                            )}
+
+                            {activeTab === "vehicle-details" && (
+                                <div className="space-y-7">
+
+                                    {/* Basic Information */}
+                                    <div>
+                                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
+                                            Basic Information
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            {renderDetailItem("VIN", vehicle.vin)}
+                                            {renderDetailItem("Vehicle Type", formatLabel(vehicle.vehicleType))}
+                                            {renderDetailItem("Body Type", formatLabel(vehicle.bodyType))}
+                                            {renderDetailItem("Year", vehicle.year)}
+                                            {renderDetailItem(
+                                                "Mileage",
+                                                vehicle.mileage
+                                                    ? `${vehicle.mileage.toLocaleString()} km`
+                                                    : "---"
+                                            )}
+                                            {renderDetailItem("Transmission", formatLabel(vehicle.transmission))}
+                                            {renderDetailItem("Fuel Type", formatLabel(vehicle.fuelType))}
+                                            {renderDetailItem("Drive Type", formatLabel(vehicle.drivetrain))}
+                                            {renderDetailItem("Title Status", formatLabel(vehicle.titleStatus))}
+                                            {renderDetailItem(
+                                                "Location",
+                                                `${vehicle.city || "---"}${vehicle.emirate
+                                                    ? `, ${formatLabel(vehicle.emirate)}`
+                                                    : ""
+                                                }`
+                                            )}
+                                            {renderDetailItem("Exterior Color", formatLabel(vehicle.exteriorColor))}
+                                            {renderDetailItem("Interior Color", formatLabel(vehicle.interiorColor))}
+                                            {renderDetailItem(
+                                                "Engine",
+                                                `${vehicle.engineSize || "---"}${vehicle.cylinders
+                                                    ? ` • ${vehicle.cylinders}-Cylinder`
+                                                    : ""
+                                                }`
+                                            )}
+                                            {renderDetailItem("Seating Capacity", vehicle.seats)}
+                                            {renderDetailItem("Doors", vehicle.doors)}
+                                            {renderDetailItem(
+                                                "Accident History",
+                                                formatLabel(vehicle.accidentHistory)
+                                            )}
+                                        </div>
+                                    </div>
+
+
+                                    {/* Condition */}
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
+                                            Condition
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            {renderDetailItem(
+                                                "Overall Condition",
+                                                formatLabel(vehicle.overallCondition)
+                                            )}
+                                            {renderDetailItem(
+                                                "Mechanical Condition",
+                                                formatLabel(vehicle.mechanicalCondition)
+                                            )}
+                                            {renderDetailItem(
+                                                "Exterior Condition",
+                                                formatLabel(vehicle.exteriorCondition)
+                                            )}
+                                            {renderDetailItem(
+                                                "Interior Condition",
+                                                formatLabel(vehicle.interiorCondition)
+                                            )}
+                                            {renderDetailItem("Repainted", formatLabel(vehicle.repainted))}
+                                            {renderDetailItem("Smoke Odor", formatLabel(vehicle.smokeOdor))}
+                                            {renderDetailItem("Pet Friendly", formatLabel(vehicle.petFriendly))}
+                                            {renderDetailItem(
+                                                "Glass Condition",
+                                                formatLabel(vehicle.glassCondition)
+                                            )}
+                                            {renderDetailItem(
+                                                "Tires Condition",
+                                                formatLabel(vehicle.tiresCondition)
+                                            )}
+                                        </div>
+                                    </div>
+
+
+                                    {/* Features & Equipment */}
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
+                                            Features & Equipment
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            {renderDetailItem("Paint Type", formatLabel(vehicle.paintType))}
+                                            {renderDetailItem("Tire Brand", vehicle.tireBrand)}
+                                            {renderDetailItem("Tire Size", vehicle.tireSize)}
+                                            {renderDetailItem("Seat Material", formatLabel(vehicle.seatMaterial))}
+                                            {renderDetailItem("Number of Keys", vehicle.numberOfKeys)}
+                                            {renderDetailItem("Key Type", formatLabel(vehicle.keyType))}
+                                            {renderDetailItem("Sunroof", formatLabel(vehicle.sunroof))}
+                                            {renderDetailItem("AC / Heater", vehicle.acHeater)}
+                                            {renderDetailItem("Audio System", vehicle.audioSystem)}
+                                            {renderDetailItem("Navigation", formatLabel(vehicle.navigation))}
+                                            {renderDetailItem("Power Windows", formatLabel(vehicle.powerWindows))}
+                                            {renderDetailItem("Power Locks", formatLabel(vehicle.powerLocks))}
+                                            {renderDetailItem("Additional Features", vehicle.additionalFeatures)}
+                                        </div>
+                                    </div>
+
                                 </div>
                             )}
 
@@ -346,47 +688,92 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                                         </button>
                                     </div>
 
-                                    {/* {myVehicles.bidsList?.length > 0 ? (
+                                    {bids.length > 0 ? (
                                         <div className='overflow-x-auto'>
-                                            <table className='w-full text-sm'>
+                                            <table className="w-full text-left text-[12px]">
                                                 <thead>
                                                     <tr className='text-left text-xs text-gray-400 border-b border-gray-100'>
-                                                        <th className='py-2 font-medium'>Bidder</th>
-                                                        <th className='py-2 font-medium'>Bid Amount</th>
-                                                        <th className='py-2 font-medium'>Bid Time</th>
-                                                        <th className='py-2 font-medium'>Status</th>
+                                                        <th className="px-5 py-3 font-medium min-w-20">SN</th>
+                                                        <th className='px-4 py-3 font-medium min-w-50'>Bidder</th>
+                                                        <th className='px-4 py-3 font-medium min-w-30'>Bid Amount</th>
+                                                        <th className='px-4 py-3 font-medium min-w-40'>Bid Time</th>
+                                                        <th className='px-4 py-3 font-medium min-w-30'>Status</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {myVehicles.bidsList.map((b, index) => (
-                                                        <tr key={index} className='border-b border-gray-50'>
-                                                            <td className='py-3'>
+                                                    {bids.map((b, index) => (
+                                                        <tr
+                                                            key={b._id}
+                                                            className='border-b border-gray-50'>
+
+                                                            {/* SN */}
+                                                            <td className="px-5 py-4">
+                                                                <span className="text-slate-400 font-medium ml-1.5">
+                                                                    {index + 1}
+                                                                </span>
+                                                            </td>
+
+                                                            {/* bidder info */}
+                                                            <td className='px-4 py-4'>
                                                                 <div className='flex items-center gap-2'>
                                                                     <div className='w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-semibold text-blue-700'>
-                                                                        {b.bidderInitials}
+                                                                        {b.bidder?.name?.charAt(0) || '?'}
                                                                     </div>
                                                                     <div>
-                                                                        <p className='font-medium text-[#0B1E3D]'>{b.bidderName}</p>
-                                                                        <p className='text-xs text-gray-400'>Bidder ID: {b.id}</p>
+                                                                        <p className='className="font-medium text-[#0B1E3D]'>{b.bidder?.name || 'Unknown'}</p>
+                                                                        <p className="text-xs text-slate-400">Bid ID: {b.bidId}</p>
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className='py-3'>
-                                                                <div className='flex items-center gap-2'>
-                                                                    <span className='font-semibold text-[#0B1E3D]'>{b.amount}</span>
-                                                                    {b.isHighest && (
-                                                                        <span className='text-[10px] font-medium text-green-600'>Highest Bid</span>
-                                                                    )}
-                                                                </div>
+
+                                                            {/* bid amt */}
+                                                            <td className="px-4 py-4 font-semibold text-[#0B1E3D]">
+                                                                {formatPrice(b.amount)}
                                                             </td>
-                                                            <td className='py-3'>
-                                                                <p className='text-[#0B1E3D]'>{b.time}</p>
-                                                                <p className='text-xs text-gray-400'>{b.timeAgo}</p>
+
+                                                            {/* date/time */}
+                                                            <td className="px-4 py-4">
+                                                                {b.createdAt ? (
+                                                                    <>
+                                                                        <div>
+                                                                            {new Date(b.createdAt).toLocaleDateString("en-GB", {
+                                                                                timeZone: "Asia/Dubai",
+                                                                                day: "2-digit",
+                                                                                month: "short",
+                                                                                year: "numeric",
+                                                                            })}
+                                                                        </div>
+
+                                                                        <div className="text-slate-500 text-[11px] mt-1">
+                                                                            {new Date(b.createdAt).toLocaleTimeString("en-GB", {
+                                                                                timeZone: "Asia/Dubai",
+                                                                                hour: "2-digit",
+                                                                                minute: "2-digit",
+                                                                                hour12: true,
+                                                                            })}
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    "—"
+                                                                )}
                                                             </td>
-                                                            <td className='py-3'>
-                                                                <span className={`px-2 py-1 text-[10px] font-medium rounded-full ${b.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                                                                    }`}>
-                                                                    {b.status === 'active' ? 'Active' : 'Outbid'}
+
+                                                            {/* status */}
+                                                            <td className="px-4 py-4">
+                                                                <span
+                                                                    className={`px-2 py-1 text-[10px] font-medium rounded-full 
+                                                                        ${b.status === "active"
+                                                                            ? "bg-green-100 text-green-700"
+                                                                            : b.status === "outbid"
+                                                                                ? "bg-yellow-100 text-yellow-700"
+                                                                                : b.status === "won"
+                                                                                    ? "bg-purple-100 text-purple-700"
+                                                                                    : b.status === "canceled"
+                                                                                        ? "bg-red-100 text-red-700"
+                                                                                        : "bg-gray-100 text-gray-600"
+                                                                        }`}
+                                                                >
+                                                                    {b.status}
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -396,7 +783,7 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                                         </div>
                                     ) : (
                                         <p className='text-sm text-gray-400'>No bids placed yet.</p>
-                                    )} */}
+                                    )}
                                 </div>
                             )}
 
@@ -452,190 +839,6 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                                     ) : (
                                         <p className='text-sm text-gray-400'>No watchers yet.</p>
                                     )} */}
-                                </div>
-                            )}
-
-                            {activeTab === 'vehicle-details' && (
-                                <div className='space-y-8'>
-
-                                    {/* Basic Info */}
-                                    <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
-                                            Basic Information
-                                        </h3>
-
-                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8'>
-                                            <div>
-                                                <p className='text-xs text-gray-400'>VIN</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.vin}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Title Status</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.titleStatus)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Drive Type</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.drivetrain)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Engine</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.engineSize} • {vehicle.cylinders}-Cylinder
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Seating Capacity</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.seats}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Doors</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.doors}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Location</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.city}, {formatLabel(vehicle.emirate)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Accident History</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.accidentHistory)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Condition */}
-                                    <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
-                                            Condition
-                                        </h3>
-
-                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8'>
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Overall Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.overallCondition)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Exterior Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.exteriorCondition)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Interior Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.interiorCondition)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Mechanical Condition</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.mechanicalCondition)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Repainted</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.repainted)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Smoke Odor</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.smokeOdor)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Exterior & Interior */}
-                                    <div>
-                                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
-                                            Exterior & Interior
-                                        </h3>
-
-                                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8'>
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Paint Type</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.paintType)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Tire Brand / Size</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.tireBrand} • {vehicle.tireSize}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Seat Material</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.seatMaterial)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Interior Color</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.interiorColor)}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Number of Keys</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {vehicle.numberOfKeys}
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <p className='text-xs text-gray-400'>Sunroof</p>
-                                                <p className='text-sm font-medium text-[#0B1E3D]'>
-                                                    {formatLabel(vehicle.sunroof)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Description */}
-                                    {vehicle.vehicleDescription && (
-                                        <div>
-                                            <h3 className='text-sm font-semibold text-[#0B1E3D] mb-2'>
-                                                Description
-                                            </h3>
-                                            <p className='text-sm text-gray-600'>
-                                                {vehicle.vehicleDescription}
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
@@ -761,81 +964,207 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                             </>
                         )}
 
-                        {statusInfo?.primaryAction === 'End Auction' && (
-                            <button className='w-full mt-2 py-2.5 text-xs font-semibold rounded-lg border border-red-200 text-red-600 hover:bg-red-50'>
-                                End Auction
-                            </button>
+                        {/* if solded */}
+                        {vehicle?.auctionStatus === 'sold' && (
+                            <div className='space-y-3 mt-4'>
+                                <div className='flex justify-between items-center'>
+                                    <span className='text-xs text-gray-500'>
+                                        Winning Bidder
+                                    </span>
+
+                                    <span className='text-sm font-semibold text-[#0B1E3D]'>
+                                        {soldTo?.name || "—"}
+                                    </span>
+                                </div>
+
+                                <div className='flex justify-between items-center'>
+                                    <p className="text-[11px] font-medium text-slate-500">
+                                        Final Price
+                                    </p>
+
+                                    <p className="mt-1 text-xs font-semibold text-green-600">
+                                        {formatPrice(vehicle.currentBid)}
+                                    </p>
+                                </div>
+
+                                <div className='flex justify-between items-center'>
+                                    <p className="text-[11px] font-medium text-slate-500">
+                                        Total Bids
+                                    </p>
+                                    <p className="mt-1 text-xs font-semibold text-slate-700">
+                                        {bids?.length ?? 0} Bids
+                                    </p>
+                                </div>
+
+                                <div className='flex justify-between items-center'>
+                                    <span className='text-xs text-gray-500'>
+                                        Auction Completed
+                                    </span>
+
+                                    <span className='text-sm font-semibold text-[#0B1E3D]'>
+                                        {vehicle.auctionEndDateTime
+                                            ? new Date(vehicle.auctionEndDateTime).toLocaleString("en-GB", {
+                                                timeZone: "Asia/Dubai",
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                hour12: true,
+                                            })
+                                            : "—"}
+                                    </span>
+                                </div>
+
+                            </div>
                         )}
-                        {statusInfo?.primaryAction && statusInfo.primaryAction !== 'End Auction' && (
-                            <button className='w-full mt-2 py-2.5 text-xs font-semibold rounded-lg bg-[#D97706] text-white hover:bg-[#B45309]'>
+
+                        {/* if canceled */}
+                        {vehicle?.auctionStatus === 'canceled' && (
+                            <div className='space-y-3 mt-4'>
+
+                                {/* Cancelled By */}
+                                <div className='flex justify-between items-center'>
+                                    <span className='text-xs text-gray-500'>
+                                        Cancelled By
+                                    </span>
+
+                                    <span className='text-sm font-semibold text-[#0B1E3D]'>
+                                        {vehicle?.canceledBy === 'admin'
+                                            ? 'Admin'
+                                            : vehicle?.canceledBy === 'seller'
+                                                ? 'By You'
+                                                : 'N/A'
+                                        }
+                                    </span>
+                                </div>
+
+                                {/* Cancelled At */}
+                                <div className='flex justify-between items-center'>
+                                    <span className='text-xs text-gray-500'>
+                                        Cancelled At
+                                    </span>
+
+                                    <span className='text-sm font-semibold text-[#0B1E3D]'>
+                                        {vehicle?.canceledAt
+                                            ? new Date(vehicle.canceledAt).toLocaleString('en-IN', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })
+                                            : 'N/A'
+                                        }
+                                    </span>
+                                </div>
+
+                                {/* Cancellation Reason */}
+                                <div>
+                                    <p className='text-xs text-gray-500 mb-1'>
+                                        Cancellation Reason
+                                    </p>
+
+                                    <p className='text-sm text-red-600 bg-red-50 rounded-lg p-3'>
+                                        {vehicle?.cancellationReason || 'No reason provided'}
+                                    </p>
+                                </div>
+
+                            </div>
+                        )}
+
+                        {/* cancel auction button */}
+                        {statusInfo?.primaryAction && statusInfo.primaryAction === 'Cancel Auction' && (
+                            <button
+                                onClick={() => {
+                                    setCancelReason("");
+                                    setCancelError("");
+                                    setIsCancelModalOpen(true);
+                                }}
+                                className='w-full mt-2 py-2.5 text-xs font-semibold rounded-lg bg-[#D97706] text-white hover:bg-[#B45309]'>
                                 {statusInfo.primaryAction}
                             </button>
                         )}
                     </div>
 
                     {/* auction summary */}
-                    <div className='bg-white rounded-xl border border-gray-200 p-5'>
-                        <h3 className='text-sm font-semibold text-[#0B1E3D] mb-4'>
+                    <div className="bg-white rounded-xl border border-gray-200 p-5">
+                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">
                             Auction Summary
                         </h3>
 
-                        <div className='space-y-3 text-sm'>
+                        <div className="space-y-3 text-sm">
 
-                            <div className='flex justify-between'>
-                                <span className='text-gray-500'>
-                                    {vehicle.auctionStatus === 'upcoming'
-                                        ? 'Starting Bid'
-                                        : 'Current Bid'}
-                                </span>
-
-                                <span
-                                    className={`font-medium ${vehicle.auctionStatus === 'live'
-                                        ? 'text-green-600'
-                                        : 'text-[#0B1E3D]'
-                                        }`}
-                                >
-                                    {vehicle.auctionStatus === 'upcoming'
-                                        ? (formatPrice(vehicle.startingBidPrice ?? '—'))
-                                        : (formatPrice(vehicle.currentBid ?? '—'))}
+                            {/* Current Bid */}
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Current Bid</span>
+                                <span className="font-semibold text-green-600">
+                                    {vehicle.currentBid != null
+                                        ? formatPrice(vehicle.currentBid)
+                                        : "—"}
                                 </span>
                             </div>
 
-                            <div className='flex justify-between'>
-                                <span className='text-gray-500'>Reserve Price</span>
-                                <span className='font-medium text-[#0B1E3D]'>
-                                    {formatPrice(vehicle.reservePrice ?? '—')}
+                            {/* Starting Bid Price */}
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Starting Bid Price</span>
+                                <span className="font-medium text-[#0B1E3D]">
+                                    {formatPrice(vehicle.startingBidPrice ?? "—")}
                                 </span>
                             </div>
 
-                            {vehicle.priceType === 'fixed_price' && (
-                                <div className='flex justify-between'>
-                                    <span className='text-gray-500'>Buy Now Price</span>
-                                    <span className='font-medium text-[#0B1E3D]'>
-                                        {vehicle.buyNowPrice ?? '—'}
+                            {/* Price Type */}
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Price Type</span>
+                                <span className="font-medium text-[#0B1E3D]">
+                                    {vehicle.priceType === "fixed_price"
+                                        ? "Fixed Price"
+                                        : "Reserve Price"}
+                                </span>
+                            </div>
+
+                            {/* Reserve Price */}
+                            {vehicle.priceType === "reserve_price" && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Reserve Price</span>
+                                    <span className="font-medium text-[#0B1E3D]">
+                                        {formatPrice(vehicle.reservePrice ?? "—")}
                                     </span>
                                 </div>
                             )}
 
-                            <div className='flex justify-between'>
-                                <span className='text-gray-500'>Total Bids</span>
-                                <span className='font-medium text-[#0B1E3D]'>
-                                    {vehicle.bids ?? 0}
+                            {/* Buy Now Price */}
+                            {vehicle.priceType === "fixed_price" && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500">Buy Now Price</span>
+                                    <span className="font-medium text-[#0B1E3D]">
+                                        {formatPrice(vehicle.buyNowPrice ?? "—")}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Total Bids */}
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Total Bids</span>
+                                <span className="font-medium text-[#0B1E3D]">
+                                    {bids.length ?? 0}
                                 </span>
                             </div>
 
-                            <div className='flex justify-between'>
-                                <span className='text-gray-500'>Watchers</span>
-                                <span className='font-medium text-[#0B1E3D]'>
+                            {/* Watchers */}
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Watchers</span>
+                                <span className="font-medium text-[#0B1E3D]">
                                     {vehicle.watchers ?? 0}
                                 </span>
                             </div>
 
-                            {/* sirf 'sold' status mein relevant */}
-                            {vehicle.auctionStatus === 'sold' && vehicle.currentBid != null && (
-                                <div className='flex justify-between pt-3 border-t border-gray-100'>
-                                    <span className='text-gray-500'>Final Sale Price</span>
-                                    <span className='font-semibold text-green-600'>
-                                        {vehicle.currentBid}
+                            {/* Final Sale Price */}
+                            {vehicle.auctionStatus === "sold" && vehicle.currentBid != null && (
+                                <div className="flex justify-between pt-3 border-t border-gray-100">
+                                    <span className="text-gray-500">Final Sale Price</span>
+                                    <span className="font-semibold text-green-600">
+                                        {formatPrice(vehicle.currentBid)}
                                     </span>
                                 </div>
                             )}
@@ -866,6 +1195,41 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
 
                 </div>
             </div>
+
+            {/* cancel auction modal */}
+            <CancelAuctionModal
+                isOpen={isCancelModalOpen}
+                onClose={() => {
+                    if (isCanceling) return;
+                    setIsCancelModalOpen(false);
+                    setCancelReason("");
+                    setCancelError("");
+                }}
+                onConfirm={() => {
+                    setCancelError("");
+                    cancelAuction(
+                        { id: vehicle._id, reason: cancelReason },
+                        {
+                            onSuccess: () => {
+                                setIsCancelModalOpen(false);
+                                setCancelReason("");
+                                toast.success(data?.message || "Auction canceled successfully");
+                                setCurrentPage('my-auctions')
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to cancel auction. Please try again.";
+                                setCancelError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                reason={cancelReason}
+                setReason={setCancelReason}
+                loading={isCanceling}
+                error={cancelError}
+            />
 
         </div>
     )

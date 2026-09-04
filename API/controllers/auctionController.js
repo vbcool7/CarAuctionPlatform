@@ -1,6 +1,8 @@
 
 import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
+import Seller from '../models/sellerModelSchema.js';
+import Buyer from '../models/buyerModelSchema.js';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
 
@@ -156,10 +158,96 @@ export const getMyAuctionById = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        // find all bids of this vehicle
+        const allBids = await Bid.find({ vehicleId: vehicle._id }).sort({ createdAt: -1 });
+
+        // resolve bidder info with each bid
+        const bidsWithBidderInfo = await Promise.all(
+            allBids.map(async (bid) => {
+                let bidderInfo = null;
+
+                if (bid.bidderType === 'Buyer') {
+                    const bidder = await Buyer.findById(bid.bidderId).select('firstName lastName email mobile profileImageUrl');
+                    if (bidder) {
+                        bidderInfo = {
+                            name: `${bidder.firstName} ${bidder.lastName}`,
+                            email: bidder.email,
+                            phone: bidder.mobile,
+                            profileImageUrl: bidder.profileImageUrl,
+                        };
+                    }
+                } else if (bid.bidderType === 'Seller') {
+                    const bidder = await Seller.findById(bid.bidderId).select('fullName email phone profileImage');
+                    if (bidder) {
+                        bidderInfo = {
+                            name: bidder.fullName,
+                            email: bidder.email,
+                            phone: bidder.phone,
+                            profileImageUrl: bidder.profileImage,
+                        };
+                    }
+                }
+
+                return {
+                    _id: bid._id,
+                    bidId: bid.bidId,
+                    amount: bid.amount,
+                    status: bid.status,
+                    bidderType: bid.bidderType,
+                    bidderId: bid.bidderId,
+                    bidder: bidderInfo,
+                    createdAt: bid.createdAt,
+                    updatedAt: bid.updatedAt,
+                };
+            })
+        );
+
+        // find only unique bidders
+        const participantsMap = {};
+
+        bidsWithBidderInfo.forEach((bid) => {
+            const key = bid.bidderId?.toString();
+            if (!key) return;
+
+            if (!participantsMap[key]) {
+                participantsMap[key] = {
+                    bidderId: bid.bidderId,
+                    bidderType: bid.bidderType,
+                    bidder: bid.bidder,
+                    totalBids: 0,
+                    firstBidAt: bid.createdAt,
+                };
+            }
+
+            participantsMap[key].totalBids += 1;
+            if (bid.createdAt < participantsMap[key].firstBidAt) {
+                participantsMap[key].firstBidAt = bid.createdAt;
+            }
+        });
+
+        const participants = Object.values(participantsMap);
+
+        // soldTo (if sold) - find only winning bidder
+        let soldTo = null;
+
+        if (vehicle.auctionStatus === 'sold') {
+            const winningBid = bidsWithBidderInfo.find((b) => b.status === 'won');
+            if (winningBid) {
+                soldTo = winningBid.bidder;
+            }
+        }
+
+        return res.status(200).json({
             success: true,
             message: "Here is your auction detail",
-            data: vehicle
+            data: {
+                vehicle,
+                bids: bidsWithBidderInfo,
+                participants,
+                soldTo,
+                bidsCount: bidsWithBidderInfo.length,
+                bidderCount: participants.length,
+            }
         });
     } catch (err) {
         console.error("Get My Auction Detail Error:", err);
@@ -175,7 +263,7 @@ export const cancelAuction = async (req, res) => {
     try {
         const { id } = req.params;
         const { reason } = req.body;
-        const userId  = req.user.id; 
+        const userId = req.user.id;
         const role = req.user.role;
 
         if (!reason || !reason.trim()) {
@@ -193,7 +281,7 @@ export const cancelAuction = async (req, res) => {
             });
         }
 
-        // ownership check — seller sirf apni auction cancel kar sakta hai
+        // ownership check — seller cancel only their own vehicle's auction
         if (role === 'seller' && vehicle.sellerId.toString() !== userId.toString()) {
             return res.status(403).json({
                 success: false,
@@ -201,7 +289,7 @@ export const cancelAuction = async (req, res) => {
             });
         }
 
-        // stage check — sirf upcoming/live cancel ho sakti hai
+        // stage check — only upcoming/live auc can cancel
         if (!['upcoming', 'live'].includes(vehicle.auctionStatus)) {
             return res.status(400).json({
                 success: false,
@@ -211,22 +299,25 @@ export const cancelAuction = async (req, res) => {
 
         const wasLive = vehicle.auctionStatus === 'live';
 
+        vehicle.statusAtCancellation = vehicle.auctionStatus; // before overwrite to save prev auc status
+        vehicle.canceledAt = new Date();
         vehicle.auctionStatus = 'canceled';
-        vehicle.canceledBy = role; // 'seller' ya 'admin'
+        vehicle.currentBid = null;
+        vehicle.canceledBy = role; // 'seller' or 'admin'
         vehicle.cancellationReason = reason.trim();
         await vehicle.save();
 
-        // agar live thi, saari active/outbid bids ko cancelled maro
+        // if live - then mark all bids as canceled
         if (wasLive) {
             await Bid.updateMany(
                 { vehicleId: vehicle._id, status: { $in: ['active', 'outbid'] } },
-                { $set: { status: 'cancelled' } }
+                { $set: { status: 'canceled' } }
             );
         }
 
         return res.status(200).json({
             success: true,
-            message: "Auction cancelled successfully",
+            message: "Auction canceled successfully",
             vehicle
         });
 

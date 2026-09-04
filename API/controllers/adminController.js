@@ -1107,6 +1107,9 @@ export const getAllAuctions = async (req, res) => {
 
         if (status === 'completed') {
             filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
+        } else if (status === 'canceled' && req.query.dateRange) {
+            filter.auctionStatus = 'canceled';
+            filter.statusAtCancellation = req.query.dateRange; // 'upcoming' or 'live'
         } else if (status && status !== 'all' && validStatuses.includes(status)) {
             filter.auctionStatus = status;
         }
@@ -1735,17 +1738,225 @@ export const getUpcomingAuctionStats = async (req, res) => {
 };
 
 // ============================================ BIDS
-// not done with route =========================================================
 
-// get all bids - not done with proper
+// CHATGPT not work proper - get bids stats
+export const getBidStats = async (req, res) => {
+    try {
+        const now = new Date();
+
+        // Current month start
+        const currentMonthStart = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1
+        );
+
+        // Tomorrow - so today's complete data is included
+        const tomorrow = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1
+        );
+
+        // Previous month start
+        const previousMonthStart = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1
+        );
+
+        // Previous period end
+        // Same number of days as current month-to-date
+        const daysPassed =
+            now.getDate();
+
+        const previousPeriodEnd = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            daysPassed + 1
+        );
+
+        const [
+            totalBids,
+            activeBids,
+            wonBids,
+            outbidBids,
+
+            currentMonthBids,
+            previousMonthBids,
+
+            currentActiveBids,
+            previousActiveBids,
+
+            currentWonBids,
+            previousWonBids,
+
+            currentOutbidBids,
+            previousOutbidBids
+        ] = await Promise.all([
+
+            // Current total counts
+            Bid.countDocuments(),
+
+            Bid.countDocuments({ status: 'active' }),
+
+            Bid.countDocuments({ status: 'won' }),
+
+            Bid.countDocuments({ status: 'outbid' }),
+
+
+            // Current month-to-date
+            Bid.countDocuments({
+                createdAt: {
+                    $gte: currentMonthStart,
+                    $lt: tomorrow
+                }
+            }),
+
+            // Previous month same period
+            Bid.countDocuments({
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lt: previousPeriodEnd
+                }
+            }),
+
+
+            // Active - current period
+            Bid.countDocuments({
+                status: 'active',
+                createdAt: {
+                    $gte: currentMonthStart,
+                    $lt: tomorrow
+                }
+            }),
+
+            // Active - previous period
+            Bid.countDocuments({
+                status: 'active',
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lt: previousPeriodEnd
+                }
+            }),
+
+
+            // Won - current period
+            Bid.countDocuments({
+                status: 'won',
+                createdAt: {
+                    $gte: currentMonthStart,
+                    $lt: tomorrow
+                }
+            }),
+
+            // Won - previous period
+            Bid.countDocuments({
+                status: 'won',
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lt: previousPeriodEnd
+                }
+            }),
+
+
+            // Outbid - current period
+            Bid.countDocuments({
+                status: 'outbid',
+                createdAt: {
+                    $gte: currentMonthStart,
+                    $lt: tomorrow
+                }
+            }),
+
+            // Outbid - previous period
+            Bid.countDocuments({
+                status: 'outbid',
+                createdAt: {
+                    $gte: previousMonthStart,
+                    $lt: previousPeriodEnd
+                }
+            })
+        ]);
+
+
+        const calculatePercentage = (current, previous) => {
+            if (previous === 0) {
+                return current === 0 ? 0 : 100;
+            }
+
+            return Number(
+                (((current - previous) / previous) * 100).toFixed(1)
+            );
+        };
+
+
+        return res.status(200).json({
+            success: true,
+            message: 'Bid stats fetched successfully',
+
+            stats: {
+                totalBids: {
+                    count: totalBids,
+                    percentage: calculatePercentage(
+                        currentMonthBids,
+                        previousMonthBids
+                    )
+                },
+
+                activeBids: {
+                    count: activeBids,
+                    percentage: calculatePercentage(
+                        currentActiveBids,
+                        previousActiveBids
+                    )
+                },
+
+                wonBids: {
+                    count: wonBids,
+                    percentage: calculatePercentage(
+                        currentWonBids,
+                        previousWonBids
+                    )
+                },
+
+                outbidBids: {
+                    count: outbidBids,
+                    percentage: calculatePercentage(
+                        currentOutbidBids,
+                        previousOutbidBids
+                    )
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get Bid Stats Error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
+
+// get all bids 
 export const getAllBids = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
+        const { status } = req.query;
+
         const skip = (page - 1) * limit;
 
+        const filter = {};
+
+        if (status && status !== 'all') {
+            filter.status = status;
+        }
+
         const [bids, totalCount] = await Promise.all([
-            Bid.find()
+            Bid.find(filter)
                 .select('bidId vehicleId bidderId bidderType amount status createdAt')
                 .populate({
                     path: 'vehicleId',
@@ -1754,7 +1965,7 @@ export const getAllBids = async (req, res) => {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Bid.countDocuments()
+            Bid.countDocuments(filter)
         ]);
 
         const formattedBids = await Promise.all(
@@ -1795,6 +2006,101 @@ export const getAllBids = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
+        });
+    }
+};
+
+// get bid detail
+export const getBidDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const bid = await Bid.findById(id)
+            .select('vehicleId bidderId bidderType bidId amount status createdAt')
+            .populate({
+                path: 'vehicleId',
+                select: `listingId images vin make model year startingBidPrice currentBid priceType buyNowPrice reservePrice
+                    auctionStatus auctionStartDateTime auctionEndDateTime auctionDuration`
+            });
+
+        if (!bid) {
+            return res.status(404).json({
+                success: false,
+                message: "Bid not found!"
+            })
+        }
+
+        // get all bids of this vehicle
+        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id })
+            .select('bidId bidderId bidderType amount status createdAt')
+            .sort({ amount: -1, createdAt: -1 })
+            .lean();
+
+        const formattedBids = await Promise.all((
+            vehicleBids.map(async (item) => {
+                let bidder = null;
+
+                if (item.bidderType === 'Buyer') {
+                    bidder = await Buyer.findById(item.bidderId)
+                        .select('buyerId profileImageUrl firstName lastName email mobile')
+                        .lean();
+                }
+
+                if (item.bidderType === 'Seller') {
+                    bidder = await Seller.findById(item.bidderId)
+                        .select('sellerId profileImage fullName email phone')
+                        .lean();
+                }
+                return {
+                    ...item,
+                    bidder
+                };
+            })
+        ));
+
+        // winningbidder
+        const winningBid = vehicleBids.find(
+            (item) => item.status === 'won'
+        );
+
+        let winningBidder = null;
+
+        if (winningBid) {
+            if (winningBid.bidderType === 'Buyer') {
+                winningBidder = await Buyer.findById(winningBid.bidderId)
+                    .select(
+                        'buyerId profileImageUrl firstName lastName email mobile'
+                    )
+                    .lean();
+            }
+
+            if (winningBid.bidderType === 'Seller') {
+                winningBidder = await Seller.findById(winningBid.bidderId)
+                    .select(
+                        'sellerId profileImage fullName email phone'
+                    )
+                    .lean();
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Bid details fetched successfully",
+
+            bid: {
+                ...bid.toObject(),
+                winningBidder
+            },
+            vehicle: bid.vehicleId,
+            bids: formattedBids
+        });
+
+
+    } catch (err) {
+        console.log("Bid Detail Error :", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

@@ -50,39 +50,27 @@ const bidStats = [
 
 // tabs
 const tabs = [
-    { id: 'all-bids', label: 'All Bids', },
-    { id: 'active-bids', label: 'Active Bids', },
-    { id: 'won-bids', label: 'Won Bids', },
-    { id: 'outbid-bids', label: 'Outbid Bids', },
-    { id: 'withdrawn-bids', label: 'Withdrawn Bids', },
+    { id: 'all', label: 'All', },
+    { id: 'active', label: 'Active', },
+    { id: 'won', label: 'Won', },
+    { id: 'outbid', label: 'Outbid', },
+    { id: 'withdrawn', label: 'Withdrawn', },
+    { id: 'canceled', label: 'Canceled', },
 ];
 
-function BidManagement({ setCurrentPage }) {
+function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
     const [page, setPage] = useState(1);
-    const { data: allBids, isLoading, isError } = useGetAllBids(page);
-
-    const bids = allBids?.bids || [];
-
-    console.log(allBids?.bids);
-
-    const [activeTab, setActiveTab] = useState("all-bids");
-
+    const [activeTab, setActiveTab] = useState("all");
     const [selectedAuction, setSelectedAuction] = useState("");
     const [selectedType, setSelectedType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedBidder, setSelectedBidder] = useState("");
 
-    const totalPages = allBids?.pagination?.totalPages || 1;
+    const { data: allBids, isLoading, isError } = useGetAllBids(page, activeTab);
 
-    const filteredBids = bids.filter((bid) => {
-        if (activeTab === 'all-bids') return true;
-        if (activeTab === 'active-bids') return bid.status === 'active';
-        if (activeTab === 'won-bids') return bid.status === 'won';
-        if (activeTab === 'outbid-bids') return bid.status === 'outbid';
-        // if (activeTab === 'withdrawn-bids') return bid.status === 'withdrawn';  // withdrawn abhi scope mein nahi
-        return true;
-    }) || [];
+    const bids = allBids?.bids || [];
+    const totalPages = allBids?.pagination?.totalPages || 1;
 
     if (isLoading) return <p className="p-10 text-center">Loading bid list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load bid list</p>;
@@ -256,7 +244,10 @@ function BidManagement({ setCurrentPage }) {
                             {tabs.map((tab) => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        setActiveTab(tab.id);
+                                        setPage(1);
+                                    }}
                                     className={`pb-3 text-[14px] font-medium whitespace-nowrap border-b-2 transition-colors 
                                                 ${activeTab === tab.id
                                             ? 'border-[#D97706] text-[#D97706]'
@@ -284,8 +275,8 @@ function BidManagement({ setCurrentPage }) {
                                 </thead>
 
                                 <tbody className="divide-y divide-amber-50">
-                                    {filteredBids.length > 0 ? (
-                                        filteredBids.map((bid, index) => (
+                                    {bids.length > 0 ? (
+                                        bids.map((bid, index) => (
                                             <tr
                                                 key={bid._id || index}
                                                 className="hover:bg-gray-50/50 transition-colors">
@@ -390,12 +381,26 @@ function BidManagement({ setCurrentPage }) {
                                                 <td className="px-6 py-4">
                                                     <span
                                                         className={`px-2 py-1 rounded text-[11px] font-medium border
-                                                    ${bid.status === 'active'
+                                                            ${bid.status === 'active'
                                                                 ? 'border-green-200 bg-green-50 text-green-700'
-                                                                : 'border-red-200 bg-red-50 text-red-600'
+                                                                : bid.status === 'won'
+                                                                    ? 'border-purple-200 bg-purple-50 text-purple-700'
+                                                                    : bid.status === 'withdrawn'
+                                                                        ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                                        : bid.status === 'canceled'
+                                                                            ? 'border-red-200 bg-red-50 text-red-600'
+                                                                            : 'border-gray-200 bg-gray-50 text-gray-600'
                                                             }`}
                                                     >
-                                                        {bid.status === 'active' ? 'Active' : 'Outbid'}
+                                                        {bid.status === 'active'
+                                                            ? 'Active'
+                                                            : bid.status === 'won'
+                                                                ? 'Won'
+                                                                : bid.status === 'withdrawn'
+                                                                    ? 'Withdrawn'
+                                                                    : bid.status === 'canceled'
+                                                                        ? 'Canceled'
+                                                                        : 'Outbid'}
                                                     </span>
                                                 </td>
 
@@ -410,7 +415,10 @@ function BidManagement({ setCurrentPage }) {
                                                 <td className="px-6 py-4">
                                                     <div className="">
                                                         <button
-                                                            // onClick={() => onSelectVehicle(auction)}
+                                                            onClick={() => {
+                                                                setSelectedBidId(bid._id)
+                                                                setCurrentPage('bid-management-detail')
+                                                            }}
                                                             className="p-1 text-slate-400 hover:text-slate-600">
                                                             <Eye size={16} />
                                                         </button>

@@ -10,10 +10,12 @@ import { toast } from 'react-hot-toast';
 
 import { useGetAllVehicles, useGetVehicleApprovalSummary, useReviewVehicle } from '../../hooks/useVehicle.js';
 import { getPaginationRange } from '../utils/getPaginationRange.js';
+import { formatLabel } from '../utils/formatter.js';
 
 const columnConfig = {
     "all-requests": {
         columns: [
+            { key: 'vehicleId', label: "Vehicle ID", width: "min-w-[150px]" },
             { key: "vehicleDetails", label: "Vehicle Details", width: "min-w-[305px]" },
             { key: "ownerSeller", label: "Owner / Seller", width: "min-w-[230px]" },
             { key: "submittedOn", label: "Submitted On", width: "min-w-[150px]" },
@@ -24,6 +26,7 @@ const columnConfig = {
     },
     "pending": {
         columns: [
+            { key: 'vehicleId', label: "Vehicle ID", width: "min-w-[150px]" },
             { key: "vehicleDetails", label: "Vehicle Details", width: "min-w-[305px]" },
             { key: "ownerSeller", label: "Owner / Seller", width: "min-w-[230px]" },
             { key: "submittedOn", label: "Submitted On", width: "min-w-[150px]" },
@@ -33,6 +36,7 @@ const columnConfig = {
     },
     "approved": {
         columns: [
+            { key: 'vehicleId', label: "Vehicle ID", width: "min-w-[150px]" },
             { key: "vehicleDetails", label: "Vehicle Details", width: "min-w-[305px]" },
             { key: "ownerSeller", label: "Owner / Seller", width: "min-w-[200px]" },
             { key: "approvedOn", label: "Approved On", width: "min-w-[150px]" },
@@ -43,6 +47,7 @@ const columnConfig = {
     },
     "rejected": {
         columns: [
+            { key: 'vehicleId', label: "Vehicle ID", width: "min-w-[150px]" },
             { key: "vehicleDetails", label: "Vehicle Details", width: "min-w-[305px]" },
             { key: "ownerSeller", label: "Owner / Seller", width: "min-w-[200px]" },
             { key: "rejectedOn", label: "Rejected On", width: "min-w-[150px]" },
@@ -294,6 +299,13 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
                                                         key={col.key}
                                                         className="px-6 py-4 whitespace-nowrap"
                                                     >
+                                                        {/* vehicle id */}
+                                                        {col.key === "vehicleId" && (
+                                                            <div className="text-[13px] font-medium text-slate-700 truncate">
+                                                                {item.listingId || "N/A"}
+                                                            </div>
+                                                        )}
+
                                                         {/* vehicle details */}
                                                         {col.key === "vehicleDetails" && (
                                                             <div className="flex items-center gap-4">
@@ -305,10 +317,10 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
                                                                 />
 
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-gray-700 font-bold text-[12px] md:text-sm">{item.year} {item.make} {item.model}</span>
+                                                                    <span className="text-gray-700 font-bold text-[12px] md:text-sm truncate">{item.year} {formatLabel(item.make)} {formatLabel(item.model)}</span>
                                                                     <span className="text-[10px] md:text-[11px] pt-1 text-gray-500 font-medium">VIN: {item.vin}</span>
                                                                     <div className="text-[10px] md:text-xs text-gray-400 mt-1 flex gap-2">
-                                                                        <span>{item.bodyType}</span>
+                                                                        <span>{(item.bodyType)}</span>
                                                                         <span>•</span>
                                                                         <span>{item.exteriorColor}</span>
                                                                         <span>•</span>

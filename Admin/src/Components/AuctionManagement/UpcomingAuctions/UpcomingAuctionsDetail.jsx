@@ -1,21 +1,21 @@
 
 import React, { useState } from 'react';
+import { Share2, XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import AuctionsDetailHeader from '../Shared/AuctionsDetailHeader';
 import AuctionsGallery from '../Shared/AuctionsGallery';
 import AuctionsDetailTimeline from '../Shared/AuctionsDetailTimeline';
 import OverviewSidebar from '../Shared/OverviewSidebar';
 import DocumentSidebar from '../Shared/DocumentSidebar';
-import BidsSidebar from '../Shared/BidsSidebar';
-import ParticipantSidebar from '../Shared/ParticipantSidebar';
 import AuctionsOverviewTab from '../Shared/AuctionsOverviewTab';
 import AuctionsVehicleDetailTab from '../Shared/AuctionsVehicleDetailTab';
 import AuctionsDocumentsTab from '../Shared/AuctionsDocumentsTab';
-import AuctionsParticipantsTab from '../Shared/AuctionsParticipantsTab';
-import AuctionsBidsTab from '../Shared/AuctionsBidsTab';
-import { useGetAuctionDetail } from '../../../hooks/useAuction';
-import { formatLabel, formatPrice } from '../../utils/formatter';
-import { UseCountDown } from '../../SharedComponents/UseCountDown';
 import ContactSupport from '../../SharedComponents/ContactSupport';
+import CancelAuctionModal from '../Shared/CancelAuctionModal';
+
+import { useCancelAuction, useGetAuctionDetail } from '../../../hooks/useAuction';
+import { formatLabel } from '../../utils/formatter';
+import { UseCountDown } from '../../SharedComponents/UseCountDown';
 
 // tabs
 const tabs = [
@@ -40,7 +40,12 @@ const Tag = ({ children }) => (
 function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
+    const [cancelError, setCancelError] = useState("");
+
     const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
+    const { mutate: cancelAuction, isPending: isUpdating } = useCancelAuction();
 
     const vehicle = auctionDetail?.data?.vehicle;
 
@@ -59,7 +64,6 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
 
     const bids = auctionDetail?.data?.bids || [];
     const participants = auctionDetail?.data?.participants || [];
-    const soldTo = auctionDetail?.data?.soldTo;
 
     return (
         <div>
@@ -83,7 +87,7 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                             status={
                                 vehicle.auctionStatus === 'canceled' ? 'cancelled' :
                                     ['sold', 'unsold', 'reserve-not-met'].includes(vehicle.auctionStatus) ? 'completed' :
-                                        vehicle.auctionStatus  
+                                        vehicle.auctionStatus
                             }
                         />
                     </div>
@@ -110,75 +114,6 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                             <Info label="Category" value={formatLabel(vehicle.vehicleType)} />
 
                             <Info label="VIN" value={formatLabel(vehicle.vin)} />
-                            <Info
-                                label="Start Date"
-                                value={
-                                    vehicle.auctionStartDateTime
-                                        ? new Date(vehicle.auctionStartDateTime).toLocaleDateString("en-GB", {
-                                            timeZone: "Asia/Dubai",
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "numeric",
-                                        })
-                                        : "—"
-                                }
-                            />
-
-                            <Info
-                                label="Start Time"
-                                value={
-                                    vehicle.auctionStartDateTime
-                                        ? new Date(vehicle.auctionStartDateTime).toLocaleTimeString("en-US", {
-                                            timeZone: "Asia/Dubai",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            hour12: true,
-                                        })
-                                        : "—"
-                                }
-                            />
-                            <Info
-                                label="End Date"
-                                value={
-                                    vehicle.auctionEndDateTime
-                                        ? new Date(vehicle.auctionEndDateTime).toLocaleDateString("en-GB", {
-                                            timeZone: "Asia/Dubai",
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "numeric",
-                                        })
-                                        : "—"
-                                }
-                            />
-
-                            <Info
-                                label="End Time"
-                                value={
-                                    vehicle.auctionEndDateTime
-                                        ? new Date(vehicle.auctionEndDateTime).toLocaleTimeString("en-US", {
-                                            timeZone: "Asia/Dubai",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            hour12: true,
-                                        })
-                                        : "—"
-                                }
-                            />
-
-                            <Info label="Starting Bid Price" value={formatPrice(vehicle.startingBidPrice)} />
-
-                            {vehicle.priceType === "fixed_price" ? (
-                                <Info
-                                    label="Buy Now Price"
-                                    value={formatPrice(vehicle.buyNowPrice)}
-                                />
-                            ) : vehicle.priceType === "reserve_price" ? (
-                                <Info
-                                    label="Reserve Price"
-                                    value={formatPrice(vehicle.reservePrice)}
-                                />
-                            ) : null}
-
                         </div>
 
                         {/* auction time */}
@@ -242,6 +177,26 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                                         : "---"}
                                 </p>
                             </div>
+
+                            {/* Buttons */}
+                            <div className="grid grid-cols-2 gap-3 mt-5">
+                                <button
+                                    className="h-11 rounded-xl border border-slate-200 flex items-center justify-center gap-2 text-sm text-white font-medium bg-[#D97706] hover:bg-[#D97706]/90 active:bg-[#B45309] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D97706]/40 transition-all duration-150" >
+                                    <Share2 size={16} />
+                                    Share
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setCancelReason("");
+                                        setCancelError("");
+                                        setIsCancelModalOpen(true);
+                                    }}
+                                    className="h-11 rounded-xl bg-[#0B1E3D] text-white flex items-center justify-center gap-2 text-sm font-medium hover:bg-[#132d59] active:bg-[#08162d] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B1E3D]/40 transition-all duration-150">
+                                    <XCircle size={16} />
+                                    Cancel Auction
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -283,6 +238,41 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                 </div>
 
             </div>
+
+            {/* auction cancel modal */}
+            <CancelAuctionModal
+                isOpen={isCancelModalOpen}
+                onClose={() => {
+                    if (isUpdating) return;
+                    setIsCancelModalOpen(false);
+                    setCancelReason("");
+                    setCancelError("");
+                }}
+                onConfirm={() => {
+                    setCancelError("");
+                    cancelAuction(
+                        { id: vehicle._id, reason: cancelReason },
+                        {
+                            onSuccess: (data) => {
+                                setIsCancelModalOpen(false);
+                                setCancelReason("");
+                                toast.success(data?.message || "Auction canceled successfully");
+                                setCurrentPage('upcoming-auctions')
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to cancel auction. Please try again.";
+                                setCancelError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                reason={cancelReason}
+                setReason={setCancelReason}
+                loading={isUpdating}
+                error={cancelError}
+            />
         </div>
     )
 }

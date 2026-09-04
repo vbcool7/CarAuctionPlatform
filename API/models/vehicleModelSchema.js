@@ -241,11 +241,20 @@ const vehicleSchema = new mongoose.Schema(
         canceledBy: {
             type: String,
             enum: ['seller', 'admin', null],
-            default: null, 
+            default: null,
         },
         cancellationReason: {
             type: String,
             default: null,
+        },
+        statusAtCancellation: {  // capture pre auc status before change to canceled
+            type: String,
+            enum: ['upcoming', 'live'],
+            default: null
+        },
+        canceledAt: {
+            type: Date,
+            default: null
         }
     },
     { timestamps: true }

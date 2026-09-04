@@ -56,6 +56,14 @@ const upcomingAuctionStats = [
     },
 ];
 
+// tabs
+const tabs = [
+    { id: 'all-upcoming', label: 'All Upcoming' },
+    { id: 'starting-today', label: 'Starting Today' },
+    { id: 'this-week', label: 'This Week' },
+    { id: 'this-month', label: 'This Month' },
+];
+
 const dateRangeMap = {
     'all-upcoming': null,
     'starting-today': 'today',
@@ -201,14 +209,6 @@ function UpcomingAuctions({ onSelectVehicle, setCurrentPage }) {
     const [activeTab, setActiveTab] = useState("all-upcoming");
     const [selectedType, setSelectedType] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
-
-    // tabs
-    const tabs = [
-        { id: 'all-upcoming', label: 'All Upcoming' },
-        { id: 'starting-today', label: 'Starting Today' },
-        { id: 'this-week', label: 'This Week' },
-        { id: 'this-month', label: 'This Month' },
-    ];
 
     const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, 'upcoming', dateRangeMap[activeTab]);
 

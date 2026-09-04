@@ -60,12 +60,13 @@ import SellerKycVerification from './Components/KycVerification/SellerKycVerific
 import BuyerKycVerificationDetail from './Components/KycVerification/BuyerKycVerificationDetail';
 import SellerKycVerificationDetail from './Components/KycVerification/SellerKycVerificationDetail';
 import VehicleApprovalsDetail from './Components/VehicleApprovals/VehicleApprovalsDetail';
+import BidManagementDetail from './Components/BidManagement/BidManagementDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('all-auctions');
+  const [currentPage, setCurrentPage] = useState('bid-management');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -84,6 +85,9 @@ function App() {
 
   // auct management
   const [selectedAuction, setSelectedAuction] = useState(null);
+
+  // bid mnagement
+  const [selectedBidId, setSelectedBidId] = useState(null);
 
   // pay man - create payout
   const [payoutDraft, setPayoutDraft] = useState({});
@@ -255,16 +259,16 @@ function App() {
                 )}
 
                 {/* auc man - cancelled */}
-                {currentPage === 'cancelled-auctions' &&
+                {currentPage === 'canceled-auctions' &&
                   <CancelledAuctions
                     setCurrentPage={setCurrentPage}
                     onSelectVehicle={(auction) => {
                       setSelectedAuction(auction);
-                      setCurrentPage('cancelled-auction-detail');
+                      setCurrentPage('canceled-auction-detail');
                     }}
                   />
                 }
-                {currentPage === 'cancelled-auction-detail' && (
+                {currentPage === 'canceled-auction-detail' && (
                   <CancelledAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
                 )}
 
@@ -283,7 +287,8 @@ function App() {
                 )}
 
                 {/* bid management */}
-                {currentPage === 'bid-management' && <BidManagement setCurrentPage={setCurrentPage} />}
+                {currentPage === 'bid-management' && <BidManagement setSelectedBidId={setSelectedBidId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'bid-management-detail' && <BidManagementDetail bidId={selectedBidId} setCurrentPage={setCurrentPage} />}
 
                 {/* payout management - all payments */}
                 {currentPage === 'all-payments' &&
@@ -375,10 +380,10 @@ function App() {
 
                 {/* kyc verification */}
                 {currentPage === 'buyer-kyc' && <BuyerKycVerification setSelectedBuyerKycId={setSelectedBuyerKycId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'buyer-kyc-detail' && <BuyerKycVerificationDetail buyerKycId={selectedBuyerKycId} setCurrentPage={setCurrentPage}/>}
+                {currentPage === 'buyer-kyc-detail' && <BuyerKycVerificationDetail buyerKycId={selectedBuyerKycId} setCurrentPage={setCurrentPage} />}
 
                 {currentPage === 'seller-kyc' && <SellerKycVerification setSelectedSellerKycId={setSelectedSellerKycId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'seller-kyc-detail' && <SellerKycVerificationDetail sellerKycId={selectedSellerKycId} setCurrentPage={setCurrentPage}/>}
+                {currentPage === 'seller-kyc-detail' && <SellerKycVerificationDetail sellerKycId={selectedSellerKycId} setCurrentPage={setCurrentPage} />}
 
                 {/* system setting */}
                 {currentPage === 'system-settings' && <SystemSetting setCurrentPage={setCurrentPage} />}

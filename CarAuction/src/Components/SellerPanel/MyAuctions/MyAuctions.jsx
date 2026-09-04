@@ -1,19 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { CalendarDays, CircleDollarSign, Clock3, Copy, Eye, Gavel, MoreVertical, Plus, Users } from 'lucide-react';
-import { myVehiclesData } from '../SellerSharedComponents/SellerData';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+
 import { useGetMyAuctions } from '../../../hook/useAuction';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
-import { formatLabel } from '../../../utils/formatters';
-
-const tabs = [
-    { key: 'active-auctions', label: 'Active Auctions' },
-    { key: 'upcoming', label: 'Upcoming' },
-    { key: 'ended', label: 'Ended' },
-    { key: 'cancelled', label: 'Cancelled' },
-];
+import { formatDateTime, formatLabel } from '../../../utils/formatters';
+import { UseCountDown } from '../SellerSharedComponents/UseCountDown';
 
 const statusOptions = [
     { value: "", label: "All Status" },
@@ -34,31 +28,6 @@ const dateOptions = [
     { value: "na", label: "NA" },
 ];
 
-function useCountdown(targetDate) {
-    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const diff = new Date(targetDate) - new Date();
-            if (diff <= 0) {
-                clearInterval(interval);
-                setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-                return;
-            }
-            setTimeLeft({
-                days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                mins: Math.floor((diff / (1000 * 60)) % 60),
-                secs: Math.floor((diff / 1000) % 60),
-            });
-        }, 1000);
-
-        return () => clearInterval(interval); // cleanup — zaroori, warna memory leak
-    }, [targetDate]);
-
-    return timeLeft;
-}
-
 const statusConfig = {
     draft: { label: 'Draft', className: 'bg-gray-400 text-white' },
     upcoming: { label: 'Upcoming', className: 'bg-blue-500 text-white' },
@@ -73,7 +42,7 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
     const isLive = vehicle.auctionStatus === 'live';
     const isEnded = ['sold', 'unsold', 'reserve-not-met', 'canceled'].includes(vehicle.auctionStatus);
 
-    const countdown = useCountdown(isLive ? vehicle.auctionEndDateTime : null);
+    const countdown = UseCountDown(isLive ? vehicle.auctionEndDateTime : null);
 
     const formatDate = (d) =>
         d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -92,8 +61,8 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
                         className='w-full h-full object-cover'
                     />
                     <span
-                        className={`absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-semibold ${statusConfig[vehicle.auctionStatus]?.className || 'bg-gray-400 text-white'
-                            }`}
+                        className={`absolute top-2 left-2 px-2 py-1 rounded-md text-[10px] font-semibold 
+                            ${statusConfig[vehicle.auctionStatus]?.className || 'bg-gray-400 text-white'}`}
                     >
                         {statusConfig[vehicle.auctionStatus]?.label || vehicle.auctionStatus}
                     </span>
@@ -125,27 +94,20 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
                         <div>
                             <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
                                 <CircleDollarSign className='w-3.5 h-3.5' />
-                                Reserve Price
+                                {vehicle.priceType === 'reserve_price'
+                                    ? 'Reserve Price'
+                                    : 'Buy Now Price'}
                             </div>
+
                             <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>
-                                {vehicle.reservePrice ? `AED ${vehicle.reservePrice.toLocaleString('en-AE')}` : '—'}
+                                {vehicle.priceType === 'reserve_price'
+                                    ? vehicle.reservePrice
+                                        ? `AED ${vehicle.reservePrice.toLocaleString('en-AE')}`
+                                        : '—'
+                                    : vehicle.buyNowPrice
+                                        ? `AED ${vehicle.buyNowPrice.toLocaleString('en-AE')}`
+                                        : '—'}
                             </p>
-                        </div>
-
-                        <div>
-                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                <Users className='w-3.5 h-3.5' />
-                                Bids
-                            </div>
-                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>{vehicle.bids ?? 0}</p>
-                        </div>
-
-                        <div>
-                            <div className='flex items-center gap-1.5 text-xs text-gray-500 mb-1'>
-                                <Eye className='w-3.5 h-3.5' />
-                                Watchers
-                            </div>
-                            <p className='sm:pl-3 text-xs font-bold text-[#0B1E3D]'>{vehicle.watchers ?? 0}</p>
                         </div>
                     </div>
 
@@ -245,8 +207,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
     const [page, setPage] = useState(1);
     const { data: myAuctionsData, isLoading, isError } = useGetMyAuctions(page);
 
-    const myAuctions = myAuctionsData?.vehicles || [];
-    const auctionVehicles = myAuctions;
+    const auctionVehicles = myAuctionsData?.vehicles || [];
 
     const totalPages = myAuctionsData?.pagination?.totalPages || 1;
 
@@ -260,7 +221,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
         live: (v) => v.auctionStatus === 'live',
         upcoming: (v) => v.auctionStatus === 'upcoming',
         ended: (v) => ['sold', 'unsold', 'reserve-not-met'].includes(v.auctionStatus),
-        canceled: (v) => v.auctionStatus === 'canceled', // was checking adminStatus==='rejected', wrong field entirely
+        canceled: (v) => v.auctionStatus === 'canceled',
     };
 
     const tabs = [
@@ -276,36 +237,18 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
             `${v.year} ${v.make} ${v.model} ${v.vin}`.toLowerCase().includes(search.toLowerCase())
         );
 
-    const upcomingVehicle = auctionVehicles.find((v) => v.auctionStatus === 'upcoming');
+    const upcomingVehicle = auctionVehicles
+        .filter((v) => v.auctionStatus === 'upcoming')
+        .sort(
+            (a, b) =>
+                new Date(a.auctionStartDateTime) -
+                new Date(b.auctionStartDateTime)
+        )[0];
 
-    const useCountdown = (targetDateTime) => {
-        const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
+    const { days, hours, mins, secs } = UseCountDown(upcomingVehicle?.auctionStartDateTime);
 
-        useEffect(() => {
-            if (!targetDateTime) return;
-            const interval = setInterval(() => {
-                const diff = new Date(targetDateTime) - new Date();
-                if (diff <= 0) {
-                    clearInterval(interval);
-                    setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
-                    return;
-                }
-                setTimeLeft({
-                    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                    mins: Math.floor((diff / (1000 * 60)) % 60),
-                    secs: Math.floor((diff / 1000) % 60),
-                });
-            }, 1000);
-            return () => clearInterval(interval);
-        }, [targetDateTime]);
-
-        return timeLeft;
-    };
-
-    const countdown = useCountdown(
-        upcomingVehicle ? `${upcomingVehicle.auctionStartDate}T${upcomingVehicle.auctionStartTime}` : null
-    );
+    if (isLoading) return <p className="p-10 text-center">Loading auction details....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load auction details</p>;
 
     return (
         <div className='pb-6 space-y-6'>
@@ -364,7 +307,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
             </div>
 
             {/* content grid */}
-            <div className='grid grid-cols-1 xl:grid-cols-3 gap-6'>
+            <div className='grid grid-cols-1 xl:grid-cols-3 gap-6 items-start'>
 
                 {/* left */}
                 <div className='xl:col-span-2 space-y-6'>
@@ -456,24 +399,28 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                     <div className='bg-white rounded-xl border border-gray-200 p-5'>
                         <div className='flex items-center justify-between mb-3'>
                             <h3 className='text-sm font-semibold text-[#0B1E3D]'>Upcoming Auction</h3>
-                            {/* <button
-                                onClick={() => setActiveTab('upcoming')}
-                                className='text-xs text-[#D97706] font-medium'
-                            >
-                                View All
-                            </button> */}
+                            {activeTab !== 'upcoming' && (
+                                <button
+                                    onClick={() => setActiveTab('upcoming')}
+                                    className='text-xs text-[#D97706] font-medium'
+                                >
+                                    View All
+                                </button>
+                            )}
                         </div>
 
                         {upcomingVehicle ? (
                             <>
                                 <div className='flex gap-3'>
                                     <img
-                                        src={upcomingVehicle.images?.[0]?.previewUrl || upcomingVehicle.image}
-                                        alt={upcomingVehicle.name}
+                                        src={upcomingVehicle.images?.[0]?.url || null}
+                                        alt={upcomingVehicle.make}
                                         className='w-16 h-16 rounded-lg object-cover shrink-0'
                                     />
                                     <div>
-                                        <p className='text-sm font-medium text-[#0B1E3D]'>{upcomingVehicle.name}</p>
+                                        <p className='text-sm font-medium text-[#0B1E3D]'>
+                                            {`${upcomingVehicle.year} ${formatLabel(upcomingVehicle.make)} ${formatLabel(upcomingVehicle.model)}`}
+                                        </p>
                                         <span className='inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-600'>
                                             Scheduled
                                         </span>
@@ -482,31 +429,37 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
 
                                 <p className='text-xs text-gray-500 mt-4 mb-2'>Starts in:</p>
                                 <div className='grid grid-cols-4 gap-2 text-center'>
-                                    <div className='bg-gray-50 rounded-lg py-2'>
-                                        <p className='text-base font-bold text-[#0B1E3D]'>{String(countdown.days).padStart(2, '0')}</p>
-                                        <p className='text-[10px] text-gray-400'>Days</p>
-                                    </div>
-                                    <div className='bg-gray-50 rounded-lg py-2'>
-                                        <p className='text-base font-bold text-[#0B1E3D]'>{String(countdown.hours).padStart(2, '0')}</p>
-                                        <p className='text-[10px] text-gray-400'>Hours</p>
-                                    </div>
-                                    <div className='bg-gray-50 rounded-lg py-2'>
-                                        <p className='text-base font-bold text-[#0B1E3D]'>{String(countdown.mins).padStart(2, '0')}</p>
-                                        <p className='text-[10px] text-gray-400'>Mins</p>
-                                    </div>
-                                    <div className='bg-gray-50 rounded-lg py-2'>
-                                        <p className='text-base font-bold text-[#0B1E3D]'>{String(countdown.secs).padStart(2, '0')}</p>
-                                        <p className='text-[10px] text-gray-400'>Secs</p>
-                                    </div>
+                                    {[
+                                        { value: String(days).padStart(2, "0"), label: "Days" },
+                                        { value: String(hours).padStart(2, "0"), label: "Hours" },
+                                        { value: String(mins).padStart(2, "0"), label: "Mins" },
+                                        { value: String(secs).padStart(2, "0"), label: "Secs" },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.label}
+                                            className="text-center"
+                                        >
+
+                                            <div className="w-13 h-13 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center">
+                                                <span className="text-[17px] font-bold text-[#0B1E3D]">
+                                                    {item.value}
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 text-[10px] font-semibold text-slate-500 uppercase">
+                                                {item.label}
+                                            </p>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <p className='text-xs text-gray-500 mt-3'>
-                                    Starts on {upcomingVehicle.auctionStartDate} at {upcomingVehicle.auctionStartTime}
+                                <p className='text-xs text-gray-500 mt-5 text-center'>
+                                    Starts on {formatDateTime(upcomingVehicle.auctionStartDateTime)}
                                 </p>
 
                                 <button
                                     onClick={() => {
-                                        setSelectedAuctionId(upcomingVehicle.id)
+                                        setSelectedAuctionId(upcomingVehicle._id)
                                         setCurrentPage('my-auctions-detail')
                                     }}
                                     className='w-full mt-4 py-2.5 text-xs font-semibold rounded-lg border border-gray-200 hover:bg-gray-50'
@@ -519,7 +472,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                         )}
                     </div>
 
-                    {/* Auction Activity — static placeholder, real backend event-feed abhi nahi bana */}
+                    {/* Auction Activity — static placeholder */}
                     <div className='bg-white rounded-xl border border-gray-200 p-5'>
                         <div className='flex items-center justify-between mb-3'>
                             <h3 className='text-sm font-semibold text-[#0B1E3D]'>Auction Activity</h3>
@@ -551,7 +504,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                             If you have any questions regarding your auctions, our support team is here to help.
                         </p>
                         <button
-                            onClick={() => setCurrentPage('support')}
+                            // onClick={() => setCurrentPage('support')}
                             className='w-full py-2.5 text-xs font-semibold rounded-lg border border-gray-200 hover:bg-gray-50'
                         >
                             Contact Support

@@ -7,8 +7,8 @@ import {
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary,
-    getAllBids,
-    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats
+    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats,
+    getAllBids, getBidDetail, getBidStats
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -95,14 +95,16 @@ router.get('/get-vehicle/:id', authMiddleware(['admin']), getVehicleById);
 router.patch('/vehicle-review/:id', authMiddleware(['admin']), reviewVehicle);
 router.get('/vehicle-approval-summary', authMiddleware(['admin']), getVehicleApprovalSummary);
 
-// ============================ BID
-router.get('/all-bids', authMiddleware(['admin']), getAllBids);
-
 // ============================ AUCTION
 router.get('/all-auctions', authMiddleware(['admin']), getAllAuctions);
 router.get('/auction-detail/:id', authMiddleware(['admin']), getAuctionDetail);
 router.get("/all-auction-stats", authMiddleware(['admin']), getAllAuctionStats);
 router.get("/live-auction-stats", authMiddleware(['admin']), getLiveAuctionStats);
 router.get("/upcoming-auction-stats", authMiddleware(['admin']), getUpcomingAuctionStats);
+
+// ============================ BID
+router.get('/bids-stats', authMiddleware(['admin']), getBidStats);
+router.get('/all-bids', authMiddleware(['admin']), getAllBids);
+router.get('/bid-detail/:id', authMiddleware(['admin']), getBidDetail);
 
 export default router;

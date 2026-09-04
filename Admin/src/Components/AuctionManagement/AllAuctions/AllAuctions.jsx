@@ -536,7 +536,7 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                                                                     ) {
                                                                         setCurrentPage("completed-auction-detail");
                                                                     } else if (status === "canceled") {
-                                                                        setCurrentPage("cancelled-auction-detail");
+                                                                        setCurrentPage("canceled-auction-detail");
                                                                     }
                                                                 }}
                                                                 className="p-1 text-slate-400 hover:text-slate-600"

@@ -6,7 +6,6 @@ import AuctionsHeader from '../Shared/AuctionsHeader';
 import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 
-import { allAuctionData } from '../../Data';
 import { useGetAllAuctions, useGetLiveAuctionStats } from '../../../hooks/useAuction';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { formatLabel } from '../../utils/formatter';

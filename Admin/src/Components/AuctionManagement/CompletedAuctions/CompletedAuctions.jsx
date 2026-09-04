@@ -107,6 +107,14 @@ const highlights = [
     }
 ];
 
+// tabs
+const tabs = [
+    { id: 'all completed', label: 'All Completed' },
+    { id: 'sold', label: 'Sold' },
+    { id: 'unsold', label: 'Unsold' },
+    { id: 'reserve-not-met', label: 'Reserve Not Met' },
+];
+
 const statusMap = {
     "all completed": "completed",
     "sold": "sold",
@@ -351,14 +359,6 @@ function CompletedAuctions({ onSelectVehicle, setCurrentPage }) {
 
     if (isLoading) return <p className="p-10 text-center">Loading completed auctions list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load completed auctions list</p>;
-
-    // tabs
-    const tabs = [
-        { id: 'all completed', label: 'All Completed' },
-        { id: 'sold', label: 'Sold' },
-        { id: 'unsold', label: 'Unsold' },
-        { id: 'reserve-not-met', label: 'Reserve Not Met' },
-    ];
 
     const highlightedDates = [
         {

@@ -37,7 +37,7 @@ const menuItems = [
             { id: "live-auctions", label: "Live Auctions", badge: "Live" },
             { id: "upcoming-auctions", label: "Upcoming Auctions" },
             { id: "completed-auctions", label: "Completed Auctions" },
-            { id: "cancelled-auctions", label: "Cancelled Auctions" },
+            { id: "canceled-auctions", label: "Cancelled Auctions" },
         ]
     },
     {

@@ -20,21 +20,16 @@ export const formatPrice = (value) => {
 };
 
 // date/time formatter
-export const formatDateTime = (date, time) => {
-    if (!date) return "----";
+export const formatDateTime = (date) => {
+    if (!date) return '—';
 
-    const formattedDate = new Date(date);
-
-    if (isNaN(formattedDate.getTime())) return "----";
-
-    const datePart = formattedDate.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
+    return new Date(date).toLocaleString('en-AE', {
+        timeZone: 'Asia/Dubai',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
     });
-
-    return time
-        ? `${datePart}, ${time}`
-        : datePart;
 };

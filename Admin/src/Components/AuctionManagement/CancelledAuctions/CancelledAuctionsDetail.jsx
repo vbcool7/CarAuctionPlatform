@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react'
-import { Users, CalendarDays, Gavel, Tag, BadgeDollarSign, XCircle, FileText } from "lucide-react";
+import { Users, CalendarDays, Gavel, Tag, XCircle, FileText } from "lucide-react";
 
 import AuctionsDetailHeader from '../Shared/AuctionsDetailHeader'
 import OverviewSidebar from '../Shared/OverviewSidebar';
@@ -14,44 +14,10 @@ import AuctionsParticipantsTab from '../Shared/AuctionsParticipantsTab';
 import AuctionsBidsTab from '../Shared/AuctionsBidsTab';
 import AuctionsGallery from '../Shared/AuctionsGallery';
 import ContactSupport from '../../SharedComponents/ContactSupport';
+import AuctionsDetailTimeline from '../Shared/AuctionsDetailTimeline';
 
-const auctionHighlights = [
-    {
-        label: "Total Participants",
-        value: "8",
-        icon: Users,
-        iconBg: "bg-blue-50",
-        iconColor: "text-blue-600",
-    },
-    {
-        label: "Total Bids Placed",
-        value: "5",
-        icon: Gavel,
-        iconBg: "bg-amber-50",
-        iconColor: "text-amber-600",
-    },
-    {
-        label: "Starting Price",
-        value: "$24,500",
-        icon: CalendarDays,
-        iconBg: "bg-red-50",
-        iconColor: "text-red-500",
-    },
-    {
-        label: "Reserve Price",
-        value: "$28,000",
-        icon: Tag,
-        iconBg: "bg-blue-50",
-        iconColor: "text-blue-600",
-    },
-    {
-        label: "Final Price",
-        value: "-",
-        icon: BadgeDollarSign,
-        iconBg: "bg-emerald-50",
-        iconColor: "text-emerald-600",
-    },
-];
+import { useGetAuctionDetail } from '../../../hooks/useAuction';
+import { formatLabel, formatPrice } from '../../utils/formatter';
 
 const Info = ({ label, value }) => (
     <div className="flex flex-col">
@@ -70,6 +36,24 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
 
+    const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
+
+    const vehicle = auctionDetail?.data?.vehicle;
+
+    if (isLoading) return <p className="p-10 text-center">Loading auction details...</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load auction details</p>;
+
+    if (!vehicle) {
+        return (
+            <p className="p-10 text-center text-red-500">
+                Auction details not found
+            </p>
+        );
+    }
+
+    const bids = auctionDetail?.data?.bids || [];
+    const participants = auctionDetail?.data?.participants || [];
+
     // tabs
     const tabs = [
         { id: 'auction-overview', label: 'Auction Overview' },
@@ -79,14 +63,51 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
         { id: 'participants', label: 'Participants' },
     ];
 
+    const auctionHighlights = [
+        {
+            label: "Total Participants",
+            value: participants.length || 0,
+            icon: Users,
+            iconBg: "bg-blue-50",
+            iconColor: "text-blue-600",
+        },
+        {
+            label: "Total Bids Placed",
+            value: bids.length || 0,
+            icon: Gavel,
+            iconBg: "bg-amber-50",
+            iconColor: "text-amber-600",
+        },
+        {
+            label: "Starting Price",
+            value: formatPrice(vehicle?.startingBidPrice),
+            icon: CalendarDays,
+            iconBg: "bg-red-50",
+            iconColor: "text-red-500",
+        },
+        {
+            label: vehicle?.priceType === "fixed_price"
+                ? "Buy Now Price"
+                : "Reserve Price",
+
+            value: vehicle?.priceType === "fixed_price"
+                ? formatPrice(vehicle?.buyNowPrice)
+                : formatPrice(vehicle?.reservePrice),
+
+            icon: Tag,
+            iconBg: "bg-blue-50",
+            iconColor: "text-blue-600",
+        },
+    ];
+
     return (
         <div>
             <AuctionsDetailHeader
                 setCurrentPage={setCurrentPage}
                 pageTitle="Cancelled Auction Details"
-                parentLabel="Cancelled Auctions"
-                parentPage="cancelled-auctions"
-                currentLabel="Cancelled Auction Detail"
+                parentLabel="Canceled Auctions"
+                parentPage="canceled-auctions"
+                currentLabel="Canceled Auction Detail"
                 backButtonTarget="all-auctions"
             />
 
@@ -94,50 +115,73 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
             <div className="bg-white border border-slate-200 rounded-2xl p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                    {/* left Gallery */}
-                    <AuctionsGallery
-                        images={auction.images}
-                        status="cancelled"
-                    />
+                    {/* Left Gallery */}
+                    <div className="h-100">
+                        <AuctionsGallery
+                            images={vehicle.images?.map((image) => image.url) || []}
+                            status={vehicle.auctionStatus}
+                        />
+                    </div>
 
                     {/* Right Section */}
                     <div className="flex flex-col">
 
                         {/* Title */}
                         <h2 className="text-2xl font-bold text-[#0B1E3D]">
-                            {auction.title}
+                            {`${vehicle.year || ""} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
                         </h2>
 
                         {/* Tags */}
                         <div className="flex flex-wrap gap-2 mt-3 mb-6">
-                            <TagBadge>{auction.specs.body}</TagBadge>
-                            <TagBadge>{auction.specs.color}</TagBadge>
-                            <TagBadge>{auction.specs.transmission}</TagBadge>
-                            <TagBadge>{auction.specs.fuelType}</TagBadge>
+                            <TagBadge>{formatLabel(vehicle.bodyType)}</TagBadge>
+                            <TagBadge>{formatLabel(vehicle.exteriorColor)}</TagBadge>
+                            <TagBadge>{formatLabel(vehicle.transmission)}</TagBadge>
+                            <TagBadge>{formatLabel(vehicle.fuelType)}</TagBadge>
                         </div>
 
                         {/* Auction Details */}
-                        <div className="grid grid-cols-3 gap-x-8 gap-y-3 text-[13px] mb-8">
-                            <Info label="Auction ID" value={auction.id} />
-                            <Info label="Auction Type" value={auction.type} />
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-[13px] mb-8">
+                            <Info label="Auction ID" value={formatLabel(vehicle.listingId)} />
 
-                            <Info label="VIN" value={auction.vin} />
-                            <Info label="Start Date" value={auction.startDate} />
+                            <Info label="VIN" value={formatLabel(vehicle.vin)} />
+                            <Info
+                                label="Start Date"
+                                value={
+                                    vehicle.auctionStartDateTime
+                                        ? new Date(vehicle.auctionStartDateTime).toLocaleDateString("en-GB", {
+                                            timeZone: "Asia/Dubai",
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            hour12: true,
+                                        })
+                                        : "—"
+                                }
+                            />
 
-                            <Info label="Start Time" value={auction.startTime} />
-                            <Info label="End Time" value={auction.endTime} />
-
-                            <Info label="Starting Price" value={auction.currentBid} />
-                            <Info label="Reserve Price" value={auction.reserve} />
-
-                            <Info label="Total Bids" value={auction.bids} />
-                            <Info label="Bidders" value={auction.bidders} />
-
-                            <Info label="Buy Now Price" value={auction.bidders} />
+                            <Info
+                                label="End Date"
+                                value={
+                                    vehicle.auctionEndDateTime
+                                        ? new Date(vehicle.auctionEndDateTime).toLocaleDateString("en-GB", {
+                                            timeZone: "Asia/Dubai",
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            hour12: true,
+                                        })
+                                        : "—"
+                                }
+                            />
                         </div>
-                        
+
                         {/* Auction Cancellation Details */}
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
                             {/* Header */}
                             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                                 <div>
@@ -151,19 +195,28 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
 
                                 <span className="inline-flex items-center gap-1.5 rounded-md border border-red-100 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600">
                                     <XCircle size={13} />
-                                    Cancelled
+                                    {formatLabel(vehicle?.auctionStatus)}
                                 </span>
                             </div>
 
                             {/* Cancellation Details */}
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-4">
-                                {/* Cancelled Date */}
                                 <div>
-                                    <p className="text-[11px] font-medium text-slate-500">
-                                        Cancelled Date
-                                    </p>
+                                    <p className="text-[11px] font-medium text-slate-500"> Cancelled Date </p>
                                     <p className="mt-1 text-xs font-semibold text-slate-700">
-                                        May 14, 2024 09:30 AM
+                                        <div>
+                                            {vehicle.canceledAt
+                                                ? new Date(vehicle.canceledAt).toLocaleDateString("en-GB", {
+                                                    timeZone: "Asia/Dubai",
+                                                    day: "2-digit",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                    hour12: true,
+                                                })
+                                                : "N/A"}
+                                        </div>
                                     </p>
                                 </div>
 
@@ -172,9 +225,15 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                                     <p className="text-[11px] font-medium text-slate-500">
                                         Cancelled By
                                     </p>
-                                    <p className="mt-1 text-xs font-semibold text-slate-700">
-                                        Admin User
-                                    </p>
+                                    <span
+                                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
+                                            ${vehicle.canceledBy === "admin"
+                                                ? "bg-blue-50 text-blue-600"
+                                                : "bg-purple-50 text-purple-600"
+                                            }`}
+                                    >
+                                        {formatLabel(vehicle.canceledBy)}
+                                    </span>
                                 </div>
 
                                 {/* Reason */}
@@ -183,7 +242,7 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                                         Reason
                                     </p>
                                     <p className="mt-1 text-xs font-semibold text-slate-700">
-                                        Not enough participants
+                                        {formatLabel(vehicle.cancellationReason || "—")}
                                     </p>
                                 </div>
                             </div>
@@ -225,21 +284,20 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
 
                 {/* right side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    {activeTab === 'auction-overview' && <AuctionsOverviewTab auction={auction} />}
-                    {activeTab === 'vehicles-detail' && <AuctionsVehicleDetailTab auction={auction} />}
-                    {activeTab === 'documents' && <AuctionsDocumentsTab auction={auction} />}
-                    {activeTab === 'participants' && <AuctionsParticipantsTab auction={auction} />}
-                    {activeTab === 'bids' && <AuctionsBidsTab auction={auction} />}
+                    {activeTab === 'auction-overview' && <AuctionsOverviewTab vehicle={vehicle} />}
+                    {activeTab === 'vehicles-detail' && <AuctionsVehicleDetailTab vehicle={vehicle} />}
+                    {activeTab === 'documents' && <AuctionsDocumentsTab vehicle={vehicle} />}
+                    {activeTab === 'bids' && <AuctionsBidsTab vehicle={vehicle} bids={bids} />}
+                    {activeTab === 'participants' && <AuctionsParticipantsTab participants={participants} />}
+
+                    <AuctionsDetailTimeline vehicle={vehicle} />
 
                     {/* feature bar */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        {/* Header */}
                         <h3 className="mb-3 text-sm font-semibold text-[#0B1E3D]">
                             Auction Highlights
                         </h3>
-
-                        {/* Feature Bar */}
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {auctionHighlights.map((item, index) => {
                                 const Icon = item.icon;
 
@@ -248,7 +306,6 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                                         key={index}
                                         className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
                                     >
-                                        {/* Icon */}
                                         <div
                                             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${item.iconBg}`}
                                         >
@@ -258,7 +315,6 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                                             />
                                         </div>
 
-                                        {/* Content */}
                                         <div className="min-w-0">
                                             <p className="text-sm font-bold text-[#0B1E3D]">
                                                 {item.value}
@@ -277,11 +333,11 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
 
                 {/* left side - section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
-                    {activeTab === 'auction-overview' && <OverviewSidebar auction={auction} />}
+                    {activeTab === 'auction-overview' && <OverviewSidebar vehicle={vehicle} bids={bids} participants={participants} setCurrentPage={setCurrentPage} />}
                     {activeTab === 'vehicles-detail' && <ContactSupport />}
-                    {activeTab === 'documents' && <DocumentSidebar auction={auction} />}
-                    {activeTab === 'bids' && <BidsSidebar auction={auction} />}
-                    {activeTab === 'participants' && <ParticipantSidebar auction={auction} />}
+                    {activeTab === 'documents' && <DocumentSidebar vehicle={vehicle} />}
+                    {activeTab === 'bids' && <BidsSidebar vehicle={vehicle} bids={bids} />}
+                    {activeTab === 'participants' && <ParticipantSidebar vehicle={vehicle} participants={participants} bids={bids} />}
                 </div>
 
             </div>
