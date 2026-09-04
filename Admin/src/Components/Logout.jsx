@@ -1,14 +1,11 @@
 
-import toast from 'react-hot-toast';
 import { LogOut, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-
 import { useAdminLogout } from '../hooks/useAdmin';
 import useAdminAuthStore from '../store/useAdminAuthStore';
+import toast from 'react-hot-toast';
 
 function Logout({ onClose }) {
 
-    const navigate = useNavigate();
     const { mutate: logoutAdmin, isPending } = useAdminLogout();
 
     const clearStore = useAdminAuthStore((state) => state.logout);
@@ -17,7 +14,6 @@ function Logout({ onClose }) {
         logoutAdmin(null, {
             onSuccess: (res) => {
                 clearStore();
-                window.location.href = `${import.meta.env.BASE_URL}admin-login`;
                 toast.success(res.message || "Logout successful!");
             },
             onError: (err) => {
