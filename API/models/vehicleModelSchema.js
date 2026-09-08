@@ -185,7 +185,10 @@ const vehicleSchema = new mongoose.Schema(
             type: String,
             enum: ["fixed_price", "reserve_price"]
         },
-        startingBidPrice: { type: Number, required: true },
+        startingBidPrice: { 
+            type: Number, 
+            required: function () { return this.priceType === 'reserve_price'; }
+        },
         buyNowPrice: {
             type: Number,
             required: function () { return this.priceType === 'fixed_price'; }

@@ -7,6 +7,8 @@ import adminRoutes from './adminRoutes.js';
 import vehicleRoutes from './vehicleRoutes.js';
 import auctionRoutes from './auctionRoutes.js';
 import bidRoutes from './bidRoutes.js';
+import purchaseRoutes from './purchaseRoutes.js';
+import notificationRoutes from './notificationRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -17,5 +19,7 @@ rootRouter.use('/seller', sellerRoutes);
 rootRouter.use('/vehicle', vehicleRoutes);
 rootRouter.use('/auction', auctionRoutes);
 rootRouter.use('/bid', bidRoutes);
+rootRouter.use('/purchase', purchaseRoutes);
+rootRouter.use('/notification', notificationRoutes);
 
 export default rootRouter;

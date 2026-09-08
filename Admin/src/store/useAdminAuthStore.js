@@ -18,7 +18,7 @@ const useAdminAuthStore = create(
 
             logout: () => {
                 set({ admin: null, token: null });
-                window.location.href = '/CarAuctionAdmin/admin-login';
+                window.location.href = '/admin-login';
             }
         }),
         {

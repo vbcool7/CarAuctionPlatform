@@ -371,7 +371,7 @@ export const toggleBuyerVerification = async (req, res) => {
         const nowVerified = isVerified === true || isVerified === 'true';
 
         buyer.isEmailVerified = nowVerified;
-        buyer.isPhoneVerified = nowVerified;
+        buyer.isMobileVerified = nowVerified;
 
         if (wasUnverified && nowVerified) {
             const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10); // ← new password generate

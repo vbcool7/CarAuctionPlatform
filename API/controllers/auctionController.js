@@ -6,7 +6,7 @@ import Buyer from '../models/buyerModelSchema.js';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
 
-// Moves upcoming auctions to live when start time arrives
+// RESERVE PRICE - Moves upcoming auctions to live when start time arrives
 export const runAuctionStatusUpdate = async () => {
     const now = new Date();
 
@@ -40,7 +40,7 @@ export const runAuctionStatusUpdate = async () => {
     return updatedCount;
 };
 
-// Moves live auctions to sold/unsold/reserve-not-met when end time passes
+// RESERVE PRICE - Moves live auctions to sold/unsold/reserve-not-met when end time passes
 export const runAuctionEndUpdate = async () => {
     const now = new Date();
 
@@ -74,6 +74,30 @@ export const runAuctionEndUpdate = async () => {
     return updatedCount;
 };
 
+// FIXED PRICE - Moves live fixed_price vehicles to 'unsold' when the auction window expires without a purchase
+export const runFixedPriceExpiry = async () => {
+    const now = new Date();
+
+    const vehiclesToExpire = await Vehicle.find({
+        auctionStatus: 'live',
+        priceType: 'fixed_price',
+        auctionEndDateTime: { $lte: now },
+    });
+
+    let updatedCount = 0;
+
+    for (const vehicle of vehiclesToExpire) {
+        vehicle.auctionStatus = 'unsold';
+        await vehicle.save();
+        updatedCount++;
+
+        // TODO: notification trigger — unsold event
+        // notify(vehicle.sellerId, 'unsold', { vehicleId: vehicle._id, listingId: vehicle.listingId })
+    }
+
+    return updatedCount;
+};
+
 // API wrapper for manual auction estatus testing
 export const updateAuctionStatuses = async (req, res) => {
     try {
@@ -92,7 +116,7 @@ export const updateAuctionStatuses = async (req, res) => {
     }
 };
 
-// get seller vehicles that are in auction stage (approved + has auctionStatus)
+// get seller vehicles that are in auction stage 
 export const getMyAuctions = async (req, res) => {
     try {
         const sellerId = req.user.id;

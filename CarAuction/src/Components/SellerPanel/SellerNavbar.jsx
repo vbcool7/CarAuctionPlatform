@@ -1,8 +1,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ChevronDown, Loader2, LogOut, Mail, Menu, Search, User } from 'lucide-react';
+import { ChevronDown, Loader2, LogOut, Mail, Menu, Search, User } from 'lucide-react';
 import { toast } from 'react-toastify';
+import SellerNotificationDropdown from './SellerNotificationDropdown';
 
 import { useSellerGet, useSellerLogout } from '../../hook/useSeller';
 import useAuthStore from '../../store/useAuthStore';
@@ -11,13 +12,12 @@ function SellerNavbar({ onToggleSideBar, setCurrentPage }) {
 
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const { data: getSeller, isError } = useSellerGet();
 
     const { mutate: logoutSeller, isPending: isLoggingOut } = useSellerLogout();
     const clearStore = useAuthStore((state) => state.logout);
-
-    const [showDropdown, setShowDropdown] = useState(false);
 
     // logout
     const handleLogout = () => {
@@ -73,15 +73,7 @@ function SellerNavbar({ onToggleSideBar, setCurrentPage }) {
                 <div className='flex items-center gap-2 sm:gap-4 shrink-0'>
 
                     {/* Notifications */}
-                    <button
-                        onClick={() => setCurrentPage('Notifications')}
-                        className='relative p-1 text-slate-700 hover:text-amber-600 transition-colors cursor-pointer'
-                    >
-                        <Bell size={20} />
-                        <span className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
-                            4
-                        </span>
-                    </button>
+                    <SellerNotificationDropdown setCurrentPage={setCurrentPage}/>
 
                     {/* User */}
                     <div className='relative' ref={dropdownRef}>

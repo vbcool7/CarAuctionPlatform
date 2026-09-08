@@ -20,6 +20,7 @@ import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 
 import { useSellerLogout } from '../hook/useSeller';
 import useAuthStore from '../store/useAuthStore';
+import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
 
 function SellerPanelPage() {
 
@@ -124,6 +125,9 @@ function SellerPanelPage() {
               {/* payout */}
               {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'payouts-detail' && <PayoutDetails payoutId={selectedPayoutId} setCurrentPage={setCurrentPage} />}
+
+              {/* notifications */}
+              {currentPage === 'notifications' && <SellerNotifications setCurrentPage={setCurrentPage} />}
 
               {/* logout */}
               {isLogoutModalOpen && (

@@ -108,10 +108,18 @@ function AddNewVehicle({ setCurrentPage }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        if (name === 'priceType') {
+            setFormData((prev) => ({
+                ...prev,
+                priceType: value,
+                startingBidPrice: '',
+                buyNowPrice: '',
+                reservePrice: '',
+            }));
+            return;
+        }
+
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const makeOptions = [
@@ -323,7 +331,7 @@ function AddNewVehicle({ setCurrentPage }) {
                     ? new Date(`${formData.auctionStartDate}T${formData.auctionStartTime}`) > new Date()
                     : false;
                 return !!(
-                    formData.startingBidPrice &&
+                    (formData.priceType === 'reserve_price' ? formData.startingBidPrice : true) &&
                     formData.priceType &&
                     priceOk &&
                     formData.auctionType &&
@@ -356,14 +364,13 @@ function AddNewVehicle({ setCurrentPage }) {
         if (step === 5) {
             if (!formData.priceType) {
                 toast.error("Select a price type");
-            } else if (!formData.startingBidPrice) {
+            } else if (formData.priceType === 'reserve_price' && !formData.startingBidPrice) {
                 toast.error("Enter a starting bid price");
-            } else if (formData.priceType === 'fixed_price' &&
-                !(Number(formData.buyNowPrice) > Number(formData.startingBidPrice))) {
-                toast.error("Buy Now Price must be greater than Starting Bid Price");
             } else if (formData.priceType === 'reserve_price' &&
                 !(Number(formData.reservePrice) > Number(formData.startingBidPrice))) {
                 toast.error("Reserve Price must be greater than Starting Bid Price");
+            } else if (formData.priceType === 'fixed_price' && !formData.buyNowPrice) {
+                toast.error("Enter a Buy Now Price");
             } else if (!formData.auctionStartDate || !formData.auctionStartTime ||
                 new Date(`${formData.auctionStartDate}T${formData.auctionStartTime}`) <= new Date()) {
                 toast.error("Auction start date/time must be in the future");
@@ -508,8 +515,7 @@ function AddNewVehicle({ setCurrentPage }) {
         const payload = new FormData();
 
         Object.entries(formData).forEach(([key, value]) => {
-            if (value === undefined || value === null) return;
-
+            if (value === undefined || value === null || value === '') return;
             payload.append(
                 key,
                 key === "auctionStartTime" ? formatTo12Hour(value) : String(value)
@@ -1030,7 +1036,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                                 <input
                                                     type="radio"
                                                     name="accidentHistory"
-                                                    value="not-sure"
+                                                    value="not_sure"
                                                     checked={formData.accidentHistory === "not_sure"}
                                                     onChange={handleChange}
                                                     className="accent-[#D97706]"
@@ -1705,20 +1711,22 @@ function AddNewVehicle({ setCurrentPage }) {
                                         </div>
                                     </div>
 
-                                    {/* starting bid price */}
-                                    <FormInputFields
-                                        label="Starting Bid Price"
-                                        name="startingBidPrice"
-                                        type="text"
-                                        prefix="$"
-                                        maxLength={9}
-                                        value={formData.startingBidPrice}
-                                        onChange={handlePriceChange}
-                                        placeholder="28500"
-                                    />
+                                    {/* starting bid price — only for reserve_price */}
+                                    {formData.priceType === 'reserve_price' && (
+                                        <FormInputFields
+                                            label="Starting Bid Price"
+                                            name="startingBidPrice"
+                                            type="text"
+                                            prefix="$"
+                                            maxLength={9}
+                                            value={formData.startingBidPrice}
+                                            onChange={handlePriceChange}
+                                            placeholder="28500"
+                                        />
+                                    )}
 
-                                    {/* buy now price */}
-                                    {formData.priceType !== 'reserve_price' && (
+                                    {/* buy now price — sirf fixed_price (explicit check */}
+                                    {formData.priceType === 'fixed_price' && (
                                         <FormInputFields
                                             label="Buy Now Price"
                                             name="buyNowPrice"
@@ -1731,7 +1739,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                         />
                                     )}
 
-                                    {/* reserve price */}
+                                    {/* reserve price — sirf reserve_price */}
                                     {formData.priceType === 'reserve_price' && (
                                         <FormInputFields
                                             label="Reserve Price"

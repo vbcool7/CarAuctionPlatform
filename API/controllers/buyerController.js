@@ -210,9 +210,6 @@ export const buyerLogin = async (req, res) => {
 
         const token = jwt.sign({ id: buyer._id, role: buyer.role }, process.env.JWT_SECRET_KEY, { expiresIn: '1d' });
 
-        // const buyerObj = buyer.toObject();
-        // delete buyerObj.password;
-
         return res.status(200).json({
             success: true,
             message: 'Login successful',

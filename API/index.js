@@ -7,6 +7,7 @@ import connectDb from './config/connectDb.js';
 import rootRouter from './routes/mainRoutes.js';
 
 import { startAuctionCron } from './cron/auctionCron.js';
+import { initSocket } from './sockets/socketServer.js';
 
 dotenv.config();
 
@@ -15,13 +16,15 @@ const app = express();
 // Create the server instance
 const server = http.createServer(app);
 
+const ALLOWED_ORIGINS = [
+    "https://codezens.com",
+    "https://www.codezens.com",
+    "http://localhost:5173",
+    "http://localhost:5174"
+];
+
 app.use(cors({
-    origin: [
-        "https://codezens.com",
-        "https://www.codezens.com",
-        "http://localhost:5173",
-        "http://localhost:5174"
-    ],
+    origin: ALLOWED_ORIGINS,
     credentials: true
 }));
 
@@ -30,6 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 
 connectDb();
 startAuctionCron();
+initSocket(server, ALLOWED_ORIGINS);
 
 app.use('/api/v1', rootRouter);
 

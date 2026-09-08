@@ -14,3 +14,4 @@ export const getNextListingId = () => getNextSequence('listingId', 'LST');
 export const getNextBuyerId = () => getNextSequence('buyerId', 'BYR');
 export const getNextSellerId = () => getNextSequence('sellerId', 'SLR');
 export const getNextBidId = () => getNextSequence('bidId', 'BID');
+export const getNextPurchaseId = () => getNextSequence('purchaseId', 'PUR');

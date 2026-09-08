@@ -155,9 +155,12 @@ export const addVehicle = async (req, res) => {
         // Price logic ----
         const startBid = toNumber(startingBidPrice);
 
-        if (priceType === 'fixed_price' && toNumber(buyNowPrice) <= startBid) {
-            if (req.files) await deleteCloudinaryFiles(req.files);
-            return res.status(400).json({ success: false, message: 'Buy Now price must be greater than Starting Bid price' });
+        if (priceType === 'fixed_price') {
+            const buyNow = toNumber(buyNowPrice);
+            if (!buyNow || buyNow <= 0) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
+                return res.status(400).json({ success: false, message: 'Buy Now price must be a positive value' });
+            }
         }
         if (priceType === 'reserve_price' && toNumber(reservePrice) <= startBid) {
             if (req.files) await deleteCloudinaryFiles(req.files);
@@ -201,10 +204,10 @@ export const getVehicleStats = async (req, res) => {
 
         const [totalVehicles, pendingApproval, activeListing, upcomingAuctions, soldVehicles] = await Promise.all([
             Vehicle.countDocuments({ sellerId }),
-            Vehicle.countDocuments({ sellerId, adminStatus: "pending"}),
-            Vehicle.countDocuments({ sellerId, auctionStatus: "live"}),
+            Vehicle.countDocuments({ sellerId, adminStatus: "pending" }),
+            Vehicle.countDocuments({ sellerId, auctionStatus: "live" }),
             Vehicle.countDocuments({ sellerId, auctionStatus: "upcoming" }),
-            Vehicle.countDocuments({ sellerId, auctionStatus: "sold"})
+            Vehicle.countDocuments({ sellerId, auctionStatus: "sold" })
         ]);
 
         return res.status(200).json({

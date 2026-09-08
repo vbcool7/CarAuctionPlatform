@@ -5,10 +5,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import ScrollToTop from './Components/ScrollToTop';
-import Navbar from './Components/Navbar';
-import Hero from './Components/Hero';
 import HomePage from './Pages/HomePage';
-import Footer from './Components/Footer';
 import VehicleListingPage from './Pages/VehicleListingPage';
 import VehicleDetail from './Components/VehicleDetail';
 import LiveAuctions from './Components/LiveAuctions';
@@ -34,6 +31,7 @@ import BuyerPanelPage from './Pages/BuyerPanelPage';
 import SellerPanelPage from './Pages/SellerPanelPage';
 import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
+import Temp from './Components/Temp';
 
 function App() {
   return (
@@ -51,6 +49,8 @@ function App() {
           color: "#0B1E3D",
         }}
       />
+
+      {/* <Temp /> */}
 
       <Routes>
 

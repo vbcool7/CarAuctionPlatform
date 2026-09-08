@@ -1,6 +1,6 @@
 
 import cron from 'node-cron';
-import { runAuctionEndUpdate, runAuctionStatusUpdate } from '../controllers/auctionController.js';
+import { runAuctionEndUpdate, runAuctionStatusUpdate, runFixedPriceExpiry } from '../controllers/auctionController.js';
 
 export const startAuctionCron = () => {
 
@@ -15,6 +15,11 @@ export const startAuctionCron = () => {
             const closedCount = await runAuctionEndUpdate();
             if(closedCount > 0){
                 console.log(`[auction-cron] ${closedCount} vehicle(s) closed (sold/unsold/reserve-not-met)`);
+            }
+
+             const expiredCount = await runFixedPriceExpiry();
+            if(expiredCount > 0){
+                console.log(`[auction-cron] ${expiredCount} fixed-price vehicle(s) expired (unsold)`);
             }
 
         }catch(error){
