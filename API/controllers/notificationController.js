@@ -5,7 +5,9 @@ import Notification from '../models/notificationModelSchema.js';
 export const getAllNotifications = async (req, res) => {
     try {
         const recipientId = req.user.id;
-        const recipientType = req.user.role === 'buyer' ? 'Buyer' : 'Seller';
+        const recipientType = req.user.role === 'buyer' ? 'Buyer'
+            : req.user.role === 'admin' ? 'Admin'
+                : 'Seller';
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.max(1, Math.min(50, parseInt(req.query.limit) || 10));
@@ -14,6 +16,10 @@ export const getAllNotifications = async (req, res) => {
         const filter = { recipientId, recipientType };
         if (req.query.isRead === 'true') filter.isRead = true;
         if (req.query.isRead === 'false') filter.isRead = false;
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search, 'i');
+            filter.$or = [{ title: searchRegex }, { message: searchRegex }];
+        }
 
         const [notifications, filteredCount, unreadCount, totalCount] = await Promise.all([
             Notification.find(filter)
@@ -49,7 +55,9 @@ export const markReadNotification = async (req, res) => {
     try {
         const { id } = req.params;
         const recipientId = req.user.id;
-        const recipientType = req.user.role === 'buyer' ? 'Buyer' : 'Seller';
+        const recipientType = req.user.role === 'buyer' ? 'Buyer'
+            : req.user.role === 'admin' ? 'Admin'
+                : 'Seller';
 
         const notification = await Notification.findOneAndUpdate(
             { _id: id, recipientId, recipientType },
@@ -82,7 +90,9 @@ export const markReadNotification = async (req, res) => {
 export const markAllReadNotifications = async (req, res) => {
     try {
         const recipientId = req.user.id;
-        const recipientType = req.user.role === 'buyer' ? 'Buyer' : 'Seller';
+        const recipientType = req.user.role === 'buyer' ? 'Buyer'
+            : req.user.role === 'admin' ? 'Admin'
+                : 'Seller';
 
         const result = await Notification.updateMany(
             { recipientId, recipientType, isRead: false },
@@ -97,9 +107,9 @@ export const markAllReadNotifications = async (req, res) => {
 
     } catch (err) {
         console.error("Mark All Read Notifications Error:", err);
-        res.status(500).json({ 
-            success: false, 
-            message: "Server Error Occured" 
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

@@ -1,8 +1,9 @@
 
 import Purchase from '../models/purchaseModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
-import { createNotification } from '../services/notificationService.js';
+import Admin from '../models/adminModelSchema.js';
 
+import { createNotification } from '../services/notificationService.js';
 import { getNextPurchaseId } from '../utils/counterHelper.js';
 
 export const buyVehicle = async (req, res) => {
@@ -84,6 +85,19 @@ export const buyVehicle = async (req, res) => {
             title: 'Purchase Succesful',
             message: `You purchased ${updatedVehicle.listingId} for AED ${updatedVehicle.buyNowPrice}.`,
         });
+
+        // notification trigger — to admin
+        const admin = await Admin.findOne();
+        if (admin) {
+            await createNotification({
+                recipientId: admin._id,
+                recipientType: 'Admin',
+                type: 'auction_sold',
+                vehicleId: updatedVehicle._id,
+                title: 'Vehicle Sold',
+                message: `${updatedVehicle.listingId} was sold for AED ${updatedVehicle.buyNowPrice}.`,
+            });
+        }
 
     return res.status(201).json({
         success: true,

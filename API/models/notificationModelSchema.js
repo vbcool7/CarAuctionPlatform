@@ -18,7 +18,8 @@ const notificationSchema = new mongoose.Schema(
         type: {
             type: String,
             required: true,
-            enum: ['auction_sold', 'auction_unsold', 'reserve_not_met', 'auction_canceled',
+            enum: ['new_bid_received', 'reserve_price_met',
+                'auction_sold', 'auction_unsold', 'reserve_not_met', 'auction_canceled',
                 // 'outbid', 'won' — deliberately NOT added yet, blocked on bid-semantics decision
             ],
         },

@@ -5,6 +5,8 @@ import { useGetAllNotificationsInfinite, useMarkAllReadNotification, useReadNoti
 
 const getIcon = (type) => {
     switch (type) {
+        case 'new_bid_received': return <Gavel size={17} />;
+        case 'reserve_price_met': return <Gavel size={17} />;
         case 'auction_sold': return <Trophy size={17} />;
         case 'auction_unsold': return <Clock3 size={17} />;
         case 'reserve_not_met': return <Gavel size={17} />;
@@ -15,6 +17,8 @@ const getIcon = (type) => {
 
 const getIconStyle = (type) => {
     switch (type) {
+        case 'new_bid_received': return 'bg-blue-50 text-blue-600';
+        case 'reserve_price_met': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
         case 'auction_unsold': return 'bg-orange-50 text-orange-600';
         case 'reserve_not_met': return 'bg-amber-50 text-amber-600';
@@ -24,6 +28,8 @@ const getIconStyle = (type) => {
 };
 
 const NOTIFICATION_REDIRECT_MAP = {
+    new_bid_received: 'my-auctions',
+    reserve_price_met: 'my-auctions',
     auction_sold: 'my-auctions',
     auction_unsold: 'my-auctions',
     reserve_not_met: 'my-auctions',

@@ -3,6 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
+// buyer stats
+export const useBuyerStats = () => {
+    return useQuery({
+        queryKey: ['buyerStats'],
+        queryFn: async () => {
+            const res = await API.get('/admin/buyer-stats');
+            return res.data;
+        },
+    });
+};
+
 // add new buyer
 export const useAddNewBuyer = () => {
     return useMutation({
@@ -73,6 +84,37 @@ export const useVerifyBuyerDoc = () => {
         onError: (err) => {
             console.error('Error in verify buyer:', err);
             toast.error(err?.response?.data?.message || "Failed to verify");
+        },
+    });
+};
+
+// suspend buyer
+export const useSuspendBuyer = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, reason }) => {
+            const response = await API.patch(`/admin/suspend-buyer/${id}`, {
+                reason,
+            });
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['buyers'] });
+            queryClient.invalidateQueries({ queryKey: ['buyerStats'] }); // stats-cards bhi turant refresh honi chahiye (Active/Suspended count badlega)
+        },
+        onError: (err) => {
+            console.error('Suspend buyer failed:', err);
+        },
+    });
+};
+
+// reactive buyer
+export const useReactivateBuyer = () => {
+    return useMutation({
+        mutationFn: async (id) => {
+            const response = await API.patch(`/admin/reactivate-buyer/${id}`);
+            return response.data;
         },
     });
 };

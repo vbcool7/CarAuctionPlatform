@@ -61,6 +61,7 @@ import BuyerKycVerificationDetail from './Components/KycVerification/BuyerKycVer
 import SellerKycVerificationDetail from './Components/KycVerification/SellerKycVerificationDetail';
 import VehicleApprovalsDetail from './Components/VehicleApprovals/VehicleApprovalsDetail';
 import BidManagementDetail from './Components/BidManagement/BidManagementDetail';
+import Notifications from './Components/Notifications';
 
 function App() {
 
@@ -390,6 +391,9 @@ function App() {
 
                 {/* advance feature */}
                 {currentPage === 'ai-features' && <AdvancedFeatures setCurrentPage={setCurrentPage} />}
+
+                {/* notifications */}
+                {currentPage === 'notifications' && <Notifications setCurrentPage={setCurrentPage} />}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

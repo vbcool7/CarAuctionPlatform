@@ -4,7 +4,7 @@ import { upload } from '../middlewares/imageStorage.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import {
     adminSignup, adminLogin, adminGet, adminLogout,
-    addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification,
+    addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary,
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats,
@@ -61,6 +61,9 @@ router.get('/all-buyers-list', authMiddleware(['admin']), getAllBuyers);
 router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin']), toggleBuyerVerification);
 router.get('/get-buyer/:id', authMiddleware(['admin']), getBuyerById);
 router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin']), buyerDocVerification);
+router.patch('/suspend-buyer/:id', authMiddleware(['admin']), suspendBuyer);
+router.patch('/reactivate-buyer/:id', authMiddleware(['admin']), reactivateBuyer);
+router.get('/buyer-stats', authMiddleware(['admin']), getBuyerStats);
 
 // ============================ SELLER
 router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {

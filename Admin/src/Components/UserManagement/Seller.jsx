@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react'
-import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Search, Filter, Calendar, Edit2, PauseCircle, Trash2, Eye, SlidersHorizontal, ShieldCheck, X } from 'lucide-react';
+import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Edit2, PauseCircle, SlidersHorizontal, ShieldCheck, X } from 'lucide-react';
 import UserManagementHeader from './UserManagementHeader';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
-import DeleteModal from './Shared/DeleteModal';
 
 import { useGetAllSellers, useToggleSellerVerification } from '../../hooks/useSeller';
 import DateRangePicker from '../SharedComponents/DateRangePicker';
 import { getPaginationRange } from '../utils/getPaginationRange';
+import SuspendModal from './Shared/SuspendModal';
 
 const sellerStats = [
   {
@@ -62,21 +62,17 @@ const sellerTypeConfig = {
 function Seller({ onViewSeller, setCurrentPage }) {
 
   const [page, setPage] = useState(1);
-  const { data: sellerList, isLoading, isError } = useGetAllSellers(page);
-  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleSellerVerification();
-
   const [verificationTarget, setVerificationTarget] = useState(null);
   const [verificationError, setVerificationError] = useState("");
-
   const [selectedSellerType, setSelectedSellerType] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedTradeLicense, setSelectedTradeLicense] = useState("");
-
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [suspendTarget, setSuspendTarget] = useState(null);
 
-  const [deleteTarget, setDeleteTarget] = useState(null);
-
+  const { data: sellerList, isLoading, isError } = useGetAllSellers(page);
+  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleSellerVerification();
 
   const handleVerifyClick = (seller) => {
     setVerificationTarget(seller);
@@ -96,18 +92,24 @@ function Seller({ onViewSeller, setCurrentPage }) {
 
   const totalPages = sellerList?.pagination?.totalPages || 1;
 
-  // delete 
-  const handleDeleteClick = (seller) => {
-    setDeleteTarget(seller);
+  // suspend seller
+  const handleSuspendClick = (seller) => {
+    setSuspendTarget(seller);
   };
 
-  const handleDeleteConfirm = () => {
-    console.log('deleting seller:', deleteTarget._id);
-    setDeleteTarget(null);
+  const handleSuspendConfirm = (reason) => {
+    console.log('suspending seller:', suspendTarget._id, 'reason:', reason);
+
+    suspendSeller({
+      id: suspendTarget._id,
+      reason,
+    });
+
+    setSuspendTarget(null);
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteTarget(null);
+  const handleSuspendCancel = () => {
+    setSuspendTarget(null);
   };
 
   if (isLoading) return <p className="p-10 text-center">Loading seller list....</p>;
@@ -388,10 +390,10 @@ function Seller({ onViewSeller, setCurrentPage }) {
                         </button>
 
                         <button
-                          onClick={() => handleDeleteClick(seller)}
+                          onClick={() => handleSuspendClick(seller)}
                           className="rounded-lg border border-gray-200 p-1.5 text-red-600 hover:text-red-400"
                         >
-                          <Trash2 size={16} />
+                          <PauseCircle size={16} />
                         </button>
                       </div>
                     </td>
@@ -550,10 +552,10 @@ function Seller({ onViewSeller, setCurrentPage }) {
         )}
 
         {/* delete modal */}
-        <DeleteModal
-          isOpen={!!deleteTarget}
-          onClose={handleDeleteCancel}
-          onConfirm={handleDeleteConfirm}
+        <SuspendModal
+          isOpen={!!suspendTarget}
+          onClose={handleSuspendCancel}
+          onConfirm={handleSuspendConfirm}
           itemName="Seller"
         />
       </div>

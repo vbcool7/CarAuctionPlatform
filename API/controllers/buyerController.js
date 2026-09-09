@@ -192,6 +192,14 @@ export const buyerLogin = async (req, res) => {
             });
         }
 
+        // ---- SUSPEND CHECK ----
+        if (buyer.accountStatus === 'suspended') {
+            return res.status(403).json({
+                success: false,
+                message: "Your account has been suspended. Please contact support.",
+            });
+        }
+
         if (buyer.status === 'pending') {
             return res.status(403).json({
                 success: false,

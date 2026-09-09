@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Search, Filter, Calendar, Edit2, PauseCircle, Trash2, Eye } from 'lucide-react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import DeleteModal from './Shared/DeleteModal';
+// import DeleteModal from './Shared/DeleteModal';
 import { dummyStaff } from '../Data';
 
 const filterConfig = [
@@ -271,12 +271,12 @@ function StaffList({ staffs, onViewStaff, setCurrentPage }) {
       </div>
 
       {/* delete modal */}
-      <DeleteModal
+      {/* <DeleteModal
         isOpen={!!deleteTarget}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         itemName="Staff"
-      />
+      /> */}
     </div>
   )
 }

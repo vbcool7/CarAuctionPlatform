@@ -6,6 +6,7 @@ import { Menu, Search, Heart, Bell, ChevronDown, User, LogOut, Settings, Mail } 
 import { useAdminGet, useAdminLogout } from '../hooks/useAdmin';
 import useAdminAuthStore from '../store/useAdminAuthStore';
 import toast from 'react-hot-toast';
+import NotificationDropdown from './NotificationDropdown';
 
 function Header({ onToggleSideBar, setCurrentPage }) {
 
@@ -71,15 +72,7 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                 <div className='flex items-center gap-2 sm:gap-4 shrink-0'>
 
                     {/* Notifications */}
-                    <button
-                        onClick={() => setCurrentPage('Notifications')}
-                        className='relative p-1 text-slate-700 hover:text-slate-400 transition-colors'
-                    >
-                        <Bell size={20} />
-                        <span className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
-                            4
-                        </span>
-                    </button>
+                    <NotificationDropdown setCurrentPage={setCurrentPage} />
 
                     {/* mail */}
                     <button

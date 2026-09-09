@@ -140,11 +140,18 @@ const buyerSchema = new mongoose.Schema({
     lastLoginAt: {
         type: Date
     },
-    status: {
+    status: {                                      // registration-lifecycle
         type: String,
         enum: ['pending', 'approved', 'rejected'],
         default: 'pending'
     },
+    accountStatus: {                               // admin ka disciplinary action
+        type: String,
+        enum: ['active', 'suspended'],
+        default: 'active'
+    },
+    suspendedAt: { type: Date },
+    suspendedReason: { type: String },
 
 }, { timestamps: true });
 

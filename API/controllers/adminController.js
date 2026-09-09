@@ -251,8 +251,19 @@ export const addNewBuyer = async (req, res) => {
             buyerId,
             firstName, lastName, email, mobile, password: hashedPassword, gender, profileImageUrl,
 
-            identityVerification: { documentType: identityDocType, frontImageUrl, backImageUrl, selfieImageUrl },
-            addressVerification: { documentType: addressDocType, documentUrl, landlordIdUrl, },
+            identityVerification: {
+                documentType: identityDocType,
+                frontImageUrl, backImageUrl, selfieImageUrl,
+                status: 'approved',
+                reviewedAt: new Date()
+            },
+
+            addressVerification: {
+                documentType: addressDocType,
+                documentUrl, landlordIdUrl,
+                status: 'approved',
+                reviewedAt: new Date()
+            },
 
             dob, nationality, country, emirate, city, address, pincode, buyerType, companyName, registrationNumber, vatNumber,
 
@@ -474,7 +485,7 @@ export const buyerDocVerification = async (req, res) => {
         buyer[fieldKey].rejectionReason = action === 'reject' ? rejectionReason.trim() : undefined;
 
         if (action === 'reject') {
-            buyer.status = 'pending';
+            buyer.status = 'rejected';
         } else {
             const bothApproved =
                 buyer.identityVerification.status === 'approved' &&
@@ -521,6 +532,119 @@ export const buyerDocVerification = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// suspend buyer 
+export const suspendBuyer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Suspension reason is required"
+            });
+        }
+
+        const buyer = await Buyer.findById(id);
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        if (buyer.accountStatus === 'suspended') {
+            return res.status(400).json({
+                success: false,
+                message: "Buyer is already suspended"
+            });
+        }
+
+        buyer.accountStatus = 'suspended';
+        buyer.suspendedAt = new Date();
+        buyer.suspendedReason = reason.trim();
+        await buyer.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Buyer suspended successfully"
+        });
+
+    } catch (err) {
+        console.error("Suspend Buyer Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// reactivate buyer 
+export const reactivateBuyer = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const buyer = await Buyer.findById(id);
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        if (buyer.accountStatus === 'active') {
+            return res.status(400).json({
+                success: false,
+                message: "Buyer is already active"
+            });
+        }
+
+        buyer.accountStatus = 'active';
+        buyer.suspendedAt = undefined;
+        buyer.suspendedReason = undefined;
+        await buyer.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Buyer reactivated successfully"
+        });
+
+    } catch (err) {
+        console.error("Reactivate Buyer Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// buyer stats
+export const getBuyerStats = async (req, res) => {
+    try {
+        const [totalBuyers, verifiedBuyers, activeBuyers, suspendedBuyers] = await Promise.all([
+            Buyer.countDocuments(),
+            Buyer.countDocuments({ isEmailVerified: true }),
+            Buyer.countDocuments({ accountStatus: 'active' }),
+            Buyer.countDocuments({ accountStatus: 'suspended' }),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            totalBuyers,
+            verifiedBuyers,
+            activeBuyers,
+            suspendedBuyers,
+        });
+
+    } catch (err) {
+        console.error("Get Buyer Stats Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

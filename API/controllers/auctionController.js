@@ -1,10 +1,12 @@
 
+import Admin from '../models/adminModelSchema.js';
 import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
+import { createNotification } from '../services/notificationService.js';
 
 // RESERVE PRICE - Moves upcoming auctions to live when start time arrives
 export const runAuctionStatusUpdate = async () => {
@@ -44,6 +46,8 @@ export const runAuctionStatusUpdate = async () => {
 export const runAuctionEndUpdate = async () => {
     const now = new Date();
 
+    const admin = await Admin.findOne();
+
     const vehiclesToClose = await Vehicle.find({
         auctionStatus: 'live',
         priceType: 'reserve_price',
@@ -58,18 +62,53 @@ export const runAuctionEndUpdate = async () => {
             status: 'active',
         });
 
+        let notifType, notifTitle, notifMessage;
+
         if (!winningBid) {
             vehicle.auctionStatus = 'unsold';
+            notifType = 'auction_unsold';
+            notifTitle = 'Auction Unsold';
+            notifMessage = `${vehicle.listingId} was not sold because no bids were received.`;
+
         } else if (vehicle.currentBid < vehicle.reservePrice) {
             vehicle.auctionStatus = 'reserve-not-met';
+            notifType = 'reserve_not_met';
+            notifTitle = 'Reserve Price Not Met';
+            notifMessage = `${vehicle.listingId} did not meet the reserve price.`;
+
         } else {
             vehicle.auctionStatus = 'sold';
             winningBid.status = 'won';
             await winningBid.save();
+
+            notifType = 'auction_sold';
+            notifTitle = 'Your vehicle has been sold';
+            notifMessage = `${vehicle.listingId} was sold for AED ${winningBid.amount}.`;
         }
 
         await vehicle.save();
         updatedCount++;
+
+        await createNotification({
+            recipientId: vehicle.sellerId,
+            recipientType: 'Seller',
+            type: notifType,
+            vehicleId: vehicle._id,
+            title: notifTitle,
+            message: notifMessage,
+        });
+
+        // ---- ADMIN NOTIFICATION (naya, sirf sold case me) ----
+        if (notifType === 'auction_sold' && admin) {
+            await createNotification({
+                recipientId: admin._id,
+                recipientType: 'Admin',
+                type: 'auction_sold',
+                vehicleId: vehicle._id,
+                title: 'Vehicle Sold',
+                message: `${vehicle.listingId} was sold for AED ${winningBid.amount}.`,
+            });
+        }
     }
     return updatedCount;
 };
@@ -91,29 +130,18 @@ export const runFixedPriceExpiry = async () => {
         await vehicle.save();
         updatedCount++;
 
-        // TODO: notification trigger — unsold event
-        // notify(vehicle.sellerId, 'unsold', { vehicleId: vehicle._id, listingId: vehicle.listingId })
+        // notification trigger — to seller
+        await createNotification({
+            recipientId: vehicle.sellerId,
+            recipientType: 'Seller',
+            type: 'auction_unsold',
+            vehicleId: vehicle._id,
+            title: 'Auction Unsold',
+            message: `${vehicle.listingId} was not sold before the auction ended.`,
+        });
     }
 
     return updatedCount;
-};
-
-// API wrapper for manual auction estatus testing
-export const updateAuctionStatuses = async (req, res) => {
-    try {
-        const liveCount = await runAuctionStatusUpdate();
-        const closedCount = await runAuctionEndUpdate();
-
-        return res.status(200).json({
-            success: true,
-            message: 'Auction statuses updated',
-            movedToLive: liveCount,
-            closed: closedCount
-        });
-    } catch (error) {
-        console.error('updateAuctionStatuses error:', error);
-        return res.status(500).json({ success: false, message: 'Server Error Occured' });
-    }
 };
 
 // get seller vehicles that are in auction stage 
@@ -282,7 +310,7 @@ export const getMyAuctionById = async (req, res) => {
     }
 };
 
-// auction cancel - admin / seller
+// auction cancel - admin + seller
 export const cancelAuction = async (req, res) => {
     try {
         const { id } = req.params;
@@ -333,12 +361,60 @@ export const cancelAuction = async (req, res) => {
 
         // if live - then mark all bids as canceled
         if (wasLive) {
+
+            // for notification — fetch before updating
+            const affectedBids = await Bid.find({
+                vehicleId: vehicle._id,
+                status: { $in: ['active', 'outbid'] },
+            });
+
             await Bid.updateMany(
                 { vehicleId: vehicle._id, status: { $in: ['active', 'outbid'] } },
                 { $set: { status: 'canceled' } }
             );
+
+            // notify to each unique bidder
+            const uniqueBidders = new Map();
+            for (const bid of affectedBids) {
+                uniqueBidders.set(bid.bidderId.toString(), bid.bidderType);
+            }
+
+            for (const [bidderId, bidderType] of uniqueBidders) {
+                await createNotification({
+                    recipientId: bidderId,
+                    recipientType: bidderType,
+                    type: 'auction_canceled',
+                    vehicleId: vehicle._id,
+                    title: 'Auction Canceled',
+                    message: `The auction for ${vehicle.listingId}, which you had a bid on, has been canceled. Reason: ${reason.trim()}`,
+                });
+            }
         }
 
+        if (role === 'admin') {
+            await createNotification({
+                recipientId: vehicle.sellerId,
+                recipientType: 'Seller',
+                type: 'auction_canceled',
+                vehicleId: vehicle._id,
+                title: 'Auction Canceled',
+                message: `${vehicle.listingId} was canceled by admin. Reason: ${reason.trim()}`,
+            });
+        }
+
+        if (role === 'seller') {
+            const admin = await Admin.findOne();
+            if (admin) {
+                await createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'auction_canceled',
+                    vehicleId: vehicle._id,
+                    title: 'Auction Canceled by Seller',
+                    message: `${vehicle.listingId} was canceled by the seller. Reason: ${reason.trim()}`,
+                });
+            }
+        }
         return res.status(200).json({
             success: true,
             message: "Auction canceled successfully",

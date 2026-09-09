@@ -19,7 +19,7 @@ export const createNotification = async ({ recipientId, recipientType, type, veh
             title: notification.title,
             message: notification.message,
             vehicleId: notification.vehicleId,
-            read: notification.read,
+            isRead: notification.isRead,
             createdAt: notification.createdAt,
         });
 

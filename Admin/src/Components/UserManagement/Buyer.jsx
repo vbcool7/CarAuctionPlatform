@@ -1,53 +1,15 @@
 
 import React from 'react';
 import { useState } from 'react';
-import { Users, CheckCircle2, UserCheck, UserX, ArrowUp, ArrowDown, SlidersHorizontal, Edit2, PauseCircle, Trash2, ShieldCheck, X, } from 'lucide-react';
+import { Users, CheckCircle2, UserCheck, UserX, ArrowUp, ArrowDown, SlidersHorizontal, Edit2, PauseCircle, ShieldCheck, X, } from 'lucide-react';
 import UserManagementHeader from './UserManagementHeader';
-import DeleteModal from './Shared/DeleteModal';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import DateRangePicker from '../SharedComponents/DateRangePicker';
-import { useGetAllBuyers, useToggleBuyerVerification } from '../../hooks/useBuyer';
+import { useBuyerStats, useGetAllBuyers, useSuspendBuyer, useToggleBuyerVerification } from '../../hooks/useBuyer';
 import { getPaginationRange } from '../utils/getPaginationRange';
-
-const buyerStats = [
-  {
-    title: "Total Buyers",
-    value: "12,458",
-    icon: Users,
-    theme: "text-blue-600 bg-blue-50",
-    subTitle: "12.5% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
-  },
-  {
-    title: "Verified Buyers",
-    value: "10,245",
-    icon: CheckCircle2,
-    theme: "text-emerald-600 bg-emerald-50",
-    subTitle: "9.3% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
-  },
-  {
-    title: "Active Buyers",
-    value: "8,756",
-    icon: UserCheck,
-    theme: "text-blue-600 bg-blue-50",
-    subTitle: "10.8% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
-  },
-  {
-    title: "Suspended Buyers",
-    value: "320",
-    icon: UserX,
-    theme: "text-red-500 bg-red-50",
-    subTitle: "2.6% from last week",
-    subTextColor: "text-red-500",
-    isPositive: false
-  }
-];
+import SuspendModal from './Shared/SuspendModal';
+import toast from 'react-hot-toast';
 
 const filterConfig = [
   {
@@ -70,15 +32,17 @@ const filterConfig = [
 function Buyer({ setCurrentPage, onViewBuyer }) {
 
   const [page, setPage] = useState(1);
-  const { data: buyerList, isLoading, isError } = useGetAllBuyers(page);
-  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleBuyerVerification();
-
   const [verificationTarget, setVerificationTarget] = useState(null);
   const [verificationError, setVerificationError] = useState("");
 
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [suspendTarget, setSuspendTarget] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+
+  const { data: buyerStatsData } = useBuyerStats();
+  const { data: buyerList, isLoading, isError } = useGetAllBuyers(page);
+  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleBuyerVerification();
+  const { mutate: suspendBuyer, isPending } = useSuspendBuyer();
 
   const totalPages = buyerList?.pagination?.totalPages || 1;
 
@@ -109,19 +73,68 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  // delete 
-  const handleDeleteClick = (buyer) => {
-    setDeleteTarget(buyer);
+  // suspend buyer
+  const handleSuspendClick = (buyer) => {
+    setSuspendTarget(buyer);
   };
 
-  const handleDeleteConfirm = () => {
-    console.log('deleting buyer:', deleteTarget.id);
-    setDeleteTarget(null);
+  const handleSuspendConfirm = (reason) => {
+    suspendBuyer(
+      { id: suspendTarget._id, reason },
+      {
+        onSuccess: () => {
+          setSuspendTarget(null);
+          toast.success('Buyer suspended successfully')
+        },
+        onError: (err) => {
+          toast.error(err?.response?.data?.message || 'Failed to suspend buyer')
+        },
+      }
+    );
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteTarget(null);
+  const handleSuspendCancel = () => {
+    setSuspendTarget(null);
   };
+
+  const buyerStats = [
+    {
+      title: "Total Buyers",
+      value: buyerStatsData?.totalBuyers ?? 0,
+      icon: Users,
+      theme: "text-blue-600 bg-blue-50",
+      subTitle: "12.5% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Verified Buyers",
+      value: buyerStatsData?.verifiedBuyers ?? 0,
+      icon: CheckCircle2,
+      theme: "text-emerald-600 bg-emerald-50",
+      subTitle: "9.3% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Active Buyers",
+      value: buyerStatsData?.activeBuyers ?? 0,
+      icon: UserCheck,
+      theme: "text-blue-600 bg-blue-50",
+      subTitle: "10.8% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Suspended Buyers",
+      value: buyerStatsData?.suspendedBuyers ?? 0,
+      icon: UserX,
+      theme: "text-red-500 bg-red-50",
+      subTitle: "2.6% from last week",
+      subTextColor: "text-red-500",
+      isPositive: false
+    }
+  ];
 
   if (isLoading) return <p className="p-10 text-center">Loading buyer list....</p>;
   if (isError) return <p className="p-10 text-center text-red-500">Failed to load buyer list</p>;
@@ -367,9 +380,9 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                         </button>
 
                         <button
-                          onClick={() => handleDeleteClick(buyer)}
+                          onClick={() => handleSuspendClick(buyer)}
                           className="rounded-lg border border-gray-200 p-1.5 text-red-700 hover:text-red-500">
-                          <Trash2 size={16} />
+                          <PauseCircle size={16} />
                         </button>
                       </div>
                     </td>
@@ -506,7 +519,7 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                 >
                   Cancel
                 </button>
-                
+
                 <button
                   onClick={handleVerifyConfirm}
                   disabled={isTogglingVerification}
@@ -520,11 +533,11 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
           </div>
         )}
 
-        {/* delete modal */}
-        <DeleteModal
-          isOpen={!!deleteTarget}
-          onClose={handleDeleteCancel}
-          onConfirm={handleDeleteConfirm}
+        {/* suspended modal */}
+        <SuspendModal
+          isOpen={!!suspendTarget}
+          onClose={handleSuspendCancel}
+          onConfirm={handleSuspendConfirm}
           itemName="Buyer"
         />
       </div>

@@ -5,6 +5,7 @@ import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 
 import { getNextBidId } from '../utils/counterHelper.js';
+import { createNotification } from '../services/notificationService.js';
 
 // seller + buyer : place bid only for price_type = reserve_price
 export const placeBid = async (req, res) => {
@@ -70,6 +71,10 @@ export const placeBid = async (req, res) => {
             });
         }
 
+        // ---- CAPTURE OLD STATE BEFORE OVERWRITING ----
+        const isFirstBid = vehicle.currentBid == null;
+        const wasReserveMetBefore = vehicle.currentBid != null && vehicle.currentBid >= vehicle.reservePrice;
+
         await Bid.updateMany(
             { vehicleId, status: 'active' },
             { $set: { status: 'outbid' } }
@@ -99,6 +104,30 @@ export const placeBid = async (req, res) => {
         }
 
         await vehicle.save();
+
+        // ---- NOTIFICATION TRIGGERS ----
+        if (isFirstBid) {
+            await createNotification({
+                recipientId: vehicle.sellerId,
+                recipientType: 'Seller',
+                type: 'new_bid_received',
+                vehicleId: vehicle._id,
+                title: 'New Bid Received',
+                message: `${vehicle.listingId} received a new bid of AED ${amount}.`,
+            });
+        }
+
+        const reserveJustMet = !wasReserveMetBefore && amount >= vehicle.reservePrice;
+        if (reserveJustMet) {
+            await createNotification({
+                recipientId: vehicle.sellerId,
+                recipientType: 'Seller',
+                type: 'reserve_price_met',
+                vehicleId: vehicle._id,
+                title: 'Reserve Price Met',
+                message: `${vehicle.listingId} has reached the reserve price.`,
+            });
+        }
 
         return res.status(201).json({
             success: true,
