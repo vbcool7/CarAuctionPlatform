@@ -4,7 +4,6 @@ import { Plus, ArrowDown, ArrowUp, Gavel, Radio, CalendarDays, CheckCircle, XCir
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SearchBar from '../../SharedComponents/SearchBar';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
-import { allAuctionData } from '../../Data';
 import { useGetAllAuctions, useGetAllAuctionStats } from '../../../hooks/useAuction';
 import { formatLabel } from '../../utils/formatter';
 import { getPaginationRange } from '../../utils/getPaginationRange';

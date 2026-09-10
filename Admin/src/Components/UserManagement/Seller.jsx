@@ -1,53 +1,67 @@
 
-import React, { useState } from 'react'
-import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Edit2, PauseCircle, SlidersHorizontal, ShieldCheck, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { Store, UserCheck, Zap, ShieldAlert, ArrowUp, ArrowDown, Edit2, PauseCircle, ShieldCheck, X, PlayCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import UserManagementHeader from './UserManagementHeader';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
-
-import { useGetAllSellers, useToggleSellerVerification } from '../../hooks/useSeller';
 import DateRangePicker from '../SharedComponents/DateRangePicker';
-import { getPaginationRange } from '../utils/getPaginationRange';
 import SuspendModal from './Shared/SuspendModal';
 
-const sellerStats = [
+import { useGetAllSellers, useSellerStats, useToggleSellerVerification, useReactivateSeller, useSuspendSeller } from '../../hooks/useSeller';
+import { getPaginationRange } from '../utils/getPaginationRange';
+
+const filterConfig = [
   {
-    title: "Total Sellers",
-    value: "24",
-    icon: Store,
-    theme: "text-blue-600 bg-blue-50",
-    subTitle: "12.5% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
+    label: 'Business Type',
+    key: 'businessType',
+    options: ['All Types', 'Car Dealership', 'Individual Seller', 'Vehicle Importer', 'Fleet Company', 'Rental Company', 'Auction House', 'Other'],
   },
   {
-    title: "Verified Sellers",
-    value: "20",
-    icon: UserCheck,
-    theme: "text-emerald-600 bg-emerald-50",
-    subTitle: "9.3% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
+    label: 'Account Status',
+    key: 'accountStatus',
+    options: ['All Account Status', 'Active', 'Suspended'],
   },
   {
-    title: "Active Sellers",
-    value: "3",
-    icon: Zap,
-    theme: "text-amber-500 bg-amber-50",
-    subTitle: "10.8% from last week",
-    subTextColor: "text-green-600",
-    isPositive: true
+    label: 'Status',
+    key: 'status',
+    options: ['All Status', 'Pending', 'Approved', 'Rejected'],
   },
-  {
-    title: "Suspended Sellers",
-    value: "1",
-    icon: ShieldAlert,
-    theme: "text-red-500 bg-red-50",
-    subTitle: "2.6% from last week",
-    subTextColor: "text-red-500",
-    isPositive: false
-  }
 ];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+  const params = {};
+
+  const businessTypeMap = {
+    'Car Dealership': 'car_dealership',
+    'Individual Seller': 'individual_seller',
+    'Vehicle Importer': 'vehicle_importer',
+    'Fleet Company': 'fleet_company',
+    'Rental Company': 'rental_company',
+    'Auction House': 'auction_house',
+    'Other': 'other',
+  };
+
+  if (filters.businessType && filters.businessType !== 'All') {
+    params.businessType = businessTypeMap[filters.businessType];
+  }
+
+  if (filters.verificationStatus === 'Verified') params.isEmailVerified = 'true';
+  if (filters.verificationStatus === 'Unverified') params.isEmailVerified = 'false';
+
+  if (filters.accountStatus === 'Active') params.accountStatus = 'active';
+  if (filters.accountStatus === 'Suspended') params.accountStatus = 'suspended';
+
+  if (filters.status === 'Pending') params.status = 'pending';
+  if (filters.status === 'Approved') params.status = 'approved';
+  if (filters.status === 'Rejected') params.status = 'rejected';
+
+  if (search.trim()) params.search = search.trim();
+  if (startDate) params.startDate = startDate.toISOString();
+  if (endDate) params.endDate = endDate.toISOString();
+
+  return params;
+};
 
 const sellerTypeConfig = {
   car_dealership: { label: "Dealership", classes: "bg-blue-50 text-blue-700 border-blue-200" },
@@ -62,18 +76,43 @@ const sellerTypeConfig = {
 function Seller({ onViewSeller, setCurrentPage }) {
 
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filters, setFilters] = useState({
+    businessType: '',
+    accountStatus: '',
+    status: '',
+  });
+
   const [verificationTarget, setVerificationTarget] = useState(null);
   const [verificationError, setVerificationError] = useState("");
-  const [selectedSellerType, setSelectedSellerType] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedTradeLicense, setSelectedTradeLicense] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [suspendTarget, setSuspendTarget] = useState(null);
 
-  const { data: sellerList, isLoading, isError } = useGetAllSellers(page);
-  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleSellerVerification();
+  const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
 
+  const { data: sellerStatsData } = useSellerStats();
+  const { data: sellerList, isLoading, isError } = useGetAllSellers(page, 10, params);
+  const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleSellerVerification();
+  const { mutate: suspendSeller } = useSuspendSeller();
+  const { mutate: reactivateSeller } = useReactivateSeller();
+
+  const totalPages = sellerList?.pagination?.totalPages || 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters, search, startDate, endDate]);
+
+  // debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // email verification
   const handleVerifyClick = (seller) => {
     setVerificationTarget(seller);
     setVerificationError("");
@@ -90,7 +129,10 @@ function Seller({ onViewSeller, setCurrentPage }) {
     );
   };
 
-  const totalPages = sellerList?.pagination?.totalPages || 1;
+  // filter drop-down updater
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
 
   // suspend seller
   const handleSuspendClick = (seller) => {
@@ -98,12 +140,18 @@ function Seller({ onViewSeller, setCurrentPage }) {
   };
 
   const handleSuspendConfirm = (reason) => {
-    console.log('suspending seller:', suspendTarget._id, 'reason:', reason);
-
-    suspendSeller({
-      id: suspendTarget._id,
-      reason,
-    });
+    suspendSeller(
+      { id: suspendTarget._id, reason },
+      {
+        onSuccess: () => {
+          setSuspendTarget(null);
+          toast.success('Seller suspended successfully')
+        },
+        onError: (err) => {
+          toast.error(err?.response?.data?.message || 'Failed to suspend buyer')
+        },
+      }
+    );
 
     setSuspendTarget(null);
   };
@@ -111,6 +159,59 @@ function Seller({ onViewSeller, setCurrentPage }) {
   const handleSuspendCancel = () => {
     setSuspendTarget(null);
   };
+
+  // reactivate seller
+  const handleReactivateClick = (seller) => {
+    reactivateSeller(seller._id, {
+      onSuccess: () => {
+        toast.success("Seller reactivated successfully");
+      },
+      onError: (err) => {
+        toast.error(err?.response?.data?.message || 'Failed to suspend seller');
+      },
+    }
+    );
+  };
+
+  // stats
+  const sellerStats = [
+    {
+      title: "Total Sellers",
+      value: sellerStatsData?.totalSellers ?? 0,
+      icon: Store,
+      theme: "text-blue-600 bg-blue-50",
+      subTitle: "12.5% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Verified Sellers",
+      value: sellerStatsData?.verifiedSellers ?? 0,
+      icon: UserCheck,
+      theme: "text-emerald-600 bg-emerald-50",
+      subTitle: "9.3% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Active Sellers",
+      value: sellerStatsData?.activeSellers ?? 0,
+      icon: Zap,
+      theme: "text-amber-500 bg-amber-50",
+      subTitle: "10.8% from last week",
+      subTextColor: "text-green-600",
+      isPositive: true
+    },
+    {
+      title: "Suspended Sellers",
+      value: sellerStatsData?.suspendedSellers ?? 0,
+      icon: ShieldAlert,
+      theme: "text-red-500 bg-red-50",
+      subTitle: "2.6% from last week",
+      subTextColor: "text-red-500",
+      isPositive: false
+    }
+  ];
 
   if (isLoading) return <p className="p-10 text-center">Loading seller list....</p>;
   if (isError) return <p className="p-10 text-center text-red-500">Failed to load seller list</p>;
@@ -158,59 +259,32 @@ function Seller({ onViewSeller, setCurrentPage }) {
 
           {/* Search */}
           <div className="w-full">
-            <SearchBar placeholder="Search by name, email, phone or user ID..." />
+            <SearchBar
+              placeholder="Search by name, email, phone or user ID..."
+              value={search}
+              onChange={(value) => setSearch(value)}
+            />
           </div>
 
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
 
-            {/* Seller Type */}
-            <div className="w-full sm:w-45">
-              <FilterDropdown
-                label="All Seller Types"
-                options={[
-                  { label: "Car Dealership", value: "car_dealership" },
-                  { label: "Individual Seller", value: "individual_seller" },
-                  { label: "Vehicle Importer", value: "vehicle_importer" },
-                  { label: "Fleet Company", value: "fleet_company" },
-                  { label: "Rental Company", value: "rental_company" },
-                  { label: "Auction House", value: "auction_house" },
-                  { label: "Other", value: "other" },
-                ]}
-                value={selectedSellerType}
-                onChange={setSelectedSellerType}
-              />
-            </div>
-
-            {/* Status */}
-            <div className="w-full sm:w-45">
-              <FilterDropdown
-                label="All Status"
-                options={[
-                  { label: "Active", value: "active" },
-                  { label: "Pending", value: "pending" },
-                  { label: "Suspended", value: "suspended" },
-                  { label: "Inactive", value: "inactive" },
-                ]}
-                value={selectedStatus}
-                onChange={setSelectedStatus}
-              />
-            </div>
-
-            {/* Trade License */}
-            <div className="w-full sm:w-45">
-              <FilterDropdown
-                label="All Trade License"
-                options={[
-                  { label: "Verified", value: "verified" },
-                  { label: "Pending", value: "pending" },
-                  { label: "Expired", value: "expired" },
-                  { label: "Rejected", value: "rejected" },
-                ]}
-                value={selectedTradeLicense}
-                onChange={setSelectedTradeLicense}
-              />
-            </div>
+            {filterConfig.map(({ label, key, options }) => (
+              <div
+                key={key}
+                className="w-full sm:w-45"
+              >
+                <FilterDropdown
+                  label={label}
+                  options={options.map((opt) => ({
+                    label: opt,
+                    value: opt,
+                  }))}
+                  value={filters[key]}
+                  onChange={(value) => updateFilter(key, value)}
+                />
+              </div>
+            ))}
 
             {/* date selector */}
             <div className="flex-1 min-w-40">
@@ -224,15 +298,18 @@ function Seller({ onViewSeller, setCurrentPage }) {
               />
             </div>
 
-            {/* Filters Button */}
+            {/* clear btn */}
             <button
               type="button"
-              className="flex items-center justify-center gap-2 h-9.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-[#0B1E3D] bg-white hover:bg-slate-50 transition-colors"
-            >
-              <SlidersHorizontal size={16} />
-              Filters
+              onClick={() => {
+                setSearch("");
+                setFilters({});
+                setStartDate(null);
+                setEndDate(null);
+              }}
+              className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+              Clear Filters
             </button>
-
           </div>
 
         </div>
@@ -245,14 +322,15 @@ function Seller({ onViewSeller, setCurrentPage }) {
                 <th className="px-6 py-4 font-semibold ">Select</th>
                 <th className="px-6 py-4 font-semibold min-w-40">Seller ID</th>
                 <th className="px-6 py-4 font-semibold min-w-50">Seller</th>
+                <th className="px-6 py-4 font-medium min-w-50">Email/Phone</th>
                 <th className="px-6 py-4 font-medium min-w-55">Company Name</th>
                 <th className="px-6 py-4 font-medium min-w-35 pl-3">Business Type</th>
-                <th className="px-6 py-4 font-medium min-w-50">Email/Phone</th>
                 <th className="px-6 py-4 font-medium min-w-40 pr-0.5">Trade License No.</th>
-                <th className="px-6 py-4 font-medium min-w-35">Status</th>
                 <th className="px-6 py-4 font-medium min-w-30">Last Login</th>
                 <th className="px-6 py-4 font-medium min-w-30">Joined On</th>
                 <th className="px-6 py-4 font-medium min-w-30">Created By</th>
+                <th className="px-6 py-4 font-medium min-w-35">Acc Status</th>
+                <th className="px-6 py-4 font-medium min-w-35">Status</th>
                 <th className="px-6 py-4 font-medium min-w-40 text-center">Actions</th>
               </tr>
             </thead>
@@ -274,7 +352,7 @@ function Seller({ onViewSeller, setCurrentPage }) {
 
                     {/* seller id */}
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                      SLR - {seller._id ? seller._id.slice(-6).toUpperCase() : "--"}
+                      {seller.sellerId || "--"}
                     </td>
 
                     {/* seller */}
@@ -291,6 +369,16 @@ function Seller({ onViewSeller, setCurrentPage }) {
                       </div>
                     </td>
 
+                    {/* email */}
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-800 font-semibold">
+                        {seller.email || "---"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {seller.phone || "---"}
+                      </p>
+                    </td>
+
                     {/* company name */}
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium">
                       {seller.businessName || "--"}
@@ -303,36 +391,14 @@ function Seller({ onViewSeller, setCurrentPage }) {
                       </span>
                     </td>
 
-                    {/* email */}
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-800 font-semibold">
-                        {seller.email || "---"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {seller.phone || "---"}
-                      </p>
-                    </td>
-
                     {/* trade license num */}
                     <td className="px-6 py-4 text-sm">
                       {seller.licenseNumber || "---"}
                     </td>
 
-                    {/* status */}
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[12px] font-semibold
-                        ${seller.status === "approved" ? "bg-emerald-50 text-emerald-600 border-green-200"
-                            : seller.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-200"   // naya case add karna hoga — pehle "inactive" tha, jo exist hi nahi karta
-                              : "bg-red-50 text-red-600 border-red-200"}`}
-                      >
-                        {seller.status || "---"}
-                      </span>
-                    </td>
-
                     {/* last login */}
                     <td className="px-6 py-4 text-xs text-gray-600">
-                      {seller.lastLoginAt ? new Date(seller.lastLoginAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : "Never"}
+                      {seller.lastLoginAt ? new Date(seller.lastLoginAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : "---"}
                     </td>
 
                     {/* joined on */}
@@ -372,6 +438,29 @@ function Seller({ onViewSeller, setCurrentPage }) {
                       </span>
                     </td>
 
+                    {/* account status */}
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold 
+                      ${seller.accountStatus === "suspended"
+                          ? "bg-red-50 text-red-600 border border-red-100"
+                          : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        }`}>
+                        {seller.accountStatus === "active" ? "Active" : "Suspended"}
+                      </span>
+                    </td>
+
+                    {/* status */}
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border
+                        ${seller.status === "approved" ? "bg-emerald-50 text-emerald-600 border-green-100"
+                            : seller.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-100"
+                              : "bg-red-50 text-red-600 border-red-100"}`}
+                      >
+                        {seller.status === "approved" ? "Approved" : seller.status === "pending" ? "Pending" : "Rejected"}
+                      </span>
+                    </td>
+
                     {/* actions */}
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
@@ -389,12 +478,21 @@ function Seller({ onViewSeller, setCurrentPage }) {
                           <ShieldCheck size={16} />
                         </button>
 
-                        <button
-                          onClick={() => handleSuspendClick(seller)}
-                          className="rounded-lg border border-gray-200 p-1.5 text-red-600 hover:text-red-400"
-                        >
-                          <PauseCircle size={16} />
-                        </button>
+                        {seller.accountStatus === "suspended" ? (
+                          <button
+                            onClick={() => handleReactivateClick(seller)}
+                            className="rounded-lg border border-gray-200 p-1.5 text-green-700 hover:text-green-500"
+                          >
+                            <PlayCircle size={16} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSuspendClick(seller)}
+                            className="rounded-lg border border-gray-200 p-1.5 text-red-700 hover:text-red-500"
+                          >
+                            <PauseCircle size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -402,7 +500,7 @@ function Seller({ onViewSeller, setCurrentPage }) {
               ) : (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={13}
                     className="px-6 py-16 text-center"
                   >
                     <div className="flex flex-col items-center justify-center">

@@ -1,37 +1,65 @@
 
-import React from 'react';
-import { useState } from 'react';
-import { Users, CheckCircle2, UserCheck, UserX, ArrowUp, ArrowDown, SlidersHorizontal, Edit2, PauseCircle, ShieldCheck, X, } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, CheckCircle2, UserCheck, UserX, ArrowUp, ArrowDown, PlayCircle, Edit2, PauseCircle, ShieldCheck, X, } from 'lucide-react';
 import UserManagementHeader from './UserManagementHeader';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import DateRangePicker from '../SharedComponents/DateRangePicker';
-import { useBuyerStats, useGetAllBuyers, useSuspendBuyer, useToggleBuyerVerification } from '../../hooks/useBuyer';
-import { getPaginationRange } from '../utils/getPaginationRange';
 import SuspendModal from './Shared/SuspendModal';
 import toast from 'react-hot-toast';
+
+import { useBuyerStats, useGetAllBuyers, useReactivateBuyer, useSuspendBuyer, useToggleBuyerVerification } from '../../hooks/useBuyer';
+import { getPaginationRange } from '../utils/getPaginationRange';
 
 const filterConfig = [
   {
     label: 'Verification Status',
     key: 'verificationStatus',
-    options: ['All Verification Status', 'Verified', 'Unverified', 'Pending'],
+    options: ['All', 'Verified', 'Unverified'],
+  },
+  {
+    label: 'Account Status',
+    key: 'accountStatus',
+    options: ['All', 'Active', 'Suspended'],
   },
   {
     label: 'Status',
     key: 'status',
-    options: ['All Status', 'Active', 'Inactive', 'Suspended'],
-  },
-  {
-    label: 'KYC Status',
-    key: 'kycStatus',
-    options: ['All KYC Status', 'Verified', 'Pending', 'Rejected'],
+    options: ['All', 'Pending', 'Approved', 'Rejected'],
   },
 ];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+  const params = {};
+
+  if (filters.verificationStatus === 'Verified') params.isEmailVerified = 'true';
+  if (filters.verificationStatus === 'Unverified') params.isEmailVerified = 'false';
+
+  if (filters.accountStatus === 'Active') params.accountStatus = 'active';
+  if (filters.accountStatus === 'Suspended') params.accountStatus = 'suspended';
+
+  if (filters.status === 'Pending') params.status = 'pending';
+  if (filters.status === 'Approved') params.status = 'approved';
+  if (filters.status === 'Rejected') params.status = 'rejected';
+
+  if (search.trim()) params.search = search.trim();
+  if (startDate) params.startDate = startDate.toISOString();
+  if (endDate) params.endDate = endDate.toISOString();
+
+  return params;
+};
 
 function Buyer({ setCurrentPage, onViewBuyer }) {
 
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filters, setFilters] = useState({
+    verificationStatus: '',
+    accountStatus: '',
+    status: '',
+  });
+
   const [verificationTarget, setVerificationTarget] = useState(null);
   const [verificationError, setVerificationError] = useState("");
 
@@ -39,12 +67,27 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
+  const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+  const { data: buyerList, isLoading, isError } = useGetAllBuyers(page, 10, params);
   const { data: buyerStatsData } = useBuyerStats();
-  const { data: buyerList, isLoading, isError } = useGetAllBuyers(page);
   const { mutate: toggleVerification, isPending: isTogglingVerification } = useToggleBuyerVerification();
-  const { mutate: suspendBuyer, isPending } = useSuspendBuyer();
+  const { mutate: suspendBuyer } = useSuspendBuyer();
+  const { mutate: reactivateBuyer } = useReactivateBuyer();
 
   const totalPages = buyerList?.pagination?.totalPages || 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters, search, startDate, endDate]);
+
+  // debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleVerifyClick = (buyer) => {
     setVerificationTarget(buyer);
@@ -61,13 +104,6 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
       }
     );
   };
-
-  // filter drop down
-  const [filters, setFilters] = useState({
-    verificationStatus: 'All',
-    status: 'All',
-    kycStatus: 'All',
-  });
 
   const updateFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -97,6 +133,20 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
     setSuspendTarget(null);
   };
 
+  // reactivate buyer
+  const handleReactivateClick = (buyer) => {
+    reactivateBuyer(buyer._id, {
+      onSuccess: () => {
+        toast.success("Buyer reactivated successfully");
+      },
+      onError: (err) => {
+        toast.error(err?.response?.data?.message || 'Failed to suspend buyer');
+      },
+    }
+    );
+  };
+
+  // stats
   const buyerStats = [
     {
       title: "Total Buyers",
@@ -183,7 +233,11 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
 
           {/* Search */}
           <div className="w-full">
-            <SearchBar placeholder="Search by name, email, phone or user ID..." />
+            <SearchBar
+              placeholder="Search by name, email, phone or buyer ID..."
+              value={search}
+              onChange={(value) => setSearch(value)}
+            />
           </div>
 
           {/* Filters */}
@@ -219,15 +273,18 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
               />
             </div>
 
-            {/* Filters Button */}
+            {/* clear btn */}
             <button
               type="button"
-              className="flex items-center justify-center gap-2 h-9.5 px-4 border border-slate-300 rounded-lg text-sm font-medium text-[#0B1E3D] bg-white hover:bg-slate-50 transition-colors"
-            >
-              <SlidersHorizontal size={16} />
-              Filters
+              onClick={() => {
+                setSearch("");
+                setFilters({});
+                setStartDate(null);
+                setEndDate(null);
+              }}
+              className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+              Clear Filters
             </button>
-
           </div>
 
         </div>
@@ -245,8 +302,9 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                 <th className="px-6 py-4 font-medium min-w-40">Joined On</th>
                 <th className="px-6 py-4 font-medium min-w-40">Last Login</th>
                 <th className="px-6 py-4 font-medium min-w-30">Created By</th>
+                <th className="px-6 py-4 font-medium min-w-35">Acc Status</th>
                 <th className="px-6 py-4 font-medium min-w-30">Status</th>
-                <th className="px-6 py-4 font-medium  min-w-40 text-center">Actions</th>
+                <th className="px-6 py-4 font-medium min-w-40 text-center">Actions</th>
               </tr>
             </thead>
 
@@ -350,15 +408,26 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                       </span>
                     </td>
 
+                    {/* account status */}
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold 
+                      ${buyer.accountStatus === "suspended"
+                          ? "bg-red-50 text-red-600 border border-red-100"
+                          : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                        }`}>
+                        {buyer.accountStatus === "active" ? "Active" : "Suspended"}
+                      </span>
+                    </td>
+
                     {/* status */}
                     <td className="px-6 py-4">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[12px] font-semibold
-                        ${buyer.status === "approved" ? "bg-emerald-50 text-emerald-600 border-green-200"
-                            : buyer.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-200"
-                              : "bg-red-50 text-red-600 border-red-200"}`}
+                        className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border
+                        ${buyer.status === "approved" ? "bg-emerald-50 text-emerald-600 border-green-100"
+                            : buyer.status === "pending" ? "bg-amber-50 text-amber-600 border-amber-100"
+                              : "bg-red-50 text-red-600 border-red-100"}`}
                       >
-                        {buyer.status || "---"}
+                        {buyer.status === "approved" ? "Approved" : buyer.status === "pending" ? "Pending" : "Rejected"}
                       </span>
                     </td>
 
@@ -379,11 +448,21 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                           <ShieldCheck size={16} />
                         </button>
 
-                        <button
-                          onClick={() => handleSuspendClick(buyer)}
-                          className="rounded-lg border border-gray-200 p-1.5 text-red-700 hover:text-red-500">
-                          <PauseCircle size={16} />
-                        </button>
+                        {buyer.accountStatus === "suspended" ? (
+                          <button
+                            onClick={() => handleReactivateClick(buyer)}
+                            className="rounded-lg border border-gray-200 p-1.5 text-green-700 hover:text-green-500"
+                          >
+                            <PlayCircle size={16} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSuspendClick(buyer)}
+                            className="rounded-lg border border-gray-200 p-1.5 text-red-700 hover:text-red-500"
+                          >
+                            <PauseCircle size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

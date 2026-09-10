@@ -1,16 +1,27 @@
 
-import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Download, Filter, Calendar, Clock, Eye, Check, X, MoreHorizontal } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, XCircle, Download, Filter, Clock, Eye, Check, X, MoreHorizontal } from 'lucide-react';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 import QuickActionsCard from '../SharedComponents/QuickActionsCard';
 import NotesSection from '../SharedComponents/NotesSection';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
+import DateRangePicker from '../SharedComponents/DateRangePicker.jsx';
 import { toast } from 'react-hot-toast';
 
-import { useGetAllVehicles, useGetVehicleApprovalSummary, useReviewVehicle } from '../../hooks/useVehicle.js';
+import { useGetAllVehicles, useGetDistinctMakes, useGetVehicleApprovalSummary, useReviewVehicle } from '../../hooks/useVehicle.js';
 import { getPaginationRange } from '../utils/getPaginationRange.js';
 import { formatLabel } from '../utils/formatter.js';
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.makes) params.make = filters.makes;
+    if (filters.vehicleTypes) params.vehicleType = filters.vehicleTypes;
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
+};
 
 const columnConfig = {
     "all-requests": {
@@ -62,21 +73,28 @@ const columnConfig = {
 function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
 
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState();
     const [activeTab, setActiveTab] = useState("all-requests");
-    const { data: vehiclesList, isLoading, isError } = useGetAllVehicles(page, limit, activeTab);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [filters, setFilters] = useState({
+        makes: '',
+        vehicleTypes: '',
+    });
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: makesData } = useGetDistinctMakes();
+
+    const { data: vehiclesList, isLoading, isError } = useGetAllVehicles({ page, limit: 10, status: activeTab, ...params });
     const { mutate: reviewVehicle } = useReviewVehicle();
     const { data: approvalSummary } = useGetVehicleApprovalSummary();
-
-    const [selectedMake, setSelectedMake] = useState("");
-    const [selectedVehicleType, setSelectedVehicleType] = useState("");
-    const [selectedStatus, setSelectedStatus] = useState("");
 
     const [pendingId, setPendingId] = useState(null);
     const [rejectModal, setRejectModal] = useState({ open: false, vehicle: null });
     const [rejectReason, setRejectReason] = useState('');
 
-    const vehicles = vehiclesList?.vehicles || [];
     const totalPages = vehiclesList?.pagination?.totalPages || 1;
 
     const summary = approvalSummary?.data || {
@@ -86,8 +104,38 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
         rejected: 0,
     };
 
+    // filter drop-down
+    const filterConfig = [
+        {
+            label: 'Makes',
+            key: 'makes',
+            options: makesData?.makes || [],
+        },
+        {
+            label: 'Vehicle Types',
+            key: 'vehicleTypes',
+            options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+        },
+    ];
+
     const config = columnConfig[activeTab];
 
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, filters, search, startDate, endDate]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    // filter drop-down updater
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
 
     const handleApprove = (vehicleId) => {
         setPendingId(vehicleId);
@@ -205,70 +253,59 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* makes */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Makes"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedMake}
-                            onChange={setSelectedMake}
+                        <SearchBar
+                            placeholder="Search by make, model, year or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* vehicle */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Vehicle Types"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedVehicleType}
-                            onChange={setSelectedVehicleType}
-                        />
-                    </div>
-
-                    {/* status */}
-                    <div className="w-full sm:w-45">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedStatus}
-                            onChange={setSelectedStatus}
-                        />
-                    </div>
-
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
 
                     {/* Date Range */}
-                    <div className="w-full sm:w-auto flex items-center gap-2 h-9.5 px-3 md:px-4 border border-slate-300 rounded-lg bg-white text-[13px] md:text-sm text-slate-600">
-                        <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
-                        <span className="truncate">
-                            May 01, 2024 - May 31, 2024
-                        </span>
+                    <div className="">
+                        <DateRangePicker
+                            startDate={startDate}
+                            endDate={endDate}
+                            onChange={(update) => {
+                                setStartDate(update[0]);
+                                setEndDate(update[1]);
+                            }}
+                        />
                     </div>
 
-                    {/* Clear Filters */}
-                    <button className="text-xs md:text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch('');
+                            setFilters({ makes: '', vehicleTypes: '' });
+                            setStartDate(null);
+                            setEndDate(null);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
                 </div>
-
             </div>
 
             {/* main section */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 pb-6 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 pb-6 gap-6 items-start">
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">

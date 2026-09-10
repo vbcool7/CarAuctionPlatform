@@ -3,7 +3,11 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
-import { buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail } from '../utils/emailTemplates.js';
+import {
+    buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail,
+    buildBuyerSuspendedEmail, buildBuyerReactivatedEmail, buildSellerSuspendedEmail, buildSellerReactivatedEmail
+} from '../utils/emailTemplates.js';
+
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
 import { UAE_UTC_OFFSET_HOURS } from '../models/vehicleModelSchema.js';
@@ -335,13 +339,41 @@ export const getAllBuyers = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const [buyers, totalCount] = await Promise.all([
-            Buyer.find()
-                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status lastLoginAt createdAt createdBy isEmailVerified identityVerification.status identityVerification.documentType addressVerification.status addressVerification.documentType')
+        // filters
+        const filter = {};
+
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search, 'i');
+            filter.$or = [
+                { firstName: searchRegex },
+                { lastName: searchRegex },
+                { email: searchRegex },
+                { mobile: searchRegex },
+                { buyerId: searchRegex },
+            ];
+        }
+
+        if (req.query.isEmailVerified === 'true') filter.isEmailVerified = true; // verified buyers
+        if (req.query.isEmailVerified === 'false') filter.isEmailVerified = false; // un-verified buyers
+
+        if (req.query.accountStatus) filter.accountStatus = req.query.accountStatus;
+
+        if (req.query.status) filter.status = req.query.status;
+
+        if (req.query.startDate || req.query.endDate) {
+            filter.createdAt = {};
+            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate);
+            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate);
+        }
+
+        const [buyers, filteredCount, totalCount] = await Promise.all([
+            Buyer.find(filter)
+                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status accountStatus lastLoginAt createdAt createdBy isEmailVerified identityVerification.status identityVerification.documentType addressVerification.status addressVerification.documentType')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Buyer.countDocuments()
+            Buyer.countDocuments(filter),  // for filtered
+            Buyer.countDocuments()   // for un-filtered
         ]);
 
         res.status(200).json({
@@ -349,8 +381,9 @@ export const getAllBuyers = async (req, res) => {
             buyers,
             pagination: {
                 currentPage: page,
-                totalPages: Math.ceil(totalCount / limit),
+                totalPages: Math.ceil(filteredCount / limit),
                 totalCount,
+                filteredCount, // based on current filter
                 limit
             }
         });
@@ -536,7 +569,7 @@ export const buyerDocVerification = async (req, res) => {
     }
 };
 
-// suspend buyer 
+// suspend buyer
 export const suspendBuyer = async (req, res) => {
     try {
         const { id } = req.params;
@@ -568,6 +601,15 @@ export const suspendBuyer = async (req, res) => {
         buyer.suspendedAt = new Date();
         buyer.suspendedReason = reason.trim();
         await buyer.save();
+
+        // Send suspension email
+        const { subject, html } = buildBuyerSuspendedEmail(buyer.firstName, buyer.suspendedReason);
+        try {
+            await sendEmail(buyer.email, subject, html);
+
+        } catch (emailError) {
+            console.error("Suspension Email Error:", emailError);
+        }
 
         return res.status(200).json({
             success: true,
@@ -607,6 +649,15 @@ export const reactivateBuyer = async (req, res) => {
         buyer.suspendedAt = undefined;
         buyer.suspendedReason = undefined;
         await buyer.save();
+
+        // Send reactivation email
+        const { subject, html } = buildBuyerReactivatedEmail(buyer.firstName);
+        try {
+            await sendEmail(buyer.email, subject, html);
+
+        } catch (emailError) {
+            console.error("Reactivation Email Error:", emailError);
+        }
 
         return res.status(200).json({
             success: true,
@@ -773,13 +824,38 @@ export const getAllSellers = async (req, res) => {
 
         const filter = { isComplete: true };
 
-        const [sellers, totalCount] = await Promise.all([
+        if (req.query.search) {
+            const searchRegex = new RegExp(req.query.search, 'i');
+            filter.$or = [
+                { fullName: searchRegex },
+                { email: searchRegex },
+                { phone: searchRegex },
+                { sellerId: searchRegex },
+                { businessName: searchRegex },
+            ];
+        }
+
+        if (req.query.isEmailVerified === 'true') filter.isEmailVerified = true; // verified sellers
+        if (req.query.isEmailVerified === 'false') filter.isEmailVerified = false; // un-verified sellers
+
+        if (req.query.businessType) filter.businessType = req.query.businessType;
+        if (req.query.accountStatus) filter.accountStatus = req.query.accountStatus;
+        if (req.query.status) filter.status = req.query.status;
+
+        if (req.query.startDate || req.query.endDate) {
+            filter.createdAt = {};
+            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate);
+            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate);
+        }
+
+        const [sellers, filteredCount, totalCount] = await Promise.all([
             Seller.find(filter)
-                .select('fullName profileImage email phone businessName businessType licenseNumber status lastLoginAt createdAt createdBy isEmailVerified tradeLicense emiratesId bankStatement vatCertificate submittedAt')
+                .select('fullName profileImage email phone businessName businessType licenseNumber status accountStatus lastLoginAt createdAt createdBy isEmailVerified tradeLicense emiratesId bankStatement vatCertificate submittedAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Seller.countDocuments(filter)
+            Seller.countDocuments(filter),
+            Seller.countDocuments({ isComplete: true })   // for un-filtered
         ]);
 
         res.status(200).json({
@@ -787,8 +863,9 @@ export const getAllSellers = async (req, res) => {
             sellers,
             pagination: {
                 currentPage: page,
-                totalPages: Math.ceil(totalCount / limit),
+                totalPages: Math.ceil(filteredCount / limit),
                 totalCount,
+                filteredCount, // based on current filter
                 limit
             }
         });
@@ -977,7 +1054,144 @@ export const sellerDocVerification = async (req, res) => {
     }
 };
 
+// suspend seller
+export const suspendSeller = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Suspension reason is required"
+            });
+        }
+
+        const seller = await Seller.findById(id);
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        if (seller.accountStatus === 'suspended') {
+            return res.status(400).json({
+                success: false,
+                message: "Seller is already suspended"
+            });
+        }
+
+        seller.accountStatus = 'suspended';
+        seller.suspendedAt = new Date();
+        seller.suspendedReason = reason.trim();
+        await seller.save();
+
+        const { subject, html } = buildSellerSuspendedEmail(seller.fullName, seller.suspendedReason);
+        try {
+            await sendEmail(seller.email, subject, html);
+        } catch (emailError) {
+            console.error("Seller Suspension Email Error:", emailError);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Seller suspended successfully"
+        });
+
+    } catch (err) {
+        console.error("Suspend Seller Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// reactivate seller
+export const reactivateSeller = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const seller = await Seller.findById(id);
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        if (seller.accountStatus === 'active') {
+            return res.status(400).json({
+                success: false,
+                message: "Seller is already active"
+            });
+        }
+
+        seller.accountStatus = 'active';
+        seller.suspendedAt = undefined;
+        seller.suspendedReason = undefined;
+        await seller.save();
+
+        const { subject, html } = buildSellerReactivatedEmail(seller.fullName);
+        try {
+            await sendEmail(seller.email, subject, html);
+        } catch (emailError) {
+            console.error("Seller Reactivation Email Error:", emailError);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Seller reactivated successfully"
+        });
+
+    } catch (err) {
+        console.error("Reactivate Seller Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// seller stats
+export const getSellerStats = async (req, res) => {
+    try {
+        const [totalSellers, verifiedSellers, activeSellers, suspendedSellers] = await Promise.all([
+            Seller.countDocuments({ isComplete: true }),
+            Seller.countDocuments({ isEmailVerified: true, isComplete: true }),
+            Seller.countDocuments({ accountStatus: 'active', isComplete: true }),
+            Seller.countDocuments({ accountStatus: 'suspended', isComplete: true }),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            totalSellers,
+            verifiedSellers,
+            activeSellers,
+            suspendedSellers,
+        });
+
+    } catch (err) {
+        console.error("Get Seller Stats Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
 // ============================================ VEHICLES
+
+// get all makes from DB - for make filter (drop-down)
+export const getDistinctMakes = async (req, res) => {
+    try {
+        const makes = await Vehicle.distinct('make');
+        res.status(200).json({ success: true, makes: makes.sort() });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server Error Occurred" });
+    }
+};
 
 // get all vehicles
 export const getAllVehicles = async (req, res) => {
@@ -988,6 +1202,34 @@ export const getAllVehicles = async (req, res) => {
         const { status } = req.query;
 
         const filter = status && status !== 'all-requests' ? { adminStatus: status } : {};
+
+        // search 
+        if (req.query.search) {
+            const search = req.query.search.trim();
+            const searchRegex = new RegExp(search, 'i');
+            const orConditions = [
+                { make: searchRegex },
+                { model: searchRegex },
+                { vin: searchRegex },
+                { listingId: searchRegex },
+            ];
+
+            const numericSearch = Number(search);
+            if (!isNaN(numericSearch)) {
+                orConditions.push({ year: numericSearch });
+            }
+
+            filter.$or = orConditions;
+        }
+
+        if (req.query.vehicleType) filter.vehicleType = req.query.vehicleType;
+        if (req.query.make) filter.make = req.query.make;
+
+        if (req.query.startDate || req.query.endDate) {
+            filter.createdAt = {};
+            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate);
+            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate);
+        }
 
         const [vehicles, totalCount] = await Promise.all([
             Vehicle.find(filter)

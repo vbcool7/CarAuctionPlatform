@@ -1,16 +1,41 @@
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import API from "../api/axiosInstance";
 
-// get all vehicles
-export const useGetAllVehicles = (page = 1, limit = 10, status = 'all-requests') => {
+// get distinct makes (for filter dropdown)
+export const useGetDistinctMakes = () => {
     return useQuery({
-        queryKey: ['vehicles', page, limit, status],
+        queryKey: ['vehicle-makes'],
         queryFn: async () => {
-            const res = await API.get(`/admin/all-vehicles-list?page=${page}&limit=${limit}&status=${status}`);
+            const res = await API.get(`/admin/distinct-makes`);
             return res.data;
         },
-        keepPreviousData: true,
+        staleTime: 1000 * 60 * 10,
+    });
+};
+
+// get all vehicles
+export const useGetAllVehicles = (filters = {}) => {
+
+    const { page = 1, limit = 10, status = 'all-requests', search = '',
+        vehicleType = '', make = '', startDate = '', endDate = '',
+    } = filters;
+
+    return useQuery({
+        queryKey: ['vehicles', page, limit, status, search, vehicleType, make, startDate, endDate],
+        queryFn: async () => {
+            const params = new URLSearchParams({ page, limit, status });
+
+            if (search) params.set('search', search);
+            if (vehicleType) params.set('vehicleType', vehicleType);
+            if (make) params.set('make', make);
+            if (startDate) params.set('startDate', startDate);
+            if (endDate) params.set('endDate', endDate);
+
+            const res = await API.get(`/admin/all-vehicles-list?${params.toString()}`);
+            return res.data;
+        },
+        placeholderData: keepPreviousData,
     });
 };
 

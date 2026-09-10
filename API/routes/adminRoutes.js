@@ -5,8 +5,8 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 import {
     adminSignup, adminLogin, adminGet, adminLogout,
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
-    addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, 
-    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary,
+    addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
+    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes,
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats,
     getAllBids, getBidDetail, getBidStats
 } from '../controllers/adminController.js';
@@ -90,8 +90,12 @@ router.get('/all-sellers-list', authMiddleware(['admin']), getAllSellers);
 router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin']), toggleSellerVerification);
 router.get('/get-seller/:sellerId', authMiddleware(['admin']), getSellerById);
 router.patch('/seller-document-verification/:id/:document', authMiddleware(['admin']), sellerDocVerification);
+router.patch('/suspend-seller/:id', authMiddleware(['admin']), suspendSeller);
+router.patch('/reactivate-seller/:id', authMiddleware(['admin']), reactivateSeller);
+router.get('/seller-stats', authMiddleware(['admin']), getSellerStats);
 
 // ============================ VEHICLE
+router.get('/distinct-makes', authMiddleware(['admin']), getDistinctMakes);
 router.get('/all-vehicles-list', authMiddleware(['admin']), getAllVehicles);
 router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehiclesBySeller);
 router.get('/get-vehicle/:id', authMiddleware(['admin']), getVehicleById);

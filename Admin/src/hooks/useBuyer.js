@@ -1,5 +1,5 @@
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
@@ -26,14 +26,23 @@ export const useAddNewBuyer = () => {
 };
 
 // all buyers list
-export const useGetAllBuyers = (page = 1, limit = 10) => {
+export const useGetAllBuyers = (page = 1, limit = 10, filters = {}) => {
     return useQuery({
-        queryKey: ['buyers', page, limit],
+        queryKey: ['buyers', page, limit, filters],
         queryFn: async () => {
-            const res = await API.get(`/admin/all-buyers-list?page=${page}&limit=${limit}`);
+            const params = new URLSearchParams({ page, limit });
+
+            if(filters.search) params.append('search', filters.search);
+            if(filters.isEmailVerified !== undefined) params.append('isEmailVerified', filters.isEmailVerified);
+            if (filters.accountStatus) params.append('accountStatus', filters.accountStatus);
+            if (filters.status) params.append('status', filters.status);
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+
+            const res = await API.get(`/admin/all-buyers-list?${params}`);
             return res.data;
         },
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -101,7 +110,7 @@ export const useSuspendBuyer = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['buyers'] });
-            queryClient.invalidateQueries({ queryKey: ['buyerStats'] }); // stats-cards bhi turant refresh honi chahiye (Active/Suspended count badlega)
+            queryClient.invalidateQueries({ queryKey: ['buyerStats'] });
         },
         onError: (err) => {
             console.error('Suspend buyer failed:', err);
@@ -111,10 +120,19 @@ export const useSuspendBuyer = () => {
 
 // reactive buyer
 export const useReactivateBuyer = () => {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async (id) => {
             const response = await API.patch(`/admin/reactivate-buyer/${id}`);
             return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['buyers'] });
+            queryClient.invalidateQueries({ queryKey: ['buyerStats'] }); 
+        },
+        onError: (err) => {
+            console.error('Reactivate buyer failed:', err);
         },
     });
 };

@@ -839,3 +839,615 @@ export const reUploadSellerDocumentEmail = (email, document, rejectionReason, li
     `;
     return { subject, html };
 };
+
+// buyer account suspended
+export const buildBuyerSuspendedEmail = (firstName, suspendedReason) => {
+    const subject = "Your BidDrive Buyer Account Has Been Suspended";
+
+    const html = `
+    <div style="
+        max-width: 550px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    ">
+
+        <!-- Header -->
+        <div style="
+            background-color: #0B1E3D;
+            padding: 22px;
+            text-align: center;
+        ">
+            <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 26px;
+            ">
+                Bid<span style="color: #D97706;">Drive</span>
+            </h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px;">
+
+            <h2 style="
+                margin: 0 0 15px;
+                font-size: 22px;
+                color: #0B1E3D;
+            ">
+                Account Suspended
+            </h2>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.6;
+            ">
+                Hi ${firstName},
+                <br /><br />
+                Your BidDrive buyer account has been suspended by our
+                administration team.
+            </p>
+
+            <!-- Suspension Details -->
+            <div style="
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 18px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0 0 12px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #475569;
+                ">
+                    SUSPENSION DETAILS
+                </p>
+
+                <p style="
+                    margin: 8px 0;
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.5;
+                ">
+                    <strong>Reason:</strong>
+                    ${suspendedReason}
+                </p>
+
+            </div>
+
+            <!-- Notice -->
+            <div style="
+                background-color: #fff7ed;
+                border-left: 4px solid #D97706;
+                padding: 14px 16px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0;
+                    color: #9a3412;
+                    font-size: 13px;
+                    line-height: 1.6;
+                ">
+                    While your account is suspended, you will not be able
+                    to log in to your BidDrive account or access buyer
+                    account features.
+                </p>
+
+            </div>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 13px;
+                line-height: 1.6;
+            ">
+                If you believe this suspension was made in error or need
+                further clarification, please contact our support team.
+                We will notify you once your account has been reactivated.
+            </p>
+
+            <p style="
+                margin: 22px 0 0;
+                color: #475569;
+                font-size: 13px;
+            ">
+                Regards,<br />
+                <strong>BidDrive Team</strong>
+            </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="
+            padding: 15px;
+            text-align: center;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        ">
+            <p style="
+                margin: 0;
+                color: #94a3b8;
+                font-size: 11px;
+            ">
+                © ${new Date().getFullYear()} BidDrive. All rights reserved.
+            </p>
+        </div>
+
+    </div>
+    `;
+
+    return { subject, html };
+};
+
+// buyer account reactivated
+export const buildBuyerReactivatedEmail = (firstName) => {
+    const subject = "Your BidDrive Buyer Account Has Been Reactivated";
+
+    const html = `
+    <div style="
+        max-width: 550px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    ">
+
+        <!-- Header -->
+        <div style="
+            background-color: #0B1E3D;
+            padding: 22px;
+            text-align: center;
+        ">
+            <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 26px;
+            ">
+                Bid<span style="color: #D97706;">Drive</span>
+            </h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px;">
+
+            <h2 style="
+                margin: 0 0 15px;
+                font-size: 22px;
+                color: #0B1E3D;
+            ">
+                Account Reactivated
+            </h2>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.6;
+            ">
+                Hi ${firstName},
+                <br /><br />
+                Good news! Your BidDrive buyer account has been
+                reactivated by our administration team.
+            </p>
+
+            <!-- Account Status -->
+            <div style="
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 18px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0 0 12px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #475569;
+                ">
+                    ACCOUNT STATUS
+                </p>
+
+                <p style="
+                    margin: 8px 0;
+                    font-size: 14px;
+                    color: #475569;
+                ">
+                    <strong>Status:</strong>
+                    <span style="
+                        color: #16a34a;
+                        font-weight: bold;
+                    ">
+                        Active
+                    </span>
+                </p>
+
+            </div>
+
+            <!-- Notice -->
+            <div style="
+                background-color: #f0fdf4;
+                border-left: 4px solid #16a34a;
+                padding: 14px 16px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0;
+                    color: #166534;
+                    font-size: 13px;
+                    line-height: 1.6;
+                ">
+                    Your account is now active. You can log in and
+                    continue using BidDrive buyer services.
+                </p>
+
+            </div>
+
+            <!-- Login Button -->
+            <div style="text-align: center; margin-bottom: 25px;">
+                <a
+                    href="${process.env.LOGIN_URL}"
+                    style="
+                        display: inline-block;
+                        background-color: #D97706;
+                        color: #ffffff;
+                        text-decoration: none;
+                        padding: 12px 25px;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        font-weight: bold;
+                    "
+                >
+                    Login to Buyer Account
+                </a>
+            </div>
+
+            <p style="
+                margin: 22px 0 0;
+                color: #475569;
+                font-size: 13px;
+            ">
+                Welcome back!<br /><br />
+                Regards,<br />
+                <strong>BidDrive Team</strong>
+            </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="
+            padding: 15px;
+            text-align: center;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        ">
+            <p style="
+                margin: 0;
+                color: #94a3b8;
+                font-size: 11px;
+            ">
+                © ${new Date().getFullYear()} BidDrive. All rights reserved.
+            </p>
+        </div>
+
+    </div>
+    `;
+
+    return { subject, html };
+};
+
+// seller account suspended
+export const buildSellerSuspendedEmail = (fullName, suspendedReason) => {
+    const subject = "Your BidDrive Seller Account Has Been Suspended";
+
+    const html = `
+    <div style="
+        max-width: 550px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    ">
+
+        <!-- Header -->
+        <div style="
+            background-color: #0B1E3D;
+            padding: 22px;
+            text-align: center;
+        ">
+            <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 26px;
+            ">
+                Bid<span style="color: #D97706;">Drive</span>
+            </h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px;">
+
+            <h2 style="
+                margin: 0 0 15px;
+                font-size: 22px;
+                color: #0B1E3D;
+            ">
+                Account Suspended
+            </h2>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.6;
+            ">
+                Hi ${fullName},
+                <br /><br />
+                Your BidDrive seller account has been suspended by our
+                administration team.
+            </p>
+
+            <!-- Suspension Details -->
+            <div style="
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 18px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0 0 12px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #475569;
+                ">
+                    SUSPENSION DETAILS
+                </p>
+
+                <p style="
+                    margin: 8px 0;
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.5;
+                ">
+                    <strong>Reason:</strong>
+                    ${suspendedReason}
+                </p>
+
+            </div>
+
+            <!-- Notice -->
+            <div style="
+                background-color: #fff7ed;
+                border-left: 4px solid #D97706;
+                padding: 14px 16px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0;
+                    color: #9a3412;
+                    font-size: 13px;
+                    line-height: 1.6;
+                ">
+                    While your account is suspended, you will not be able
+                    to log in to your BidDrive account or access seller
+                    account features.
+                </p>
+
+            </div>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 13px;
+                line-height: 1.6;
+            ">
+                If you believe this suspension was made in error or need
+                further clarification, please contact our support team.
+                We will notify you once your account has been reactivated.
+            </p>
+
+            <p style="
+                margin: 22px 0 0;
+                color: #475569;
+                font-size: 13px;
+            ">
+                Regards,<br />
+                <strong>BidDrive Team</strong>
+            </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="
+            padding: 15px;
+            text-align: center;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        ">
+            <p style="
+                margin: 0;
+                color: #94a3b8;
+                font-size: 11px;
+            ">
+                © ${new Date().getFullYear()} BidDrive. All rights reserved.
+            </p>
+        </div>
+
+    </div>
+    `;
+
+    return { subject, html };
+};
+
+// seller account reactivated
+export const buildSellerReactivatedEmail = (fullName) => {
+    const subject = "Your BidDrive Seller Account Has Been Reactivated";
+
+    const html = `
+    <div style="
+        max-width: 550px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+    ">
+
+        <!-- Header -->
+        <div style="
+            background-color: #0B1E3D;
+            padding: 22px;
+            text-align: center;
+        ">
+            <h1 style="
+                margin: 0;
+                color: #ffffff;
+                font-size: 26px;
+            ">
+                Bid<span style="color: #D97706;">Drive</span>
+            </h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px;">
+
+            <h2 style="
+                margin: 0 0 15px;
+                font-size: 22px;
+                color: #0B1E3D;
+            ">
+                Account Reactivated
+            </h2>
+
+            <p style="
+                margin: 0 0 20px;
+                color: #64748b;
+                font-size: 14px;
+                line-height: 1.6;
+            ">
+                Hi ${fullName},
+                <br /><br />
+                Good news! Your BidDrive seller account has been
+                reactivated by our administration team.
+            </p>
+
+            <!-- Account Status -->
+            <div style="
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 18px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0 0 12px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #475569;
+                ">
+                    ACCOUNT STATUS
+                </p>
+
+                <p style="
+                    margin: 8px 0;
+                    font-size: 14px;
+                    color: #475569;
+                ">
+                    <strong>Status:</strong>
+                    <span style="
+                        color: #16a34a;
+                        font-weight: bold;
+                    ">
+                        Active
+                    </span>
+                </p>
+
+            </div>
+
+            <!-- Notice -->
+            <div style="
+                background-color: #f0fdf4;
+                border-left: 4px solid #16a34a;
+                padding: 14px 16px;
+                margin-bottom: 25px;
+            ">
+
+                <p style="
+                    margin: 0;
+                    color: #166534;
+                    font-size: 13px;
+                    line-height: 1.6;
+                ">
+                    Your account is now active. You can log in and
+                    continue using BidDrive seller services.
+                </p>
+
+            </div>
+
+            <!-- Login Button -->
+            <div style="text-align: center; margin-bottom: 25px;">
+                <a
+                    href="${process.env.LOGIN_URL}"
+                    style="
+                        display: inline-block;
+                        background-color: #D97706;
+                        color: #ffffff;
+                        text-decoration: none;
+                        padding: 12px 25px;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        font-weight: bold;
+                    "
+                >
+                    Login to Seller Account
+                </a>
+            </div>
+
+            <p style="
+                margin: 22px 0 0;
+                color: #475569;
+                font-size: 13px;
+            ">
+                Welcome back!<br /><br />
+                Regards,<br />
+                <strong>BidDrive Team</strong>
+            </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="
+            padding: 15px;
+            text-align: center;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+        ">
+            <p style="
+                margin: 0;
+                color: #94a3b8;
+                font-size: 11px;
+            ">
+                © ${new Date().getFullYear()} BidDrive. All rights reserved.
+            </p>
+        </div>
+
+    </div>
+    `;
+
+    return { subject, html };
+};

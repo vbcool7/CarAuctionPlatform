@@ -25,23 +25,8 @@ const DateRangePicker = ({
                 onChange={onChange}
                 placeholderText={placeholder}
                 dateFormat="MMM dd, yyyy"
-                className="
-                    w-full
-                    h-10
-                    pl-10
-                    pr-3
-                    bg-white
-                    border
-                    border-slate-300
-                    rounded-lg
-                    text-sm
-                    text-[#0B1E3D]
-                    placeholder:text-slate-400
-                    outline-none
-                    hover:bg-slate-50
-                    transition-colors
-                "
-                calendarClassName="rounded-xl shadow-lg border-slate-200"
+                className=" w-full py-2 pl-8.5 pr-3 border border-slate-300 rounded-lg bg-white text-sm text-slate-500 hover:bg-slate-50 placeholder:text-slate-500 outline-none transition-colors truncate cursor-pointer"
+                calendarClassName="rounded-xl shadow-lg border-slate-200 "
             />
         </div>
     );
