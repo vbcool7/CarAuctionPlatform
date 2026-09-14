@@ -4,6 +4,7 @@ import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
+import mongoose from 'mongoose';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
 import { createNotification } from '../services/notificationService.js';
@@ -145,6 +146,13 @@ export const runFixedPriceExpiry = async () => {
 };
 
 // get seller vehicles that are in auction stage 
+const TAB_STATUS_MAP = {
+    active: 'live',
+    scheduled: 'upcoming',
+    ended: { $in: ['sold', 'unsold', 'reserve-not-met'] },
+    canceled: 'canceled'
+};
+
 export const getMyAuctions = async (req, res) => {
     try {
         const sellerId = req.user.id;
@@ -152,30 +160,78 @@ export const getMyAuctions = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const filter = {
-            sellerId,
-            adminStatus: 'approved',
-            auctionStatus: { $in: ['upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'] }
+        const { tab = 'active', search, auctionType, sortBy } = req.query;
+
+        if (!TAB_STATUS_MAP[tab]) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid tab: ${tab}. Must be one of active, scheduled, ended, canceled`
+            });
+        }
+
+        const baseFilter = {
+            sellerId: new mongoose.Types.ObjectId(sellerId),
+            adminStatus: 'approved'
         };
 
-        const [vehicles, totalCount] = await Promise.all([
+        // filter for the currently requested tab
+        const filter = { ...baseFilter, auctionStatus: TAB_STATUS_MAP[tab] };
+
+        if (auctionType && auctionType !== 'all') {
+            filter.auctionType = auctionType; // 'live' | 'timed'
+        }
+
+        if (search && search.trim()) {
+            const term = search.trim();
+            const regex = new RegExp(term, 'i');
+
+            const orConditions = [
+                { make: regex },
+                { model: regex },
+                { vin: regex },
+                { listingId: regex }
+            ];
+
+            if (!isNaN(term)) {
+                orConditions.push({ year: Number(term) });
+            }
+
+            filter.$or = orConditions;
+        }
+
+        const sortStage = sortBy === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+
+        const countPromises = Object.keys(TAB_STATUS_MAP).map((tabKey) =>
+            Vehicle.countDocuments({ ...baseFilter, auctionStatus: TAB_STATUS_MAP[tabKey] })
+        );
+
+
+        const [vehicles, totalCount, ...tabCounts] = await Promise.all([
             Vehicle.find(filter)
-                .sort({ createdAt: -1 })
+                .sort(sortStage)
                 .skip(skip)
                 .limit(limit),
-            Vehicle.countDocuments(filter)
+            Vehicle.countDocuments(filter),
+            ...countPromises
         ]);
+ 
+        const counts = Object.keys(TAB_STATUS_MAP).reduce((acc, tabKey, idx) => {
+            acc[tabKey] = tabCounts[idx];
+            return acc;
+        }, {});
 
-        return res.status(200).json({
+         return res.status(200).json({
             success: true,
             count: vehicles.length,
             vehicles,
+            tabCounts: counts, 
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalCount / limit),
                 totalCount,
                 limit
-            }
+            },
+            ...(vehicles.length === 0 && { message: 'No auctions found' })
         });
 
     } catch (err) {

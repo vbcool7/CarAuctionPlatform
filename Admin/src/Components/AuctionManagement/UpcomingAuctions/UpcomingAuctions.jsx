@@ -1,60 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalendarDays, Clock3, CalendarRange, CalendarCheck, Tag, ArrowUp, Eye, MoreVertical } from 'lucide-react';
 import AuctionsHeader from '../Shared/AuctionsHeader';
 import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import UpcomingAuctionsCalender from './UpcomingAuctionsCalender';
 
-import { allAuctionData } from '../../Data';
-import { useGetAllAuctions } from '../../../hooks/useAuction';
+import { useGetAllAuctions, useGetUpcomingAuctionStats } from '../../../hooks/useAuction';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { formatLabel } from '../../utils/formatter';
 import { UseCountDown } from '../../SharedComponents/UseCountDown';
-
-
-const upcomingAuctionStats = [
-    {
-        title: "Total Upcoming",
-        value: "15",
-        trend: "8.7%",
-        icon: CalendarDays,
-        theme: "bg-violet-100",
-        iconColor: "text-violet-600",
-    },
-    {
-        title: "Starting Today",
-        value: "3",
-        trend: "20%",
-        icon: Clock3,
-        theme: "bg-green-100",
-        iconColor: "text-green-600",
-    },
-    {
-        title: "Starting This Week",
-        value: "7",
-        trend: "12.5%",
-        icon: CalendarRange,
-        theme: "bg-amber-100",
-        iconColor: "text-amber-600",
-    },
-    {
-        title: "Starting This Month",
-        value: "15",
-        trend: "15.3%",
-        icon: CalendarCheck,
-        theme: "bg-blue-100",
-        iconColor: "text-blue-600",
-    },
-    {
-        title: "Avg. Starting Price",
-        value: "$18,650",
-        trend: "5.6%",
-        icon: Tag,
-        theme: "bg-rose-100",
-        iconColor: "text-rose-500",
-    },
-];
 
 // tabs
 const tabs = [
@@ -203,17 +158,107 @@ function UpcomingAuctionRow({ auction, onSelectVehicle }) {
     );
 }
 
+const filterConfig = [
+    {
+        label: 'All Vehicle Type',
+        key: 'vehicleType',
+        options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+    },
+    {
+        label: 'All Categories',
+        key: 'fuelType',
+        options: ['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid', 'cng', 'lpg']
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.vehicleType) params.vehicleType = filters.vehicleType;
+
+    if (search) params.search = search;
+    return params;
+};
+
 function UpcomingAuctions({ onSelectVehicle, setCurrentPage }) {
 
-    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState("all-upcoming");
-    const [selectedType, setSelectedType] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        vehicleType: '',
+        fuelType: '',
+    });
 
-    const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, 'upcoming', dateRangeMap[activeTab]);
+    const params = mapFiltersToParams(filters, debouncedSearch);
+
+    const { data: upcomingStats } = useGetUpcomingAuctionStats();
+    const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, status: 'upcoming', dateRange: dateRangeMap[activeTab], ...params });
 
     const allAuctionData = allAuctions?.vehicles || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
+    const statsData = upcomingStats?.data;
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, filters, search]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+     
+    // stats
+    const upcomingAuctionStats = [
+        {
+            title: "Total Upcoming",
+            value: statsData?.totalUpcoming ?? 0,
+            trend: "8.7%",
+            icon: CalendarDays,
+            theme: "bg-violet-100",
+            iconColor: "text-violet-600",
+        },
+        {
+            title: "Starting Today",
+            value: statsData?.startingToday ?? 0,
+            trend: "20%",
+            icon: Clock3,
+            theme: "bg-green-100",
+            iconColor: "text-green-600",
+        },
+        {
+            title: "Starting This Week",
+            value: statsData?.startingThisWeek ?? 0,
+            trend: "12.5%",
+            icon: CalendarRange,
+            theme: "bg-amber-100",
+            iconColor: "text-amber-600",
+        },
+        {
+            title: "Starting This Month",
+            value: statsData?.startingThisMonth ?? 0,
+            trend: "15.3%",
+            icon: CalendarCheck,
+            theme: "bg-blue-100",
+            iconColor: "text-blue-600",
+        },
+        {
+            title: "Avg. Starting Price",
+            value: `AED ${(statsData?.avgStartingPrice ?? 0).toLocaleString()}`,
+            trend: "15.3%",
+            icon: Tag,
+            theme: "bg-rose-100",
+            iconColor: "text-rose-500",
+        },
+    ];
 
     if (isLoading) return <p className="p-10 text-center">Loading upcoming auctions list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load upcoming auctions list</p>;
@@ -274,72 +319,46 @@ function UpcomingAuctions({ onSelectVehicle, setCurrentPage }) {
 
             {/* Search / Filter */}
             <div className="my-6 bg-white border border-slate-200 rounded-xl p-4 space-y-4">
-
-                {/* Row 1 */}
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* Status */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
+                        <SearchBar
+                            placeholder="Search by make, model, year or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* Type */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Type"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
-                        />
-                    </div>
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
 
-                    {/* Category */}
-                    <div className="w-full sm:w-45">
-                        <FilterDropdown
-                            label="All Categories"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
-                        />
-                    </div>
-
-                </div>
-
-                {/* Row 2 */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-
-                    {/* Date Range */}
-                    <div className="flex items-center gap-2 h-11 px-4 border border-slate-300 rounded-lg bg-white text-sm text-slate-600">
-                        <span>📅</span>
-                        <span>May 01, 2024 - May 31, 2024</span>
-                    </div>
-
-                    {/* Clear Filters */}
-                    <button className="text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch("");
+                            setFilters({ vehicleType: '', fuelType: '' });
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
-
                 </div>
-
             </div>
 
             {/* main section */}
@@ -394,8 +413,18 @@ function UpcomingAuctions({ onSelectVehicle, setCurrentPage }) {
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500">
-                                                No auctions found.
+                                            <td
+                                                colSpan={8}
+                                                className="px-6 py-12 text-center"
+                                            >
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <p className="text-sm font-medium text-gray-500">
+                                                        No Data Found
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        There are no auctions records available.
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

@@ -1,5 +1,5 @@
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import API from '../api/axiosInstance';
@@ -46,14 +46,20 @@ export const useVehicleStats = () => {
 };
 
 // all seller vehicles
-export const useSellerVehicles = (page=1, limit=10) => {
+export const useSellerVehicles = ({ page = 1, limit = 10, search = '', status = 'all', auctionType = 'all', sortBy = 'newest' } = {}) => {
     return useQuery({
-        queryKey: ['sellerVehicles', page, limit],
-        queryFn: async() => {
-            const res = await API.get(`/vehicle/get-my-vehicles?page=${page}&limit=${limit}`);
+        queryKey: ['sellerVehicles', page, limit, search, status, auctionType, sortBy],
+        queryFn: async () => {
+            const params = new URLSearchParams({ page, limit, sortBy });
+
+            if (search.trim()) params.append('search', search.trim());
+            if (status !== 'all') params.append('status', status);
+            if (auctionType !== 'all') params.append('auctionType', auctionType);
+
+            const res = await API.get(`/vehicle/get-my-vehicles?${params.toString()}`);
             return res.data;
         },
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -61,7 +67,7 @@ export const useSellerVehicles = (page=1, limit=10) => {
 export const useVehicleDetail = (id) => {
     return useQuery({
         queryKey: ['vehicleDetail', id],
-        queryFn: async() => {
+        queryFn: async () => {
             const res = await API.get(`/vehicle/get-vehicle-detail/${id}`);
             return res.data;
         },

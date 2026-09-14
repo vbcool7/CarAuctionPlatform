@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { DollarSign, Gavel, Wallet, TrendingUp, ArrowUp, Trophy, CheckCircle, XCircle, MoreVertical, Eye } from 'lucide-react';
 import AuctionsHeader from '../Shared/AuctionsHeader';
@@ -7,45 +7,10 @@ import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 
-import { allAuctionData } from '../../Data';
 import { getPaginationRange } from '../../utils/getPaginationRange';
-import { useGetAllAuctions } from '../../../hooks/useAuction';
+import { useGetAllAuctions, useGetCompletedAuctionStats } from '../../../hooks/useAuction';
 import { formatLabel } from '../../utils/formatter';
-
-const completedAuctionStats = [
-    {
-        title: "Total Completed Auctions",
-        value: "28",
-        trend: "21.7%",
-        icon: Trophy,
-        theme: "bg-violet-100",
-        iconColor: "text-violet-600",
-    },
-    {
-        title: "Sold Auctions",
-        value: "22",
-        trend: "18.6%",
-        icon: CheckCircle,
-        theme: "bg-green-100",
-        iconColor: "text-green-600",
-    },
-    {
-        title: "Unsold Auctions",
-        value: "6",
-        trend: "14.3%",
-        icon: XCircle,
-        theme: "bg-red-100",
-        iconColor: "text-red-600",
-    },
-    {
-        title: "Reserve Not Met",
-        value: "6",
-        trend: "14.3%",
-        icon: XCircle,
-        theme: "bg-red-100",
-        iconColor: "text-red-600",
-    },
-];
+import DateRangePicker from '../../SharedComponents/DateRangePicker';
 
 const completedHighlights = [
     {
@@ -120,6 +85,30 @@ const statusMap = {
     "sold": "sold",
     "unsold": "unsold",
     "reserve-not-met": "reserve-not-met",
+};
+
+const filterConfig = [
+    {
+        label: 'All Vehicle Type',
+        key: 'vehicleType',
+        options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+    },
+    {
+        label: 'All Categories',
+        key: 'fuelType',
+        options: ['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid', 'cng', 'lpg']
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.vehicleType) params.vehicleType = filters.vehicleType;
+
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
 };
 
 function CompletedAuctionRow({ auction, onSelectVehicle }) {
@@ -347,18 +336,82 @@ function CompletedAuctions({ onSelectVehicle, setCurrentPage }) {
 
     const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState("all completed");
-    const [selectedStatus, setSelectedStatus] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [selectedType, setSelectedType] = useState("");
-    const [selectedDate, setSelectedDate] = useState(new Date("2026-05-20"));
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        vehicleType: '',
+        fuelType: '',
+    });
 
-    const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, statusMap[activeTab]);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState(null);
+
+    // for side card
+    const [selectedDate, setSelectedDate] = useState();
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: completedStats } = useGetCompletedAuctionStats();
+    const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, status: statusMap[activeTab], ...params });
 
     const allAuctionData = allAuctions?.vehicles || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
+    const statsData = completedStats?.data;
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, filters, search, startDate, endDate]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
 
     if (isLoading) return <p className="p-10 text-center">Loading completed auctions list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load completed auctions list</p>;
+
+    // stats
+    const completedAuctionStats = [
+        {
+            title: "Total Completed Auctions",
+            value: statsData?.totalCompleted,
+            trend: "21.7%",
+            icon: Trophy,
+            theme: "bg-violet-100",
+            iconColor: "text-violet-600",
+        },
+        {
+            title: "Sold Auctions",
+            value: statsData?.soldAuctions,
+            trend: "18.6%",
+            icon: CheckCircle,
+            theme: "bg-green-100",
+            iconColor: "text-green-600",
+        },
+        {
+            title: "Unsold Auctions",
+            value: statsData?.unsoldAuctions,
+            trend: "14.3%",
+            icon: XCircle,
+            theme: "bg-red-100",
+            iconColor: "text-red-600",
+        },
+        {
+            title: "Reserve Not Met",
+            value: statsData?.reserveNotMet,
+            trend: "14.3%",
+            icon: XCircle,
+            theme: "bg-red-100",
+            iconColor: "text-red-600",
+        },
+    ];
 
     const highlightedDates = [
         {
@@ -437,66 +490,58 @@ function CompletedAuctions({ onSelectVehicle, setCurrentPage }) {
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* Category */}
-                    <div className="w-full sm:w-45">
-                        <FilterDropdown
-                            label="All Categories"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
+                        <SearchBar
+                            placeholder="Search by make, model, year or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* Type */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Type"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
-                        />
-                    </div>
-
-                    {/* status */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedStatus}
-                            onChange={setSelectedStatus}
-                        />
-                    </div>
-
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 {/* Row 2 */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
 
                     {/* Date Range */}
-                    <div className="flex items-center gap-2 h-11 px-4 border border-slate-300 rounded-lg bg-white text-sm text-slate-600">
-                        <span>📅</span>
-                        <span>May 01, 2024 - May 31, 2024</span>
-                    </div>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={(update) => {
+                            setStartDate(update[0]);
+                            setEndDate(update[1]);
+                        }}
+                    />
 
-                    {/* Clear Filters */}
-                    <button className="text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch("");
+                            setFilters({ vehicleType: '', fuelType: '' });
+                            setStartDate(null);
+                            setEndDate(null);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
-
                 </div>
-
             </div>
 
             {/* main section */}
@@ -554,10 +599,17 @@ function CompletedAuctions({ onSelectVehicle, setCurrentPage }) {
                                     ) : (
                                         <tr>
                                             <td
-                                                colSpan={10}
-                                                className="px-6 py-10 text-center text-sm text-gray-500"
+                                                colSpan={8}
+                                                className="px-6 py-12 text-center"
                                             >
-                                                No completed auctions found.
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <p className="text-sm font-medium text-gray-500">
+                                                        No Data Found
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        There are no auctions records available.
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

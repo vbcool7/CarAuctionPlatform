@@ -4,13 +4,23 @@ import API from "../api/axiosInstance";
 import toast from "react-hot-toast";
 
 // get all auction + live + upcoming + completed + cancel
-export const useGetAllAuctions = (page = 1, limit = 10, status = 'all', dateRange = null) => {
+export const useGetAllAuctions = (filters = {}) => {
+    const { page = 1, limit = 10, status = 'all', dateRange = null, search = '', vehicleType = '', fuelType = '', startDate = '', endDate = '', sortBy = '',} = filters;
+
     return useQuery({
-        queryKey: ['allAuctions', page, limit, status, dateRange],
+        queryKey: ['allAuctions', page, limit, status, dateRange, search, vehicleType, fuelType, startDate, endDate, sortBy],
         queryFn: async () => {
             const params = new URLSearchParams({ page, limit });
+
             if (status && status !== 'all') params.append('status', status);
             if (dateRange) params.append('dateRange', dateRange);
+            if (search) params.append('search', search);
+            if (vehicleType) params.append('vehicleType', vehicleType);
+            if (fuelType) params.append('fuelType', fuelType);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (sortBy) params.append('sortBy', sortBy);
+
             const res = await API.get(`/admin/all-auctions?${params.toString()}`);
             return res.data;
         },
@@ -38,6 +48,8 @@ export const useGetAllAuctionStats = () => {
             const res = await API.get('/admin/all-auction-stats');
             return res.data;
         },
+        refetchInterval: 10000, 
+        refetchIntervalInBackground: false,
     });
 };
 
@@ -49,6 +61,8 @@ export const useGetLiveAuctionStats = () => {
             const res = await API.get('/admin/live-auction-stats');
             return res.data;
         },
+        refetchInterval: 10000, 
+        refetchIntervalInBackground: false,
     });
 };
 
@@ -60,6 +74,34 @@ export const useGetUpcomingAuctionStats = () => {
             const res = await API.get("/admin/upcoming-auction-stats");
             return res.data;
         },
+        refetchInterval: 10000, 
+        refetchIntervalInBackground: false,
+    });
+};
+
+// get completed auction stats
+export const useGetCompletedAuctionStats = () => {
+    return useQuery({
+        queryKey: ["completedAuctionStats"],
+        queryFn: async () => {
+            const res = await API.get("/admin/completed-auction-stats");
+            return res.data;
+        },
+        refetchInterval: 10000, 
+        refetchIntervalInBackground: false,
+    });
+};
+
+// get canceled auction stats
+export const useGetCanceledAuctionStats = () => {
+    return useQuery({
+        queryKey: ["canceledAuctionStats"],
+        queryFn: async () => {
+            const res = await API.get("/admin/canceled-auction-stats");
+            return res.data;
+        },
+        refetchInterval: 10000, 
+        refetchIntervalInBackground: false,
     });
 };
 

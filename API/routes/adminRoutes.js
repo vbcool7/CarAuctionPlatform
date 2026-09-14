@@ -7,7 +7,7 @@ import {
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes,
-    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats,
+    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats,
     getAllBids, getBidDetail, getBidStats
 } from '../controllers/adminController.js';
 
@@ -108,6 +108,8 @@ router.get('/auction-detail/:id', authMiddleware(['admin']), getAuctionDetail);
 router.get("/all-auction-stats", authMiddleware(['admin']), getAllAuctionStats);
 router.get("/live-auction-stats", authMiddleware(['admin']), getLiveAuctionStats);
 router.get("/upcoming-auction-stats", authMiddleware(['admin']), getUpcomingAuctionStats);
+router.get("/completed-auction-stats", authMiddleware(['admin']), getCompletedAuctionStats);
+router.get("/canceled-auction-stats", authMiddleware(['admin']), getCanceledAuctionStats);
 
 // ============================ BID
 router.get('/bids-stats', authMiddleware(['admin']), getBidStats);

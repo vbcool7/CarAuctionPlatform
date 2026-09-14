@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, CalendarX, Calendar, Clock, User, Tag, MoreVertical, Eye } from 'lucide-react';
 
 import AuctionsHeader from '../Shared/AuctionsHeader';
@@ -9,61 +9,14 @@ import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 import CancelledAuctionsCategories from './CancelledAuctionsCategories';
 
-import { useGetAllAuctions } from '../../../hooks/useAuction';
+import { useGetAllAuctions, useGetCanceledAuctionStats } from '../../../hooks/useAuction';
 import { getPaginationRange } from '../../utils/getPaginationRange';
-import { formatLabel } from '../../utils/formatter';
-
-const cancelledAuctionsStats = [
-    {
-        title: "Total Cancelled Auctions",
-        value: "12",
-        icon: CalendarX,
-        theme: "text-rose-600 bg-rose-50",
-        subTitle: "14.3% from last month",
-        subTextColor: "text-rose-500",
-        isPositive: false
-    },
-    {
-        title: "Cancelled Before Start",
-        value: "7",
-        icon: Calendar,
-        theme: "text-amber-600 bg-amber-50",
-        subTitle: "16.7% from last month",
-        subTextColor: "text-rose-500",
-        isPositive: false
-    },
-    {
-        title: "Cancelled In Progress",
-        value: "3",
-        icon: Clock,
-        theme: "text-purple-600 bg-purple-50",
-        subTitle: "25% from last month",
-        subTextColor: "text-emerald-500",
-        isPositive: true
-    },
-    {
-        title: "Cancelled By Admin",
-        value: "9",
-        icon: User,
-        theme: "text-blue-600 bg-blue-50",
-        subTitle: "10% from last month",
-        subTextColor: "text-emerald-500",
-        isPositive: true
-    },
-    {
-        title: "Avg. Starting Price",
-        value: "$17,820",
-        icon: Tag,
-        theme: "text-emerald-600 bg-emerald-50",
-        subTitle: "8.2% from last month",
-        subTextColor: "text-emerald-500",
-        isPositive: true
-    }
-];
+import { formatLabel, formatPrice } from '../../utils/formatter';
+import DateRangePicker from '../../SharedComponents/DateRangePicker';
 
 const canceledTabsMap = {
     'all-canceled': null,
-    'before-start': 'upcoming',   
+    'before-start': 'upcoming',
     'in-progress': 'live',
 };
 
@@ -73,6 +26,29 @@ const tabs = [
     { id: 'before-start', label: 'Before Start' },
     { id: 'in-progress', label: 'In Progress' },
 ];
+
+const filterConfig = [
+    {
+        label: 'All Vehicle Type',
+        key: 'vehicleType',
+        options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+    },
+    {
+        label: 'All Categories',
+        key: 'fuelType',
+        options: ['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid', 'cng', 'lpg']
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.vehicleType) params.vehicleType = filters.vehicleType;
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
+};
 
 function CanceledAuctionRow({ auction, onSelectVehicle }) {
     return (
@@ -273,18 +249,91 @@ function CanceledAuctionRow({ auction, onSelectVehicle }) {
 function CancelledAuctions({ setCurrentPage, onSelectVehicle }) {
 
     const [page, setPage] = useState(1);
-    const [selectedReason, setSelectedReason] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [selectedType, setSelectedType] = useState("");
     const [activeTab, setActiveTab] = useState("all-canceled");
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        vehicleType: '',
+        fuelType: '',
+    });
 
-    const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, 'canceled', canceledTabsMap[activeTab]);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: canceledStats } = useGetCanceledAuctionStats();
+    const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, status: 'canceled', dateRange: canceledTabsMap[activeTab], ...params, });
 
     const allAuctionData = allAuctions?.vehicles || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
+    const statsData = canceledStats?.data;
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, filters, search, startDate, endDate]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
 
     if (isLoading) return <p className="p-10 text-center">Loading canceled auctions list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load canceled auctions list</p>;
+
+    // stats
+    const cancelledAuctionsStats = [
+        {
+            title: "Total Cancelled Auctions",
+            value: statsData?.totalCanceled ?? 0,
+            icon: CalendarX,
+            theme: "text-rose-600 bg-rose-50",
+            subTitle: "14.3% from last month",
+            subTextColor: "text-rose-500",
+            isPositive: false
+        },
+        {
+            title: "Cancelled Before Start",
+            value: statsData?.canceledBeforeStart ?? 0,
+            icon: Calendar,
+            theme: "text-amber-600 bg-amber-50",
+            subTitle: "16.7% from last month",
+            subTextColor: "text-rose-500",
+            isPositive: false
+        },
+        {
+            title: "Cancelled In Progress",
+            value: statsData?.canceledInProgress ?? 0,
+            icon: Clock,
+            theme: "text-purple-600 bg-purple-50",
+            subTitle: "25% from last month",
+            subTextColor: "text-emerald-500",
+            isPositive: true
+        },
+        {
+            title: "Cancelled By Admin",
+            value: statsData?.canceledByAdmin ?? 0,
+            icon: User,
+            theme: "text-blue-600 bg-blue-50",
+            subTitle: "10% from last month",
+            subTextColor: "text-emerald-500",
+            isPositive: true
+        },
+        {
+            title: "Avg. Starting Price",
+            value: formatPrice(statsData?.avgStartingPrice ?? 0),
+            icon: Tag,
+            theme: "text-emerald-600 bg-emerald-50",
+            subTitle: "8.2% from last month",
+            subTextColor: "text-emerald-500",
+            isPositive: true
+        }
+    ];
 
     return (
         <div>
@@ -330,66 +379,58 @@ function CancelledAuctions({ setCurrentPage, onSelectVehicle }) {
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* reason */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Reasons"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedReason}
-                            onChange={setSelectedReason}
+                        <SearchBar
+                            placeholder="Search by make, model, year or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* Category */}
-                    <div className="w-full sm:w-45">
-                        <FilterDropdown
-                            label="All Categories"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
-                        />
-                    </div>
-
-                    {/* Type */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Type"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
-                        />
-                    </div>
-
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 {/* Row 2 */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
 
                     {/* Date Range */}
-                    <div className="flex items-center gap-2 h-11 px-4 border border-slate-300 rounded-lg bg-white text-sm text-slate-600">
-                        <span>📅</span>
-                        <span>May 01, 2024 - May 31, 2024</span>
-                    </div>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={(update) => {
+                            setStartDate(update[0]);
+                            setEndDate(update[1]);
+                        }}
+                    />
 
-                    {/* Clear Filters */}
-                    <button className="text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch("");
+                            setFilters({ vehicleType: '', fuelType: '' });
+                            setStartDate(null);
+                            setEndDate(null);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
-
                 </div>
-
             </div>
 
             {/* main section */}
@@ -447,10 +488,16 @@ function CancelledAuctions({ setCurrentPage, onSelectVehicle }) {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan={11}
-                                            className="px-6 py-10 text-center text-sm text-gray-500"
-                                        >
-                                            No auctions found.
+                                            colSpan={8}
+                                            className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <p className="text-sm font-medium text-gray-500">
+                                                    No Data Found
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    There are no auctions records available.
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

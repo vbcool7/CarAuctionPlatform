@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, ArrowDown, ArrowUp, Gavel, Radio, CalendarDays, CheckCircle, XCircle, CheckCircle2, PlusCircle, Eye, MoreVertical } from "lucide-react";
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SearchBar from '../../SharedComponents/SearchBar';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
+import DateRangePicker from '../../SharedComponents/DateRangePicker';
+
 import { useGetAllAuctions, useGetAllAuctionStats } from '../../../hooks/useAuction';
 import { formatLabel } from '../../utils/formatter';
 import { getPaginationRange } from '../../utils/getPaginationRange';
@@ -46,125 +48,140 @@ const statusMap = {
     "canceled": "canceled",
 };
 
+const getStatusStyles = (status) => {
+    switch (status) {
+        case "live":
+            return "bg-green-50 text-green-600";
+
+        case "upcoming":
+            return "bg-blue-50 text-blue-600";
+
+        case "sold":
+            return "bg-emerald-50 text-emerald-600";
+
+        case "unsold":
+            return "bg-gray-100 text-gray-600";
+
+        case "reserve-not-met":
+            return "bg-orange-50 text-orange-600";
+
+        case "canceled":
+            return "bg-red-50 text-red-600";
+
+        default:
+            return "bg-gray-50 text-gray-600";
+    }
+};
+
+const filterConfig = [
+    {
+        label: 'All Vehicle Type',
+        key: 'vehicleType',
+        options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+    },
+    {
+        label: 'All Categories',
+        key: 'fuelType',
+        options: ['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid', 'cng', 'lpg']
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.vehicleType) params.vehicleType = filters.vehicleType;
+
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
+};
+
 function AllAuctions({ setCurrentPage, setSelectedAuction }) {
 
-    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState("all auctions");
-    const [selectedType, setSelectedType] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        vehicleType: '',
+        fuelType: '',
+    });
 
-    const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, statusMap[activeTab]);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, status: statusMap[activeTab], ...params });
     const { data: allAuctionStats } = useGetAllAuctionStats();
 
     const allAuctionData = allAuctions?.vehicles || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
     const statsData = allAuctionStats?.data;
 
-    const getStatusStyles = (status) => {
-        switch (status) {
-            case "live":
-                return "bg-green-50 text-green-600";
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search, startDate, endDate]);
 
-            case "upcoming":
-                return "bg-blue-50 text-blue-600";
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
 
-            case "sold":
-                return "bg-emerald-50 text-emerald-600";
-
-            case "unsold":
-                return "bg-gray-100 text-gray-600";
-
-            case "reserve-not-met":
-                return "bg-orange-50 text-orange-600";
-
-            case "canceled":
-                return "bg-red-50 text-red-600";
-
-            default:
-                return "bg-gray-50 text-gray-600";
-        }
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
     };
 
     // stats
     const allAuctionsStats = [
         {
             title: "Total Auctions",
-            value: statsData?.totalAuctions?.count ?? 0,
+            value: statsData?.totalAuctions ?? 0,
             icon: Gavel,
             theme: "text-indigo-600 bg-indigo-50",
-            subTitle:
-                statsData?.totalAuctions?.percentage != null
-                    ? `${statsData.totalAuctions.percentage}% from last month`
-                    : "No data from last month",
-            subTextColor:
-                statsData?.totalAuctions?.isPositive === false
-                    ? "text-red-500"
-                    : "text-green-600",
-            isPositive: statsData?.totalAuctions?.isPositive
+            subTitle: "No data from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
         },
-
         {
             title: "Live Auctions",
-            value: statsData?.liveAuctions?.count ?? 0,
+            value: statsData?.liveAuctions ?? 0,
             icon: Radio,
             theme: "text-emerald-600 bg-emerald-50",
-            subTitle:
-                statsData?.liveAuctions?.percentage != null
-                    ? `${statsData.liveAuctions.percentage}% from last month`
-                    : "No data from last month",
-            subTextColor:
-                statsData?.liveAuctions?.isPositive === false
-                    ? "text-red-500"
-                    : "text-green-600",
-            isPositive: statsData?.liveAuctions?.isPositive
+            subTitle: "No data from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
         },
-
         {
             title: "Upcoming Auctions",
-            value: statsData?.upcomingAuctions?.count ?? 0,
+            value: statsData?.upcomingAuctions ?? 0,
             icon: CalendarDays,
             theme: "text-purple-600 bg-purple-50",
-            subTitle:
-                statsData?.upcomingAuctions?.percentage != null
-                    ? `${statsData.upcomingAuctions.percentage}% from last month`
-                    : "No data from last month",
-            subTextColor:
-                statsData?.upcomingAuctions?.isPositive === false
-                    ? "text-red-500"
-                    : "text-green-600",
-            isPositive: statsData?.upcomingAuctions?.isPositive
+            subTitle: "No data from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
         },
-
         {
             title: "Completed Auctions",
-            value: statsData?.completedAuctions?.count ?? 0,
+            value: statsData?.completedAuctions ?? 0,
             icon: CheckCircle,
             theme: "text-emerald-600 bg-emerald-50",
-            subTitle:
-                statsData?.completedAuctions?.percentage != null
-                    ? `${statsData.completedAuctions.percentage}% from last month`
-                    : "No data from last month",
-            subTextColor:
-                statsData?.completedAuctions?.isPositive === false
-                    ? "text-red-500"
-                    : "text-green-600",
-            isPositive: statsData?.completedAuctions?.isPositive
+            subTitle: "No data from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
         },
-
         {
             title: "Canceled Auctions",
-            value: statsData?.canceledAuctions?.count ?? 0,
+            value: statsData?.canceledAuctions ?? 0,
             icon: XCircle,
             theme: "text-red-500 bg-red-50",
-            subTitle:
-                statsData?.canceledAuctions?.percentage != null
-                    ? `${statsData.canceledAuctions.percentage}% from last month`
-                    : "No data from last month",
-            subTextColor:
-                statsData?.canceledAuctions?.isPositive === false
-                    ? "text-red-500"
-                    : "text-green-600",
-            isPositive: statsData?.canceledAuctions?.isPositive
+            subTitle: "No data from last month",
+            subTextColor: "text-red-500",
+            isPositive: false
         }
     ];
 
@@ -247,61 +264,55 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* Status */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
+                        <SearchBar
+                            placeholder="Search by make, model, year or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* Type */}
-                    <div className="w-full sm:w-42.5">
-                        <FilterDropdown
-                            label="All Type"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
-                        />
-                    </div>
-
-                    {/* Category */}
-                    <div className="w-full sm:w-45">
-                        <FilterDropdown
-                            label="All Categories"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
-                        />
-                    </div>
-
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 {/* Row 2 */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
 
                     {/* Date Range */}
-                    <div className="flex items-center gap-2 h-11 px-4 border border-slate-300 rounded-lg bg-white text-sm text-slate-600">
-                        <span>📅</span>
-                        <span>May 01, 2024 - May 31, 2024</span>
-                    </div>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={(update) => {
+                            setStartDate(update[0]);
+                            setEndDate(update[1]);
+                        }}
+                    />
 
-                    {/* Clear Filters */}
-                    <button className="text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch("");
+                            setFilters({ vehicleType: '', fuelType: '' });
+                            setStartDate(null);
+                            setEndDate(null);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
 
@@ -555,9 +566,16 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                                         <tr>
                                             <td
                                                 colSpan={9}
-                                                className="py-10 text-center text-sm text-gray-500"
+                                                className="px-6 py-12 text-center"
                                             >
-                                                No auctions found.
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <p className="text-sm font-medium text-gray-500">
+                                                        No Data Found
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        There are no auctions records available.
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

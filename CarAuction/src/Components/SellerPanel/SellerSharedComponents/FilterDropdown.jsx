@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Filter } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { formatLabel } from "../../../utils/formatters";
 
 function FilterDropdown({ label, options, value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +28,7 @@ function FilterDropdown({ label, options, value, onChange }) {
       >
         <div className="flex items-center gap-2">
           {/* <Filter size={14} className="text-slate-400" /> */}
-          <span className="truncate">{selectedLabel}</span>
+          <span className="truncate">{formatLabel(selectedLabel)}</span>
         </div>
         <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
@@ -44,7 +45,7 @@ function FilterDropdown({ label, options, value, onChange }) {
               className={`px-4 py-2 text-sm cursor-pointer hover:bg-amber-50 hover:text-amber-700 
                 ${value === opt.value ? "bg-amber-50 text-amber-700 font-medium" : "text-slate-600"}`}
             >
-              {opt.label}
+              {formatLabel(opt.label)}
             </div>
           ))}
         </div>

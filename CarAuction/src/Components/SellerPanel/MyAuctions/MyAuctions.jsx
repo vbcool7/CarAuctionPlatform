@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CalendarDays, CircleDollarSign, Clock3, Copy, Eye, Gavel, MoreVertical, Plus, Users } from 'lucide-react';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
@@ -8,25 +8,6 @@ import { useGetMyAuctions } from '../../../hook/useAuction';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 import { formatDateTime, formatLabel } from '../../../utils/formatters';
 import { UseCountDown } from '../SellerSharedComponents/UseCountDown';
-
-const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "active", label: "Active" },
-    { value: "sold", label: "Sold" },
-    { value: "pending", label: "Pending Approval" },
-    { value: "draft", label: "Draft" },
-];
-
-const auctionTypeOptions = [
-    { value: "", label: "All Auction Types" },
-    { value: "live-auction", label: "Live Auction" },
-    { value: "fixed-price", label: "Fixed Price" },
-];
-
-const dateOptions = [
-    { value: "na", label: "NA" },
-    { value: "na", label: "NA" },
-];
 
 const statusConfig = {
     draft: { label: 'Draft', className: 'bg-gray-400 text-white' },
@@ -38,7 +19,29 @@ const statusConfig = {
     canceled: { label: 'Canceled', className: 'bg-gray-500 text-white' },
 };
 
-function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
+const filterConfig = [
+    {
+        label: 'Auction Types',
+        key: 'auctionType',
+        options: ['all', 'timed', 'live']
+    },
+    {
+        label: 'Sort By',
+        key: 'sortBy',
+        options: ['newest', 'oldest']
+    },
+];
+
+const mapFiltersToParams = (filters, search) => {
+    const params = {};
+    if (filters.auctionType) params.auctionType = filters.auctionType;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+
+    if (search) params.search = search;
+    return params;
+};
+
+function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage, isPlaceholderData }) {
     const isLive = vehicle.auctionStatus === 'live';
     const isEnded = ['sold', 'unsold', 'reserve-not-met', 'canceled'].includes(vehicle.auctionStatus);
 
@@ -50,7 +53,7 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
     const bidAmount = isLive ? (vehicle.currentBid ?? vehicle.startingBidPrice) : vehicle.startingBidPrice;
 
     return (
-        <div className='bg-white border border-gray-200 rounded-xl p-3 md:p-4 shadow-sm'>
+        <div className={`bg-white border border-gray-200 rounded-xl p-3 md:p-4 shadow-sm transition-opacity ${isPlaceholderData ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className='flex flex-col md:flex-row gap-4 items-start'>
 
                 {/* Vehicle Image */}
@@ -204,38 +207,46 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage }) {
 
 function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
 
+    const [activeTab, setActiveTab] = useState('active');
     const [page, setPage] = useState(1);
-    const { data: myAuctionsData, isLoading, isError } = useGetMyAuctions(page);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        status: '',
+        auctionType: '',
+        sortBy: '',
+    });
+
+    const params = mapFiltersToParams(filters, debouncedSearch);
+
+    const { data: myAuctionsData, isLoading, isError, isPlaceholderData } = useGetMyAuctions({ tab: activeTab, page, limit: 10, ...params });
 
     const auctionVehicles = myAuctionsData?.vehicles || [];
-
     const totalPages = myAuctionsData?.pagination?.totalPages || 1;
-
-    const [activeTab, setActiveTab] = useState('live');
-    const [search, setSearch] = useState('');
-    const [status, setStatus] = useState('');
-    const [auctionType, setAuctionType] = useState('');
-    const [date, setDate] = useState('');
-
-    const tabFilters = {
-        live: (v) => v.auctionStatus === 'live',
-        upcoming: (v) => v.auctionStatus === 'upcoming',
-        ended: (v) => ['sold', 'unsold', 'reserve-not-met'].includes(v.auctionStatus),
-        canceled: (v) => v.auctionStatus === 'canceled',
-    };
+    const filteredVehicles = auctionVehicles;
 
     const tabs = [
-        { key: 'live', label: 'Active Auctions', count: auctionVehicles.filter(tabFilters.live).length },
-        { key: 'upcoming', label: 'Scheduled', count: auctionVehicles.filter(tabFilters.upcoming).length },
-        { key: 'ended', label: 'Ended', count: auctionVehicles.filter(tabFilters.ended).length },
-        { key: 'canceled', label: 'Canceled', count: auctionVehicles.filter(tabFilters.canceled).length },
+        { key: 'active', label: 'Active Auctions', count: myAuctionsData?.tabCounts?.active || 0 },
+        { key: 'scheduled', label: 'Scheduled', count: myAuctionsData?.tabCounts?.scheduled || 0 },
+        { key: 'ended', label: 'Ended', count: myAuctionsData?.tabCounts?.ended || 0 },
+        { key: 'canceled', label: 'Canceled', count: myAuctionsData?.tabCounts?.canceled || 0 },
     ];
 
-    const filteredVehicles = auctionVehicles
-        .filter(tabFilters[activeTab])
-        .filter((v) =>
-            `${v.year} ${v.make} ${v.model} ${v.vin}`.toLowerCase().includes(search.toLowerCase())
-        );
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
 
     const upcomingVehicle = auctionVehicles
         .filter((v) => v.auctionStatus === 'upcoming')
@@ -287,23 +298,44 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                 ))}
             </div>
 
-            {/* filter */}
+            {/* search / filter */}
             <div className="flex flex-wrap gap-3 py-4 px-4 border border-gray-300 bg-white/80 rounded-xl">
                 <div className='flex-1 min-w-50'>
-                    <SearchBar value={search} onChange={setSearch} placeholder="Search by make, model or VIN..." />
+                    <SearchBar
+                        placeholder="Search by make, model, year or listing ID..."
+                        value={search}
+                        onChange={(value) => setSearch(value)}
+                    />
                 </div>
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
-                </div>
+                {/* dropdown */}
+                {filterConfig.map(({ label, key, options }) => (
+                    <div
+                        key={key}
+                        className="w-full sm:w-auto"
+                    >
+                        <FilterDropdown
+                            label={label}
+                            options={options.map((opt) => ({
+                                label: opt,
+                                value: opt,
+                            }))}
+                            value={filters[key]}
+                            onChange={(value) => updateFilter(key, value)}
+                        />
+                    </div>
+                ))}
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Auction Types" options={auctionTypeOptions} value={auctionType} onChange={setAuctionType} />
-                </div>
-
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Dates" options={dateOptions} value={date} onChange={setDate} />
-                </div>
+                {/* clear btn */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setSearch("");
+                        setFilters({ status: '', auctionType: '', sortBy: '' });
+                    }}
+                    className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+                    Clear Filters
+                </button>
             </div>
 
             {/* content grid */}
@@ -315,7 +347,14 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                     {/* list */}
                     <div className='space-y-4'>
                         {filteredVehicles.length === 0 && (
-                            <p className='text-sm text-gray-400 py-8 text-center'>No auctions in this category.</p>
+                            <div className="py-8 flex flex-col items-center justify-center">
+                                <p className="text-sm font-medium text-gray-500">
+                                    No Data Found
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    There are no vehicle records available.
+                                </p>
+                            </div>
                         )}
 
                         {filteredVehicles.map((vehicle) => (
@@ -324,6 +363,7 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                                 vehicle={vehicle}
                                 setSelectedAuctionId={setSelectedAuctionId}
                                 setCurrentPage={setCurrentPage}
+                                isPlaceholderData={isPlaceholderData}
                             />
                         ))}
                     </div>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CarFront, CheckCircle2, Clock, Eye, Gavel, MoreVertical, Sparkles } from 'lucide-react';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
@@ -7,40 +7,69 @@ import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
 import { useSellerVehicles, useVehicleStats } from '../../../hook/useVehicle';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 
-const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "active", label: "Active" },
-    { value: "sold", label: "Sold" },
-    { value: "pending", label: "Pending Approval" },
-    { value: "draft", label: "Draft" },
+const filterConfig = [
+    {
+        label: 'All Status',
+        key: 'status',
+        options: ['all', 'draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled']
+    },
+    {
+        label: 'Auction Types',
+        key: 'auctionType',
+        options: ['all', 'timed', 'live']
+    },
+    {
+        label: 'Sort By',
+        key: 'sortBy',
+        options: ['newest', 'oldest']
+    },
 ];
 
-const auctionTypeOptions = [
-    { value: "", label: "All Auction Types" },
-    { value: "live-auction", label: "Live Auction" },
-    { value: "fixed-price", label: "Fixed Price" },
-];
+const mapFiltersToParams = (filters, search) => {
+    const params = {};
+    if (filters.status) params.status = filters.status;
+    if (filters.auctionType) params.auctionType = filters.auctionType;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
 
-const sortOptions = [
-    { value: "newest", label: "Sort By: Newest" },
-    { value: "oldest", label: "Sort By: Oldest" },
-    { value: "price-high", label: "Sort By: Price (High to Low)" },
-    { value: "price-low", label: "Sort By: Price (Low to High)" },
-];
+    if (search) params.search = search;
+    return params;
+};
 
 function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
 
     const [page, setPage] = useState(1);
-    const { data: myVehicles, isLoading, isError } = useSellerVehicles(page);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        status: '',
+        auctionType: '',
+        sortBy: '',
+    });
+
+    const params = mapFiltersToParams(filters, debouncedSearch);
+
+    const { data: myVehicles, isLoading, isError, isPlaceholderData } = useSellerVehicles({ page, limit: 10, ...params });
     const { data: statsData } = useVehicleStats();
 
     const totalPages = myVehicles?.pagination?.totalPages || 1;
 
-    const [search, setSearch] = useState("");
-    const [status, setStatus] = useState("");
-    const [auctionType, setAuctionType] = useState("");
-    const [sortBy, setSortBy] = useState("newest");
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search]);
 
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    // stats
     const stats = [
         {
             id: "total-vehicles",
@@ -157,20 +186,41 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
             {/* search / filter */}
             <div className="flex flex-wrap gap-3 py-4 px-4 border border-gray-300 bg-white/80 rounded-xl">
                 <div className='flex-1 min-w-50'>
-                    <SearchBar value={search} onChange={setSearch} placeholder="Search by make, model or VIN..." />
+                    <SearchBar
+                        placeholder="Search by make, model, year or listing ID..."
+                        value={search}
+                        onChange={(value) => setSearch(value)}
+                    />
                 </div>
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
-                </div>
+                {/* dropdown */}
+                {filterConfig.map(({ label, key, options }) => (
+                    <div
+                        key={key}
+                        className="w-full sm:w-auto"
+                    >
+                        <FilterDropdown
+                            label={label}
+                            options={options.map((opt) => ({
+                                label: opt,
+                                value: opt,
+                            }))}
+                            value={filters[key]}
+                            onChange={(value) => updateFilter(key, value)}
+                        />
+                    </div>
+                ))}
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Auction Types" options={auctionTypeOptions} value={auctionType} onChange={setAuctionType} />
-                </div>
-
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="Sort By: Newest" options={sortOptions} value={sortBy} onChange={setSortBy} />
-                </div>
+                {/* clear btn */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setSearch("");
+                        setFilters({ status: '', auctionType: '', sortBy: '' });
+                    }}
+                    className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+                    Clear Filters
+                </button>
             </div>
 
             {/* list */}
@@ -191,19 +241,16 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                         </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className={`divide-y divide-slate-100 transition-opacity ${isPlaceholderData ? 'opacity-50 pointer-events-none' : ''}`}>
                         {myVehicles?.vehicles?.length > 0 ? (
                             myVehicles.vehicles.map((vehicle, index) => {
 
-                                const bidAmount =
-                                    vehicle.currentBid !== null && vehicle.currentBid !== undefined
-                                        ? vehicle.currentBid
-                                        : vehicle.startingBidPrice;
-
-                                const bidLabel =
-                                    vehicle.currentBid !== null && vehicle.currentBid !== undefined
-                                        ? "Current Bid"
-                                        : "Starting Bid";
+                                const bidAmount = vehicle.currentBid ?? vehicle.startingBidPrice ?? vehicle.buyNowPrice;
+                                const bidLabel = vehicle.currentBid != null
+                                    ? "Current Bid"
+                                    : vehicle.startingBidPrice != null
+                                        ? "Starting Bid"
+                                        : "Buy Now Price";
 
                                 const endDate = vehicle.auctionEndDateTime
                                     ? new Date(vehicle.auctionEndDateTime)
@@ -409,10 +456,17 @@ function MyVehicles({ setCurrentPage, setSelectedMyVehicleId }) {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan={9}
-                                    className="px-6 py-12 text-center text-gray-500"
+                                    colSpan={10}
+                                    className="px-6 py-12 text-center"
                                 >
-                                    No Data Found
+                                    <div className="flex flex-col items-center justify-center">
+                                        <p className="text-sm font-medium text-gray-500">
+                                            No Data Found
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            There are no vehicle records available.
+                                        </p>
+                                    </div>
                                 </td>
                             </tr>
                         )}

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Radio, Gavel, Users, DollarSign, Clock3, Eye, MoreVertical, Activity } from "lucide-react";
 
 import AuctionsHeader from '../Shared/AuctionsHeader';
@@ -59,6 +59,36 @@ const liveActivity = [
         color: "bg-green-500",
     },
 ];
+
+const filterConfig = [
+    {
+        label: 'All Vehicle Type',
+        key: 'vehicleType',
+        options: ['sedan', 'suv', 'hatchback', 'coupe', 'convertible', 'wagon', 'pickup_truck', 'van', 'minivan', 'sports_car', 'luxury_car', 'electric_vehicle', 'motorcycle'],
+    },
+    {
+        label: 'All Categories',
+        key: 'fuelType',
+        options: ['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid', 'cng', 'lpg']
+    },
+    {
+        label: 'Sort By',
+        key: 'sortBy',
+        options: ['ending_soon', 'newest', 'highest_bid']
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.fuelType) params.fuelType = filters.fuelType;
+    if (filters.vehicleType) params.vehicleType = filters.vehicleType;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
+};
 
 function LiveAuctionRow({ auction, onSelectVehicle }) {
     const timeLeft = UseCountDown(auction.auctionEndDateTime);
@@ -209,17 +239,41 @@ function LiveAuctionRow({ auction, onSelectVehicle }) {
 function LiveAuctions({ setCurrentPage, onSelectVehicle }) {
 
     const [page, setPage] = useState(1);
-    const [selectedType, setSelectedType] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [selectedSort, setSelectedSort] = useState("");
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        vehicleType: '',
+        fuelType: '',
+        sortBy: '',
+    });
 
-    const { data: allAuctions, isLoading, isError } = useGetAllAuctions(page, 10, 'live');
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, status: 'live', ...params });
     const { data: liveAuctions } = useGetLiveAuctionStats();
 
     const allAuctionData = allAuctions?.vehicles || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
-
     const statsData = liveAuctions?.data;
+
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search, startDate, endDate]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
 
     if (isLoading) return <p className="p-10 text-center">Loading live auctions list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load live auctions list</p>;
@@ -329,38 +383,43 @@ function LiveAuctions({ setCurrentPage, onSelectVehicle }) {
             <div className="my-6 flex flex-wrap items-center gap-3 bg-white p-2 rounded-xl">
 
                 <div className="grow">
-                    <SearchBar />
+                    <SearchBar
+                        placeholder="Search by make, model, year or listing ID..."
+                        value={search}
+                        onChange={(value) => setSearch(value)}
+                    />
                 </div>
 
-                {/* Filter Dropdowns */}
-                <div className="flex flex-wrap items-center gap-3">
+                {/* dropdown */}
+                {filterConfig.map(({ label, key, options }) => (
+                    <div
+                        key={key}
+                        className="w-full sm:w-45"
+                    >
+                        <FilterDropdown
+                            label={label}
+                            options={options.map((opt) => ({
+                                label: opt,
+                                value: opt,
+                            }))}
+                            value={filters[key]}
+                            onChange={(value) => updateFilter(key, value)}
+                        />
+                    </div>
+                ))}
 
-                    <FilterDropdown
-                        label="All Type"
-                        options={[{ label: "Standard", value: "standard" }, { label: "Reserve", value: "reserve" }]}
-                        value={selectedType}
-                        onChange={setSelectedType}
-                    />
-
-                    <FilterDropdown
-                        label="All Categories"
-                        options={[{ label: "SUV", value: "suv" }, { label: "Sedan", value: "sedan" }]}
-                        value={selectedCategory}
-                        onChange={setSelectedCategory}
-                    />
-
-                    <FilterDropdown
-                        label="Sort By"
-                        options={[{ label: "Ending Soon", value: "ending-soon" }, { label: "Ending Soon", value: "ending-soon" }]}
-                        value={selectedSort}
-                        onChange={setSelectedSort}
-                    />
-
-                    {/* Clear Filters */}
-                    <button className="text-sm text-[#D97706] hover:underline px-2">
-                        Clear Filters
-                    </button>
-                </div>
+                {/* clear btn */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setSearch("");
+                        setFilters({ vehicleType: '', fuelType: '' });
+                        setStartDate(null);
+                        setEndDate(null);
+                    }}
+                    className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+                    Clear Filters
+                </button>
             </div>
 
             {/* main section */}
@@ -400,9 +459,16 @@ function LiveAuctions({ setCurrentPage, onSelectVehicle }) {
                                     <tr>
                                         <td
                                             colSpan={8}
-                                            className="px-6 py-10 text-center text-sm text-gray-500"
+                                            className="px-6 py-12 text-center"
                                         >
-                                            No auctions found.
+                                            <div className="flex flex-col items-center justify-center">
+                                                <p className="text-sm font-medium text-gray-500">
+                                                    No Data Found
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    There are no auctions records available.
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

@@ -1,18 +1,34 @@
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import API from '../api/axiosInstance';
-import { toast } from "react-toastify";
 
 // get all auctions
-export const useGetMyAuctions = (page = 1, limit = 10) => {
+export const useGetMyAuctions = ({
+    tab = 'active',
+    page = 1,
+    limit = 10,
+    search = '',
+    auctionType = 'all',
+    sortBy = 'newest'
+} = {}) => {
     return useQuery({
-        queryKey: ['myAuctions', page, limit],
+        queryKey: ['myAuctions', tab, page, limit, search, auctionType, sortBy],
         queryFn: async () => {
-            const res = await API.get(`/auction/get-my-auctions?page=${page}&limit=${limit}`);
+            const params = new URLSearchParams({
+                tab,
+                page,
+                limit,
+                sortBy
+            });
+
+            if (search.trim()) params.append('search', search.trim());
+            if (auctionType !== 'all') params.append('auctionType', auctionType);
+
+            const res = await API.get(`/auction/get-my-auctions?${params.toString()}`);
             return res.data;
         },
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -20,7 +36,7 @@ export const useGetMyAuctions = (page = 1, limit = 10) => {
 export const useGetAuctionDetail = (id) => {
     return useQuery({
         queryKey: ['auctionDetail', id],
-        queryFn: async() => {
+        queryFn: async () => {
             const res = await API.get(`/auction/my-auction-detail/${id}`);
             return res.data;
         },

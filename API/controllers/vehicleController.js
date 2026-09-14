@@ -1,5 +1,7 @@
 
 import axios from 'axios';
+import mongoose from 'mongoose';
+
 import Vehicle from '../models/vehicleModelSchema.js';
 
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
@@ -238,28 +240,47 @@ export const getMyVehicles = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
+        const { search, status, auctionType, sortBy } = req.query;
+
+        const match = { sellerId: new mongoose.Types.ObjectId(sellerId) };
+
+        if (status && status !== 'all') {
+            match.auctionStatus = status;
+        }
+
+        if (auctionType && auctionType !== 'all') {
+            match.auctionType = auctionType; // 'live' | 'timed'
+        }
+
+        if (search && search.trim()) {
+            const term = search.trim();
+            const regex = new RegExp(term, 'i');
+
+            const orConditions = [
+                { make: regex },
+                { model: regex },
+                { vin: regex },
+                { listingId: regex }
+            ];
+
+            // year is a Number field
+            if (!isNaN(term)) {
+                orConditions.push({ year: Number(term) });
+            }
+
+            match.$or = orConditions;
+        }
+
+        // sort by - only newest/oldest supported
+        const sortStage = sortBy === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+
         const [vehicles, totalCount] = await Promise.all([
-            Vehicle.find({ sellerId })
-                .sort({ createdAt: -1 })
+            Vehicle.find(match)
+                .sort(sortStage)
                 .skip(skip)
                 .limit(limit),
-            Vehicle.countDocuments({ sellerId })
+            Vehicle.countDocuments(match)
         ]);
-
-        if (vehicles.length === 0) {
-            return res.status(200).json({
-                success: true,
-                count: 0,
-                vehicles: [],
-                pagination: {
-                    currentPage: page,
-                    totalPages: 0,
-                    totalCount: 0,
-                    limit
-                },
-                message: "No vehicles found"
-            });
-        }
 
         return res.status(200).json({
             success: true,
@@ -270,7 +291,8 @@ export const getMyVehicles = async (req, res) => {
                 totalPages: Math.ceil(totalCount / limit),
                 totalCount,
                 limit
-            }
+            },
+            ...(vehicles.length === 0 && { message: 'No vehicles found' })
         });
 
     } catch (err) {

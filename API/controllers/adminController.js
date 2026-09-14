@@ -1437,7 +1437,7 @@ export const getAllAuctions = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-        const { status, dateRange } = req.query;
+        const { status, dateRange, search, vehicleType, fuelType, startDate, endDate, sortBy } = req.query;
 
         const validStatuses = ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'];
 
@@ -1445,6 +1445,7 @@ export const getAllAuctions = async (req, res) => {
             adminStatus: 'approved',
         };
 
+        // upcoming
         if (dateRange && status === 'upcoming') {
             const nowUAE = new Date(Date.now() + UAE_UTC_OFFSET_HOURS * 60 * 60 * 1000);
 
@@ -1471,6 +1472,7 @@ export const getAllAuctions = async (req, res) => {
             }
         }
 
+        // completed
         if (status === 'completed') {
             filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
         } else if (status === 'canceled' && req.query.dateRange) {
@@ -1480,8 +1482,44 @@ export const getAllAuctions = async (req, res) => {
             filter.auctionStatus = status;
         }
 
+        // search + drop-down filter
+        if (search) {
+            const searchTerm = search.trim();
+            const searchRegex = new RegExp(searchTerm, 'i');
+            const orConditions = [
+                { make: searchRegex },
+                { model: searchRegex },
+                { vin: searchRegex },
+                { listingId: searchRegex },
+            ];
+            const numericSearch = Number(searchTerm);
+            if (!isNaN(numericSearch)) {
+                orConditions.push({ year: numericSearch });
+            }
+            filter.$or = orConditions;
+        }
+
+        if (vehicleType) filter.vehicleType = vehicleType;
+        if (fuelType) filter.fuelType = fuelType;
+
+        let dateField = 'auctionStartDateTime'; // default: all/live/upcoming
+        if (status === 'completed') dateField = 'auctionEndDateTime';
+        if (status === 'canceled') dateField = 'canceledAt';
+
+        if (startDate || endDate) {
+            filter[dateField] = {};
+            if (startDate) filter[dateField].$gte = new Date(startDate);
+            if (endDate) filter[dateField].$lte = new Date(endDate);
+        }
+
+        // sort by filter
+        let sortOption = { createdAt: -1 }; // default
+        if (sortBy === 'ending_soon') sortOption = { auctionEndDateTime: 1 };
+        else if (sortBy === 'newest') sortOption = { auctionStartDateTime: -1 };
+        else if (sortBy === 'highest_bid') sortOption = { currentBid: -1 };
+
         const [vehicles, totalCount] = await Promise.all([
-            Vehicle.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Vehicle.find(filter).sort(sortOption).skip(skip).limit(limit),
             Vehicle.countDocuments(filter)
         ]);
 
@@ -1661,58 +1699,22 @@ export const getAuctionDetail = async (req, res) => {
     }
 };
 
-// CHATGPT - Get all auction stats 
+// Get all auction stats 
 export const getAllAuctionStats = async (req, res) => {
     try {
         const now = new Date();
 
-        // Current month
-        const currentMonthStart = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            1
-        );
-
-        // Previous month
-        const previousMonthStart = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            1
-        );
-
-        const previousMonthEnd = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            0,
-            23,
-            59,
-            59,
-            999
-        );
-
-        const completedStatuses = [
-            "sold",
-            "unsold",
-            "reserve-not-met"
-        ];
+        const completedStatuses = ["sold", "unsold", "reserve-not-met"];
 
         const [
             totalAuctions,
             liveAuctions,
             upcomingAuctions,
             completedAuctions,
-            canceledAuctions,
-
-            previousTotalAuctions,
-            previousLiveAuctions,
-            previousUpcomingAuctions,
-            previousCompletedAuctions,
-            previousCanceledAuctions
+            canceledAuctions
         ] = await Promise.all([
 
-            // ================= CURRENT MONTH =================
-
-            // Total Auctions
+            // Total Auctions (approved-scope)
             Vehicle.countDocuments({
                 adminStatus: "approved"
             }),
@@ -1728,8 +1730,8 @@ export const getAllAuctionStats = async (req, res) => {
             // Upcoming Auctions
             Vehicle.countDocuments({
                 adminStatus: "approved",
-                auctionStartDateTime: { $gt: now },
-                auctionStatus: { $nin: ["canceled"] }
+                auctionStatus: "upcoming",
+                auctionStartDateTime: { $gt: now }
             }),
 
             // Completed Auctions
@@ -1743,146 +1745,18 @@ export const getAllAuctionStats = async (req, res) => {
             Vehicle.countDocuments({
                 adminStatus: "approved",
                 auctionStatus: "canceled"
-            }),
-
-            // ================= PREVIOUS MONTH =================
-
-            // Previous Total
-            Vehicle.countDocuments({
-                adminStatus: "approved",
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd
-                }
-            }),
-
-            // Previous Live
-            Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: "live",
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd
-                }
-            }),
-
-            // Previous Upcoming
-            Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStartDateTime: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd
-                },
-                auctionStatus: { $nin: ["canceled"] }
-            }),
-
-            // Previous Completed
-            Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: { $in: completedStatuses },
-                auctionEndDateTime: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd
-                }
-            }),
-
-            // Previous Canceled
-            Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: "canceled",
-                updatedAt: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd
-                }
             })
         ]);
-
-        // ================= PERCENTAGE CALCULATION =================
-
-        const calculatePercentage = (current, previous) => {
-            if (previous === 0) {
-                return current > 0 ? 100 : 0;
-            }
-
-            return Number(
-                (((current - previous) / previous) * 100).toFixed(1)
-            );
-        };
-
-        const getTrend = (current, previous) => {
-            if (previous === 0) {
-                return {
-                    percentage: null,
-                    isPositive: null
-                };
-            }
-
-            const percentage = calculatePercentage(current, previous);
-
-            return {
-                percentage: Math.abs(percentage),
-                isPositive: percentage >= 0
-            };
-        };
-
-        const totalTrend = getTrend(
-            totalAuctions,
-            previousTotalAuctions
-        );
-
-        const liveTrend = getTrend(
-            liveAuctions,
-            previousLiveAuctions
-        );
-
-        const upcomingTrend = getTrend(
-            upcomingAuctions,
-            previousUpcomingAuctions
-        );
-
-        const completedTrend = getTrend(
-            completedAuctions,
-            previousCompletedAuctions
-        );
-
-        const canceledTrend = getTrend(
-            canceledAuctions,
-            previousCanceledAuctions
-        );
 
         return res.status(200).json({
             success: true,
             message: "All auction stats fetched successfully",
             data: {
-                totalAuctions: {
-                    count: totalAuctions,
-                    percentage: totalTrend.percentage,
-                    isPositive: totalTrend.isPositive
-                },
-
-                liveAuctions: {
-                    count: liveAuctions,
-                    percentage: liveTrend.percentage,
-                    isPositive: liveTrend.isPositive
-                },
-
-                upcomingAuctions: {
-                    count: upcomingAuctions,
-                    percentage: upcomingTrend.percentage,
-                    isPositive: upcomingTrend.isPositive
-                },
-
-                completedAuctions: {
-                    count: completedAuctions,
-                    percentage: completedTrend.percentage,
-                    isPositive: completedTrend.isPositive
-                },
-
-                canceledAuctions: {
-                    count: canceledAuctions,
-                    percentage: canceledTrend.percentage,
-                    isPositive: canceledTrend.isPositive
-                }
+                totalAuctions,
+                liveAuctions,
+                upcomingAuctions,
+                completedAuctions,
+                canceledAuctions
             }
         });
 
@@ -1896,7 +1770,7 @@ export const getAllAuctionStats = async (req, res) => {
     }
 };
 
-// CHATGPT - Get live auction stats
+// Get live auction stats
 export const getLiveAuctionStats = async (req, res) => {
     try {
         const now = new Date();
@@ -1967,59 +1841,35 @@ export const getLiveAuctionStats = async (req, res) => {
     }
 };
 
-// CHATGPT - Get upcoming auction stats
+// Get upcoming auction stats
 export const getUpcomingAuctionStats = async (req, res) => {
     try {
         const now = new Date();
 
-        // Dubai is UTC +4
         const DUBAI_OFFSET = 4 * 60 * 60 * 1000;
-
         const dubaiNow = new Date(now.getTime() + DUBAI_OFFSET);
 
-        // Current Dubai date parts
         const year = dubaiNow.getUTCFullYear();
         const month = dubaiNow.getUTCMonth();
         const date = dubaiNow.getUTCDate();
 
-        // Start of today in Dubai
-        const todayStart = new Date(
-            Date.UTC(year, month, date) - DUBAI_OFFSET
-        );
+        const todayStart = new Date(Date.UTC(year, month, date) - DUBAI_OFFSET);
+        const tomorrowStart = new Date(Date.UTC(year, month, date + 1) - DUBAI_OFFSET);
 
-        // Start of tomorrow
-        const tomorrowStart = new Date(
-            Date.UTC(year, month, date + 1) - DUBAI_OFFSET
-        );
-
-        // Start of current week (Monday)
         const dayOfWeek = dubaiNow.getUTCDay();
         const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(Date.UTC(year, month, date - daysFromMonday) - DUBAI_OFFSET);
+        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-        const weekStart = new Date(
-            Date.UTC(year, month, date - daysFromMonday) - DUBAI_OFFSET
-        );
+        const monthStart = new Date(Date.UTC(year, month, 1) - DUBAI_OFFSET);
+        const monthEnd = new Date(Date.UTC(year, month + 1, 1) - DUBAI_OFFSET);
 
-        // Start of next week
-        const weekEnd = new Date(
-            weekStart.getTime() + 7 * 24 * 60 * 60 * 1000
-        );
+        // effective lower-bound: "now" ya window-start, jo bhi later ho
+        const effectiveNow = (windowStart) => (windowStart > now ? windowStart : now);
 
-        // Start of current month
-        const monthStart = new Date(
-            Date.UTC(year, month, 1) - DUBAI_OFFSET
-        );
-
-        // Start of next month
-        const monthEnd = new Date(
-            Date.UTC(year, month + 1, 1) - DUBAI_OFFSET
-        );
-
-        // Common upcoming filter
-        const upcomingFilter = {
+        const baseFilter = {
             adminStatus: "approved",
-            auctionStatus: { $nin: ["canceled"] },
-            auctionStartDateTime: { $gt: now }
+            auctionStatus: "upcoming"
         };
 
         const [
@@ -2030,74 +1880,180 @@ export const getUpcomingAuctionStats = async (req, res) => {
             averageStartingPrice
         ] = await Promise.all([
 
-            // Total upcoming
-            Vehicle.countDocuments(upcomingFilter),
-
-            // Starting today
             Vehicle.countDocuments({
-                ...upcomingFilter,
+                ...baseFilter,
+                auctionStartDateTime: { $gt: now }
+            }),
+
+            Vehicle.countDocuments({
+                ...baseFilter,
                 auctionStartDateTime: {
-                    $gte: todayStart,
+                    $gte: effectiveNow(todayStart),
                     $lt: tomorrowStart
                 }
             }),
 
-            // Starting this week
             Vehicle.countDocuments({
-                ...upcomingFilter,
+                ...baseFilter,
                 auctionStartDateTime: {
-                    $gte: weekStart,
+                    $gte: effectiveNow(weekStart),
                     $lt: weekEnd
                 }
             }),
 
-            // Starting this month
             Vehicle.countDocuments({
-                ...upcomingFilter,
+                ...baseFilter,
                 auctionStartDateTime: {
-                    $gte: monthStart,
+                    $gte: effectiveNow(monthStart),
                     $lt: monthEnd
                 }
             }),
 
-            // Average starting price
             Vehicle.aggregate([
-                {
-                    $match: upcomingFilter
-                },
-                {
-                    $group: {
-                        _id: null,
-                        average: {
-                            $avg: "$startingBidPrice"
-                        }
-                    }
-                }
+                { $match: { ...baseFilter, auctionStartDateTime: { $gt: now } } },
+                { $group: { _id: null, average: { $avg: "$startingBidPrice" } } }
             ])
         ]);
 
-        const avgStartingPrice = Math.round(
-            averageStartingPrice[0]?.average || 0
-        );
+        const avgStartingPrice = Math.round(averageStartingPrice[0]?.average || 0);
 
         return res.status(200).json({
             success: true,
             message: "Upcoming auction stats fetched successfully",
+            data: { totalUpcoming, startingToday, startingThisWeek, startingThisMonth, avgStartingPrice }
+        });
+
+    } catch (error) {
+        console.error("Get upcoming auction stats error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch upcoming auction stats",
+            error: error.message
+        });
+    }
+};
+
+// Get completed auction stats
+export const getCompletedAuctionStats = async (req, res) => {
+    try {
+        const now = new Date();
+
+        const baseFilter = {
+            adminStatus: "approved",
+            auctionEndDateTime: { $lte: now }
+        };
+
+        const [
+            totalCompleted,
+            soldAuctions,
+            unsoldAuctions,
+            reserveNotMet
+        ] = await Promise.all([
+
+            // Total Completed — sold + unsold + reserve-not-met, sabka sum
+            Vehicle.countDocuments({
+                ...baseFilter,
+                auctionStatus: { $in: ["sold", "unsold", "reserve-not-met"] }
+            }),
+
+            // Sold
+            Vehicle.countDocuments({
+                ...baseFilter,
+                auctionStatus: "sold"
+            }),
+
+            // Unsold
+            Vehicle.countDocuments({
+                ...baseFilter,
+                auctionStatus: "unsold"
+            }),
+
+            // Reserve Not Met
+            Vehicle.countDocuments({
+                ...baseFilter,
+                auctionStatus: "reserve-not-met"
+            })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: "Completed auction stats fetched successfully",
             data: {
-                totalUpcoming,
-                startingToday,
-                startingThisWeek,
-                startingThisMonth,
+                totalCompleted,
+                soldAuctions,
+                unsoldAuctions,
+                reserveNotMet
+            }
+        });
+
+    } catch (error) {
+        console.error("Get completed auction stats error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch completed auction stats",
+            error: error.message
+        });
+    }
+};
+
+// Get canceled auction stats
+export const getCanceledAuctionStats = async (req, res) => {
+    try {
+        const baseFilter = {
+            adminStatus: "approved",
+            auctionStatus: "canceled"
+        };
+
+        const [
+            totalCanceled,
+            canceledBeforeStart,
+            canceledInProgress,
+            canceledByAdmin,
+            averageStartingPrice
+        ] = await Promise.all([
+
+            Vehicle.countDocuments(baseFilter),
+
+            Vehicle.countDocuments({
+                ...baseFilter,
+                statusAtCancellation: "upcoming"
+            }),
+
+            Vehicle.countDocuments({
+                ...baseFilter,
+                statusAtCancellation: "live"
+            }),
+
+            Vehicle.countDocuments({
+                ...baseFilter,
+                canceledBy: "admin"
+            }),
+
+            Vehicle.aggregate([
+                { $match: baseFilter },
+                { $group: { _id: null, average: { $avg: "$startingBidPrice" } } }
+            ])
+        ]);
+
+        const avgStartingPrice = Math.round(averageStartingPrice[0]?.average || 0);
+
+        return res.status(200).json({
+            success: true,
+            message: "Canceled auction stats fetched successfully",
+            data: {
+                totalCanceled,
+                canceledBeforeStart,
+                canceledInProgress,
+                canceledByAdmin,
                 avgStartingPrice
             }
         });
 
     } catch (error) {
-        console.error("Get upcoming auction stats error:", error);
-
+        console.error("Get canceled auction stats error:", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to fetch upcoming auction stats",
+            message: "Failed to fetch canceled auction stats",
             error: error.message
         });
     }
