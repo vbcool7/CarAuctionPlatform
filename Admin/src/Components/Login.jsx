@@ -76,7 +76,7 @@ function Login() {
                             </div>
 
                             <h2 className="text-2xl font-bold text-[#0B1E3D]">
-                                Admin Login
+                                 Welcome Back
                             </h2>
 
                             <p className="mt-2 text-[13px] text-slate-500">
@@ -164,7 +164,7 @@ function Login() {
                         {/* Footer */}
                         <div className="mt-2 border-t border-slate-100 pt-5 text-center">
                             <p className="text-xs text-slate-400">
-                                BidDrive Admin Panel
+                                 BidDrive Management Portal
                             </p>
                         </div>
                     </div>

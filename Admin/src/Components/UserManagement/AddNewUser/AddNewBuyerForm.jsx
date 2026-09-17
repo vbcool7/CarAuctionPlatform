@@ -1,18 +1,15 @@
 
 import React, { useState } from 'react';
-import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { Eye, EyeOff, User, Briefcase, Building2, ChevronDown, FileText, UploadCloud, CheckCircle2, X } from 'lucide-react';
+import { User, Briefcase, Building2, FileText, UploadCloud, CheckCircle2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import FormPageHeader from '../Shared/FormPageHeader';
 import ProfileImageUpload from '../Shared/ProfileImageUpload';
-import NotesField from '../Shared/NotesField';
 import CustomDropdown from '../../SharedComponents/CustomDropDown';
 import DateInputField from '../Shared/DateInputField';
 import InputField from '../Shared/InputField';
 import { useAddNewBuyer } from '../../../hooks/useBuyer';
-import { useRef } from 'react';
 
 const initialFormState = {
     firstName: '', lastName: '', email: '', mobile: '',
@@ -48,18 +45,6 @@ const PAYMENT_METHOD_MAP = {
     'Bank Transfer': 'bank_transfer',
     'PayPal': 'paypal',
     'Other': 'other'
-};
-
-const IDENTITY_DOC_MAP = {
-    'Passport': 'passport',
-    'National ID': 'national_id',
-    'Driving License': 'driving_license',
-};
-
-const ADDRESS_DOC_MAP = {
-    'Utility Bill (Electricity/Water)': 'utility_bill',
-    'Bank Statement': 'bank_statement',
-    'Rental Agreement': 'rental_agreement',
 };
 
 const IDENTITY_DOC_OPTIONS = [
@@ -184,9 +169,6 @@ function AddNewBuyerForm({ setCurrentPage }) {
 
     const [emailToggle, setEmailToggle] = useState(false);
     const [phoneToggle, setPhoneToggle] = useState(false);
-
-    const [isOpen, setIsOpen] = useState(false);
-    const [isAddrOpen, setIsAddrOpen] = useState(false);
 
     const docType = formData.identityDocType;
     const addrType = formData.addressDocType;

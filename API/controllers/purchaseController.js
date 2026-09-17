@@ -5,6 +5,7 @@ import Admin from '../models/adminModelSchema.js';
 
 import { createNotification } from '../services/notificationService.js';
 import { getNextPurchaseId } from '../utils/counterHelper.js';
+import { createPayoutForSale } from '../utils/createPayout.js';
 
 export const buyVehicle = async (req, res) => {
     try {
@@ -66,6 +67,21 @@ export const buyVehicle = async (req, res) => {
             amount: updatedVehicle.buyNowPrice,
         });
 
+        // payout create
+        try {
+            await createPayoutForSale({
+                vehicleId: updatedVehicle._id,
+                sellerId: updatedVehicle.sellerId,
+                buyerId,
+                buyerType,
+                saleAmount: updatedVehicle.buyNowPrice,
+                saleType: 'Purchase',
+                sourceId: purchase._id,
+            });
+        } catch (payoutErr) {
+            console.error('CRITICAL: Payout creation failed for vehicle', updatedVehicle._id, payoutErr);
+        }
+
         // notification trigger — to seller
         await createNotification({
             recipientId: updatedVehicle.sellerId,
@@ -99,14 +115,14 @@ export const buyVehicle = async (req, res) => {
             });
         }
 
-    return res.status(201).json({
-        success: true,
-        message: 'Purchase successful',
-        data: purchase,
-    });
+        return res.status(201).json({
+            success: true,
+            message: 'Purchase successful',
+            data: purchase,
+        });
 
-} catch (err) {
-    console.log('Buy vehicle error:', err);
-    return res.status(500).json({ success: false, message: 'Server Error Occurred' });
-}
+    } catch (err) {
+        console.log('Buy vehicle error:', err);
+        return res.status(500).json({ success: false, message: 'Server Error Occurred' });
+    }
 };

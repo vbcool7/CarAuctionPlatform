@@ -2,13 +2,16 @@
 import express from 'express';
 import { upload } from '../middlewares/imageStorage.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
+import requirePermission from '../middlewares/requirePermission.js';
 import {
-    adminSignup, adminLogin, adminGet, adminLogout,
+    adminSignup, login, adminGet, adminLogout,
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes,
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats,
-    getAllBids, getBidDetail, getBidStats
+    getAllBids, getBidDetail, getBidStats,
+    getAllSales,
+    addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus, 
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -32,9 +35,16 @@ const sellerDocsUpload = upload.fields([
 
 // ============================ ADMIN
 router.post('/admin-signup', upload.single('profilePhoto'), adminSignup);
-router.post('/admin-login', adminLogin);
+router.post('/login', login);
 router.get('/admin-get', authMiddleware(['admin']), adminGet);
 router.post('/admin-logout', adminLogout);
+
+// ============================ MANAGER
+router.post('/add-manager', authMiddleware(['admin']), upload.single('profilePhoto'), addManager);
+router.get('/all-managers-list', authMiddleware(['admin']), getAllManagers);
+router.get('/get-manager/:id', authMiddleware(['admin']), getManagerById);
+router.patch('/edit-manager-permissions/:id', authMiddleware(['admin']), editManagerPermissions);
+router.patch('/toggle-manager-status/:id', authMiddleware(['admin']), toggleManagerStatus);
 
 // ============================ BUYER
 router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
@@ -95,25 +105,28 @@ router.patch('/reactivate-seller/:id', authMiddleware(['admin']), reactivateSell
 router.get('/seller-stats', authMiddleware(['admin']), getSellerStats);
 
 // ============================ VEHICLE
-router.get('/distinct-makes', authMiddleware(['admin']), getDistinctMakes);
-router.get('/all-vehicles-list', authMiddleware(['admin']), getAllVehicles);
-router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin']), getVehiclesBySeller);
-router.get('/get-vehicle/:id', authMiddleware(['admin']), getVehicleById);
+router.get('/distinct-makes', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getDistinctMakes);
+router.get('/all-vehicles-list', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getAllVehicles);
+router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehiclesBySeller);
+router.get('/get-vehicle/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehicleById);
 router.patch('/vehicle-review/:id', authMiddleware(['admin']), reviewVehicle);
-router.get('/vehicle-approval-summary', authMiddleware(['admin']), getVehicleApprovalSummary);
+router.get('/vehicle-approval-summary', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehicleApprovalSummary);
 
 // ============================ AUCTION
-router.get('/all-auctions', authMiddleware(['admin']), getAllAuctions);
-router.get('/auction-detail/:id', authMiddleware(['admin']), getAuctionDetail);
-router.get("/all-auction-stats", authMiddleware(['admin']), getAllAuctionStats);
-router.get("/live-auction-stats", authMiddleware(['admin']), getLiveAuctionStats);
-router.get("/upcoming-auction-stats", authMiddleware(['admin']), getUpcomingAuctionStats);
-router.get("/completed-auction-stats", authMiddleware(['admin']), getCompletedAuctionStats);
-router.get("/canceled-auction-stats", authMiddleware(['admin']), getCanceledAuctionStats);
+router.get('/all-auctions', authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAllAuctions);
+router.get('/auction-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAuctionDetail);
+router.get("/all-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAllAuctionStats);
+router.get("/live-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getLiveAuctionStats);
+router.get("/upcoming-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getUpcomingAuctionStats);
+router.get("/completed-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getCompletedAuctionStats);
+router.get("/canceled-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getCanceledAuctionStats);
 
 // ============================ BID
-router.get('/bids-stats', authMiddleware(['admin']), getBidStats);
-router.get('/all-bids', authMiddleware(['admin']), getAllBids);
-router.get('/bid-detail/:id', authMiddleware(['admin']), getBidDetail);
+router.get('/bids-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidStats);
+router.get('/all-bids', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getAllBids);
+router.get('/bid-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidDetail);
+
+// ============================ SALES
+router.get('/all-sales', authMiddleware(['admin']), getAllSales);
 
 export default router;

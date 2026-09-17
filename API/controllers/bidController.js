@@ -3,6 +3,7 @@ import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
+import mongoose from 'mongoose';
 
 import { getNextBidId } from '../utils/counterHelper.js';
 import { createNotification } from '../services/notificationService.js';
@@ -198,6 +199,8 @@ export const getVehicleBids = async (req, res) => {
 };
 
 // get my-bids
+const BID_STATUSES = ['active', 'outbid', 'won', 'withdrawn', 'canceled'];
+
 export const getMyBids = async (req, res) => {
     try {
         const bidderId = req.user.id;
@@ -206,35 +209,126 @@ export const getMyBids = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const { status } = req.query;
+        const { status, search, auctionType } = req.query;
 
-        const filter = { bidderId };
+        if (status && status !== 'all' && !BID_STATUSES.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid status: ${status}`
+            });
+        }
 
-        if (status) { filter.status = status; }
+        // ---- step 1: resolve vehicleIds if search/auctionType filters are present ----
+
+        let vehicleIdFilter = null;
+
+        if ((search && search.trim()) || (auctionType && auctionType !== 'all')) {
+            const vehicleMatch = {};
+
+            if (auctionType && auctionType !== 'all') {
+                vehicleMatch.auctionType = auctionType;
+            }
+
+            if (search && search.trim()) {
+                const term = search.trim();
+                const regex = new RegExp(term, 'i');
+                const orConditions = [
+                    { make: regex },
+                    { model: regex },
+                    { vin: regex },
+                    { listingId: regex }
+                ];
+                if (!isNaN(term)) {
+                    orConditions.push({ year: Number(term) });
+                }
+                vehicleMatch.$or = orConditions;
+            }
+
+            const matchingVehicles = await Vehicle.find(vehicleMatch).select('_id');
+            vehicleIdFilter = matchingVehicles.map((v) => v._id);
+
+            if (vehicleIdFilter.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    count: 0,
+                    bids: [],
+                    pagination: { currentPage: page, totalPages: 0, totalCount: 0, limit },
+                    message: 'No bids found'
+                });
+            }
+        }
+
+        // ---- step 2: build the actual Bid filter ----
+        const filter = { bidderId: new mongoose.Types.ObjectId(bidderId) };
+
+        if (status && status !== 'all') {
+            filter.status = status;
+        }
+
+        if (vehicleIdFilter) {
+            filter.vehicleId = { $in: vehicleIdFilter };
+        }
 
         const [bids, totalCount] = await Promise.all([
             Bid.find(filter)
                 .select('bidId vehicleId bidderId bidderType amount status createdAt')
                 .populate({
                     path: 'vehicleId',
-                    select: 'images make model year listingId currentBid auctionStatus auctionEndDateTime vin reservePrice'
+                    select: 'images make model year listingId currentBid auctionStatus auctionType auctionEndDateTime vin reservePrice'
                 })
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-
             Bid.countDocuments(filter)
         ]);
 
+        const baseFilter = { bidderId: new mongoose.Types.ObjectId(bidderId) };
+        const [allCount, ...statusCounts] = await Promise.all([
+            Bid.countDocuments(baseFilter),
+            ...BID_STATUSES.map((s) => Bid.countDocuments({ ...baseFilter, status: s }))
+        ]);
+
+        const tabCounts = { all: allCount };
+        BID_STATUSES.forEach((s, idx) => {
+            tabCounts[s] = statusCounts[idx];
+        });
+
+        const [amountAgg] = await Bid.aggregate([
+            { $match: baseFilter },
+            {
+                $group: {
+                    _id: null,
+                    totalAmountBidded: {
+                        $sum: { $cond: [{ $eq: ['$status', 'active'] }, '$amount', 0] }
+                    },
+                    winningAmount: {
+                        $sum: { $cond: [{ $eq: ['$status', 'won'] }, '$amount', 0] }
+                    }
+                }
+            }
+        ]);
+
+        const bidSummary = {
+            activeBids: tabCounts.active,
+            auctionsWon: tabCounts.won,
+            outbid: tabCounts.outbid,
+            totalAmountBidded: amountAgg?.totalAmountBidded || 0,
+            winningAmount: amountAgg?.winningAmount || 0
+        };
+
         return res.status(200).json({
             success: true,
+            count: bids.length,
             bids,
+            tabCounts, // { all, active, outbid, won, withdrawn, canceled }
+            bidSummary,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalCount / limit),
                 totalCount,
                 limit
-            }
+            },
+            ...(bids.length === 0 && { message: 'No bids found' })
         });
 
     } catch (error) {

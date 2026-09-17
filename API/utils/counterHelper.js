@@ -15,3 +15,5 @@ export const getNextBuyerId = () => getNextSequence('buyerId', 'BYR');
 export const getNextSellerId = () => getNextSequence('sellerId', 'SLR');
 export const getNextBidId = () => getNextSequence('bidId', 'BID');
 export const getNextPurchaseId = () => getNextSequence('purchaseId', 'PUR');
+export const getNextPayoutId = () => getNextSequence('payoutId', 'PAYOUT');
+export const getNextInvoiceNumber = () => getNextSequence('invoiceNumber', 'INV');

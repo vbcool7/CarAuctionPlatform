@@ -24,8 +24,24 @@ const adminSchema = new mongoose.Schema({
 
     role: {
         type: String,
+        enum: ['admin', 'auctionManager'],
         default: "admin"
     },
+
+    permissions: {
+        manageAuctions: { type: Boolean, default: false },
+        manageBids: { type: Boolean, default: false },
+        manageVehicles: { type: Boolean, default: false },
+        manageUsers: { type: Boolean, default: false },
+        managePayments: { type: Boolean, default: false },
+        managePayouts: { type: Boolean, default: false },
+        manageReports: { type: Boolean, default: false },
+    },
+    
+    isActive: {
+        type: Boolean,
+        default: true
+    }
 },
     { timestamps: true }
 )

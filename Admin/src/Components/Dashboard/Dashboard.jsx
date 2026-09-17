@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { Calendar, ChevronDown, Download } from 'lucide-react';
+import { Calendar, Download } from 'lucide-react';
 import Stats from './Stats';
 import SalesOverviewGraph from './SalesOverviewGraph';
 import AuctionPerformanceGraph from './AuctionPerformanceGraph';

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut, CarFront } from 'lucide-react';
 import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line } from "react-icons/ri";
+import useAdminAuthStore from '../store/useAdminAuthStore';
 
 const menuItems = [
     {
@@ -15,22 +16,26 @@ const menuItems = [
         id: "user-management",
         icon: RiUserLine,
         label: "User Management",
+        adminOnly: true,  // only admin
         submenu: [
             { id: "buyers", label: "Buyers" },
             { id: "sellers", label: "Sellers" },
             { id: "staffs", label: "Staff" },
+            { id: "manager", label: "Manager" },
         ]
     },
     {
         id: "vehicle-approvals",
         icon: RiCarLine,
         label: "Vehicle Approvals",
+        permissionKey: "manageVehicles",
         active: false,
     },
     {
         id: "auction-management",
         icon: RiAuctionLine,
         label: "Auction Management",
+        permissionKey: "manageAuctions", // manager access kar sakta hai agar permission true
         active: false,
         submenu: [
             { id: "all-auctions", label: "All Auctions" },
@@ -44,15 +49,18 @@ const menuItems = [
         id: "bid-management",
         icon: RiHandCoinLine,
         label: "Bid Management",
+        permissionKey: "manageBids",
         active: false,
     },
     {
         id: "payment-management",
         icon: RiBankCardLine,
-        label: "Payment Management",
+        label: "Payout Management",
+        adminOnly: true,
         active: false,
         submenu: [
             { id: "all-payments", label: "All Payments" },
+            { id: "sales", label: "Sales" },
             { id: "payouts", label: "Payouts" },
             { id: "refunds", label: "Refunds" },
             { id: "transactions", label: "Transactions" },
@@ -63,6 +71,7 @@ const menuItems = [
         id: "dispute-management",
         icon: RiShieldCheckLine,
         label: "Dispute Management",
+        adminOnly: true,
         active: false,
         submenu: [
             { id: "all-disputes", label: "All Disputes" },
@@ -73,6 +82,7 @@ const menuItems = [
         id: "cms-management",
         icon: RiFileList3Line,
         label: "CMS Management",
+        adminOnly: true,
         active: false,
         submenu: [
             { id: "all-pages", label: "All Pages" },
@@ -83,12 +93,14 @@ const menuItems = [
         id: "reports-analytics",
         icon: RiBarChartGroupedLine,
         label: "Reports & Analytics",
+        adminOnly: true,
         active: false,
     },
     {
         id: "ai-features",
         icon: RiSparklingLine,
         label: "AI & Advanced Features",
+        adminOnly: true,
         active: false,
         badge: "New",
     },
@@ -96,12 +108,14 @@ const menuItems = [
         id: "system-settings",
         icon: RiSettings3Line,
         label: "System Settings",
+        adminOnly: true,
         active: false,
     },
     {
         id: "kyc-verification",
         icon: RiVerifiedBadgeLine,
         label: "KYC Verification",
+        adminOnly: true,
         active: false,
         submenu: [
             { id: "buyer-kyc", label: "Buyers" },
@@ -112,11 +126,21 @@ const menuItems = [
         id: "live-chat",
         icon: RiMessage2Line,
         label: "Live Chat",
+        adminOnly: true,
         active: false,
     },
 ];
 
 function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, onCloseMobile, openLogoutModal }) {
+
+    const admin = useAdminAuthStore((state) => state.admin);
+
+    const visibleMenuItems = menuItems.filter((item) => {
+        if (admin?.role === 'admin') return true; // admin sab dekhega
+        if (item.adminOnly) return false; // manager ko adminOnly items nahi milenge
+        if (item.permissionKey) return admin?.permissions?.[item.permissionKey] === true;
+        return true; // koi restriction nahi (jaise Dashboard) — sabko dikhega
+    });
 
     const [expandedItems, setExpandedItems] = useState(new Set(['dashboard']));
 
@@ -158,7 +182,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                                     Bid<span className="text-amber-500">Drive</span>
                                 </h1>
                                 <p className="text-[11px] text-slate-400">
-                                    Admin Panel
+                                    {admin?.role === 'admin' ? "Admin Panel" : "Manager Panel"}
                                 </p>
                             </div>
                         )}
@@ -174,7 +198,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
 
                 {/* Nav */}
                 <nav className='flex-1 p-4 space-y-1 overflow-y-auto no-scrollbar'>
-                    {menuItems.map((item) => {
+                    {visibleMenuItems.map((item) => {
                         const isActive = currentPage === item.id;
                         const isExpanded = expandedItems.has(item.id);
                         const Icon = item.icon;

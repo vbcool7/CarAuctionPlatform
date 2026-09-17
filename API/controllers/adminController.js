@@ -3,9 +3,11 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
+import mongoose from 'mongoose';
 import {
     buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail,
-    buildBuyerSuspendedEmail, buildBuyerReactivatedEmail, buildSellerSuspendedEmail, buildSellerReactivatedEmail
+    buildBuyerSuspendedEmail, buildBuyerReactivatedEmail, buildSellerSuspendedEmail, buildSellerReactivatedEmail,
+    buildManagerWelcomeEmail
 } from '../utils/emailTemplates.js';
 
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
@@ -17,6 +19,7 @@ import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Bid from '../models/bidModelSchema.js';
+import Payout from '../models/payoutModelSchema.js';
 
 export const adminSignup = async (req, res) => {
     try {
@@ -73,7 +76,8 @@ export const adminSignup = async (req, res) => {
     }
 };
 
-export const adminLogin = async (req, res) => {
+// admin + manager
+export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -89,7 +93,7 @@ export const adminLogin = async (req, res) => {
         if (!admin) {
             return res.status(404).json({
                 success: false,
-                message: "Admin not registsred"
+                message: "Account not found"
             });
         }
 
@@ -102,21 +106,33 @@ export const adminLogin = async (req, res) => {
             });
         }
 
+        // if manager inactive
+        if (!admin.isActive) {
+            return res.status(403).json({
+                success: false,
+                message: "Your account has been deactivated. Please contact the administrator."
+            });
+        }
+
         const token = jwt.sign(
-            { id: admin._id, role: "admin" },
+            { id: admin._id, role: admin.role, permissions: admin.permissions },
             process.env.JWT_SECRET_KEY,
             { expiresIn: '1d' }
         );
 
         res.status(200).json({
             success: true,
-            message: "Admin login success",
+            message: "Login success",
             token,
             admin: {
                 name: admin.name,
-                email: admin.email
+                email: admin.email,
+                profilePhoto: admin.profilePhoto,
+                role: admin.role,
+                permissions: admin.permissions
             }
         });
+
     } catch (err) {
         console.log("Err:", err);
         return res.status(500).json({
@@ -161,6 +177,408 @@ export const adminGet = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// ============================================ MANAGER
+
+// add manager
+export const addManager = async (req, res) => {
+    try {
+        const { name, email, password, permissions } = req.body;
+        const profilePhotoPath = req.file ? req.file.path : "";
+
+        if (!name || !email || !password || !permissions) {
+            if (req.file) {
+                await deleteCloudinaryFiles(req.file);
+            }
+
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Check if email already exists
+        const existingAdmin = await Admin.findOne({
+            email: normalizedEmail
+        });
+
+        if (existingAdmin) {
+            if (req.file) {
+                await deleteCloudinaryFiles(req.file);
+            }
+
+            return res.status(409).json({
+                success: false,
+                message: "An account with this email already exists"
+            });
+        }
+
+        let parsedPermissions;
+        try {
+            parsedPermissions = typeof permissions === 'string' ? JSON.parse(permissions) : permissions;
+        } catch (e) {
+            parsedPermissions = {};
+        }
+
+        // All 7 permission keys (manageSettings intentionally excluded)
+        const permissionKeys = [
+            'manageAuctions',
+            'manageBids',
+            'manageVehicles',
+            'manageUsers',
+            'managePayments',
+            'managePayouts',
+            'manageReports'
+        ];
+
+        // Build normalized permissions object (booleans only, unknown keys ignored)
+        const newPermissions = {};
+        permissionKeys.forEach((key) => {
+            newPermissions[key] = !!parsedPermissions?.[key];
+        });
+
+        // Which permissions is this request actually trying to turn ON
+        const requestedTrueKeys = permissionKeys.filter((key) => newPermissions[key] === true);
+
+        // Exclusivity check — a permission can be true for only ONE active manager at a time
+        if (requestedTrueKeys.length > 0) {
+            const activeManagers = await Admin.find({
+                role: "auctionManager",
+                isActive: true
+            });
+
+            const conflicts = [];
+
+            requestedTrueKeys.forEach((key) => {
+                const holder = activeManagers.find((mgr) => mgr.permissions?.[key] === true);
+                if (holder) {
+                    conflicts.push({ permission: key, heldBy: holder.name, managerId: holder._id });
+                }
+            });
+
+            if (conflicts.length > 0) {
+                if (req.file) {
+                    await deleteCloudinaryFiles(req.file);
+                }
+
+                return res.status(409).json({
+                    success: false,
+                    message: "One or more requested permissions are already assigned to another active manager",
+                    conflicts
+                });
+            }
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create manager account
+        const newManager = new Admin({
+            name: name.trim(),
+            email: normalizedEmail,
+            password: hashedPassword,
+            profilePhoto: profilePhotoPath,
+            role: "auctionManager",
+            permissions: newPermissions
+        });
+
+        try {
+            await newManager.save();
+        } catch (saveErr) {
+            if (req.file) await deleteCloudinaryFiles(req.file);
+            console.error("Error to save new manager:", saveErr);
+            return res.status(500).json({
+                success: false,
+                message: "Error to save new manager"
+            });
+        }
+
+        // Build manager invitation email
+        const { subject, html } = buildManagerWelcomeEmail(
+            normalizedEmail,
+            password
+        );
+
+        // Send invitation email
+        try {
+            await sendEmail(normalizedEmail, subject, html);
+        } catch (mailErr) {
+            if (req.file) await deleteCloudinaryFiles(req.file);
+            await Admin.findByIdAndDelete(newManager._id);
+            console.error("Manager created but email failed, rolled back:", mailErr);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to send invitation email. Manager account was not created — please try again."
+            });
+        }
+
+        return res.status(201).json({
+            success: true,
+            message: "Auction Manager account created and invitation email sent successfully",
+            data: {
+                name: newManager.name,
+                email: newManager.email
+            }
+        });
+
+    } catch (err) {
+        if (req.file) {
+            await deleteCloudinaryFiles(req.file);
+        }
+
+        console.error("Add Manager Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get all managers
+export const getAllManagers = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // filters
+        const filter = { role: "auctionManager" };
+
+        const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // search by name or email
+        if (req.query.search) {
+            const searchRegex = new RegExp(escapeRegex(req.query.search), "i");
+            filter.$or = [
+                { name: searchRegex },
+                { email: searchRegex }
+            ];
+        }
+
+        // status filter
+        if (req.query.status === "active") {
+            filter.isActive = true;
+        }
+
+        if (req.query.status === "inactive") {
+            filter.isActive = false;
+        }
+
+        const [managers, filteredCount, totalCount] = await Promise.all([
+            Admin.find(filter)
+                .select("-password")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+
+            Admin.countDocuments(filter),
+
+            Admin.countDocuments({ role: "auctionManager" })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            data: managers,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(filteredCount / limit),
+                totalCount,
+                filteredCount,
+                limit
+            }
+        });
+
+    } catch (err) {
+        console.error("Get Managers Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get manager by id
+export const getManagerById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const manager = await Admin.findOne({
+            _id: id,
+            role: "auctionManager"
+        }).select("-password");
+
+        if (!manager) {
+            return res.status(404).json({
+                success: false,
+                message: "Manager not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: manager
+        });
+
+    } catch (err) {
+        console.error("Get Manager By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// edit permissions
+export const editManagerPermissions = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { permissions } = req.body;
+
+        if (!permissions) {
+            return res.status(400).json({
+                success: false,
+                message: "Permissions are required"
+            });
+        }
+
+        const manager = await Admin.findOne({ _id: id, role: "auctionManager" });
+
+        if (!manager) {
+            return res.status(404).json({
+                success: false,
+                message: "Manager not found"
+            });
+        }
+
+        if (!manager.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot edit permissions of a deactivated manager. Reactivate the manager first."
+            });
+        }
+
+        let parsedPermissions;
+        try {
+            parsedPermissions = typeof permissions === 'string' ? JSON.parse(permissions) : permissions;
+        } catch (e) {
+            parsedPermissions = {};
+        }
+
+        const permissionKeys = [
+            'manageAuctions',
+            'manageBids',
+            'manageVehicles',
+            'manageUsers',
+            'managePayments',
+            'managePayouts',
+            'manageReports'
+        ];
+
+        const newPermissions = {};
+        permissionKeys.forEach((key) => {
+            newPermissions[key] = !!parsedPermissions?.[key];
+        });
+
+        const requestedTrueKeys = permissionKeys.filter((key) => newPermissions[key] === true);
+
+        if (requestedTrueKeys.length > 0) {
+            const activeManagers = await Admin.find({
+                role: "auctionManager",
+                isActive: true,
+                _id: { $ne: id }   // exclude the manager being edited
+            });
+
+            const conflicts = [];
+
+            requestedTrueKeys.forEach((key) => {
+                const holder = activeManagers.find((mgr) => mgr.permissions?.[key] === true);
+                if (holder) {
+                    conflicts.push({ permission: key, heldBy: holder.name, managerId: holder._id });
+                }
+            });
+
+
+            if (conflicts.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message: "One or more requested permissions are already assigned to another active manager",
+                    conflicts
+                });
+            }
+        }
+
+        manager.permissions = newPermissions;
+        await manager.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Manager permissions updated successfully",
+            data: {
+                _id: manager._id,
+                name: manager.name,
+                permissions: manager.permissions
+            }
+        });
+
+    } catch (err) {
+        console.error("Edit Manager Permissions Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// active / inactive manager
+export const toggleManagerStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        if (typeof isActive !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "isActive must be a boolean"
+            });
+        }
+
+        const manager = await Admin.findOne({ _id: id, role: 'auctionManager' });
+
+        if (!manager) {
+            return res.status(404).json({
+                success: false,
+                message: "Manager not found"
+            });
+        }
+
+        manager.isActive = isActive;
+
+        await manager.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Manager ${isActive ? "Activated" : "Deactivated"} Successfully`,
+            data: {
+                _id: manager._id,
+                name: manager.name,
+                email: manager.email,
+                isActive: manager.isActive
+            }
+        });
+
+    } catch (err) {
+        console.error("Toggle Manager Status Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };
@@ -2423,6 +2841,210 @@ export const getBidDetail = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// ============================================ SALES
+
+// get all sales
+export const getAllSales = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const { search, saleType, status, startDate, endDate, sortBy } = req.query;
+
+        const filter = {};
+
+        if (saleType) {
+            const saleTypeMap = { auction: 'Bid', fixed: 'Purchase' };
+            if (!saleTypeMap[saleType]) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid sale type'
+                });
+            }
+            filter.saleType = saleTypeMap[saleType];
+        }
+
+        if (status) {
+            const validStatuses = ['pending', 'processing', 'paid'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid status'
+                });
+            }
+            filter.status = status;
+        }
+
+        // date filter
+        if (startDate || endDate) {
+            filter.createdAt = {};
+
+            if (startDate) {
+                const start = new Date(startDate);
+                if (isNaN(start.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid startDate'
+                    });
+                }
+                filter.createdAt.$gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                if (isNaN(end.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid endDate'
+                    });
+                }
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+        }
+
+        const pipeline = [
+            { $match: filter },
+
+            // Vehicle lookup
+            {
+                $lookup: {
+                    from: Vehicle.collection.name,
+                    localField: 'vehicleId',
+                    foreignField: '_id',
+                    as: 'vehicle',
+                },
+            },
+            { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
+
+            // Seller lookup
+            {
+                $lookup: {
+                    from: Seller.collection.name,
+                    localField: 'sellerId',
+                    foreignField: '_id',
+                    as: 'seller',
+                },
+            },
+            { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
+
+            // Buyer lookup — dynamic ref (Buyer or Seller), so lookup both, pick by buyerType
+            {
+                $lookup: {
+                    from: Buyer.collection.name,
+                    localField: 'buyerId',
+                    foreignField: '_id',
+                    as: 'buyerFromBuyer',
+                },
+            },
+            {
+                $lookup: {
+                    from: Seller.collection.name,
+                    localField: 'buyerId',
+                    foreignField: '_id',
+                    as: 'buyerFromSeller',
+                },
+            },
+            {
+                $addFields: {
+                    buyer: {
+                        $cond: [
+                            { $eq: ['$buyerType', 'Buyer'] },
+                            { $arrayElemAt: ['$buyerFromBuyer', 0] },
+                            { $arrayElemAt: ['$buyerFromSeller', 0] },
+                        ],
+                    },
+                },
+            },
+        ];
+
+        if (search?.trim()) {
+            const searchTerm = search.trim();
+            const escapedSearch = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const searchRegex = new RegExp(escapedSearch, 'i');
+
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { 'vehicle.listingId': searchRegex },
+                        { 'vehicle.make': searchRegex },
+                        { 'vehicle.model': searchRegex },
+                        { 'seller.fullName': searchRegex },
+                        { 'seller.businessName': searchRegex },
+                        { 'buyer.firstName': searchRegex },
+                        { 'buyer.lastName': searchRegex },
+                        { 'buyer.email': searchRegex },
+                        { invoiceNumber: searchRegex },
+                    ],
+                },
+            });
+        }
+
+        const sortOption = sortBy === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+        pipeline.push({ $sort: sortOption });
+
+        pipeline.push({
+            $project: {
+                payoutId: 1,
+                invoiceNumber: 1,
+                saleType: 1,
+                saleAmount: 1,
+                commissionRate: 1,
+                commissionAmount: 1,
+                payoutAmount: 1,
+                status: 1,
+                createdAt: 1,
+
+                'vehicle._id': 1,
+                'vehicle.listingId': 1,
+                'vehicle.make': 1,
+                'vehicle.model': 1,
+                'vehicle.year': 1,
+
+                'seller._id': 1,
+                'seller.fullName': 1,
+                'seller.businessName': 1,
+                'seller.email': 1,
+
+                'buyer._id': 1,
+                'buyer.firstName': 1,
+                'buyer.lastName': 1,
+                'buyer.businessName': 1,
+                'buyer.email': 1,
+
+            },
+        });
+
+        pipeline.push({
+            $facet: {
+                sales: [{ $skip: skip }, { $limit: limit }],
+                totalCount: [{ $count: 'count' }],
+            },
+        });
+
+        const [result] = await Payout.aggregate(pipeline);
+
+        const sales = result?.sales || [];
+        const totalCount = result?.totalCount?.[0]?.count || 0;
+        const totalPages = Math.ceil(totalCount / limit);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Sales fetched successfully',
+            data: sales,
+            pagination: { currentPage: page, totalPages, totalCount, limit },
+        });
+
+    } catch (err) {
+        console.error("All Sales Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

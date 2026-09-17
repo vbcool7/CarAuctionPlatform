@@ -1,20 +1,31 @@
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import API from '../api/axiosInstance';
-import { toast } from "react-toastify";
 
 // =========================== SELLER
 
 // all my-bids
-export const useGetMyBids = (page=1, status='', limit=10,) => {
+export const useGetMyBids = ({
+    status = 'all',
+    page = 1,
+    limit = 10,
+    search = '',
+    auctionType = 'all'
+} = {}) => {
     return useQuery({
-        queryKey: ['myBids', page,status, limit],
-        queryFn: async() => {
-            const res = await API.get(`/bid/my-bids?page=${page}&limit=${limit}&status=${status}`)
+        queryKey: ['myBids', status, page, limit, search, auctionType],
+        queryFn: async () => {
+            const params = new URLSearchParams({ page, limit });
+ 
+            if (status !== 'all') params.append('status', status);
+            if (search.trim()) params.append('search', search.trim());
+            if (auctionType !== 'all') params.append('auctionType', auctionType);
+
+            const res = await API.get(`/bid/my-bids?${params.toString()}`);
             return res.data;
         },
-        keepPreviousData: true,
+        placeholderData: keepPreviousData,
     });
 };
 
@@ -34,10 +45,10 @@ export const useGetMyBidDetail = (id, page = 1, limit = 10) => {
 };
 
 // vehicle bids
-export const useGetVehicleBids = (page=1, limit=10, id) => {
+export const useGetVehicleBids = (page = 1, limit = 10, id) => {
     return useQuery({
         queryKey: ['vehicleBids', page, limit, id],
-        queryFn: async() => {
+        queryFn: async () => {
             const res = await API.get(`/bid/vehicle-bids/${id}?page=${page}&limit=${limit}`);
             return res.data;
         },

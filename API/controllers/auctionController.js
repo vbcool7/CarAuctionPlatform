@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
 import { createNotification } from '../services/notificationService.js';
+import { createPayoutForSale } from '../utils/createPayout.js';
 
 // RESERVE PRICE - Moves upcoming auctions to live when start time arrives
 export const runAuctionStatusUpdate = async () => {
@@ -81,6 +82,21 @@ export const runAuctionEndUpdate = async () => {
             vehicle.auctionStatus = 'sold';
             winningBid.status = 'won';
             await winningBid.save();
+
+            // payout create 
+            try {
+                await createPayoutForSale({
+                    vehicleId: vehicle._id,
+                    sellerId: vehicle.sellerId,
+                    buyerId: winningBid.bidderId,
+                    buyerType: winningBid.bidderType,
+                    saleAmount: winningBid.amount,
+                    saleType: 'Bid',
+                    sourceId: winningBid._id,
+                });
+            } catch (payoutErr) {
+                console.error('CRITICAL: Payout creation failed for vehicle', vehicle._id, payoutErr);
+            }
 
             notifType = 'auction_sold';
             notifTitle = 'Your vehicle has been sold';
@@ -214,17 +230,17 @@ export const getMyAuctions = async (req, res) => {
             Vehicle.countDocuments(filter),
             ...countPromises
         ]);
- 
+
         const counts = Object.keys(TAB_STATUS_MAP).reduce((acc, tabKey, idx) => {
             acc[tabKey] = tabCounts[idx];
             return acc;
         }, {});
 
-         return res.status(200).json({
+        return res.status(200).json({
             success: true,
             count: vehicles.length,
             vehicles,
-            tabCounts: counts, 
+            tabCounts: counts,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalCount / limit),

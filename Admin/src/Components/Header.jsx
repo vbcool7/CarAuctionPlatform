@@ -1,9 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, Heart, Bell, ChevronDown, User, LogOut, Settings, Mail } from 'lucide-react';
+import { Menu, Search, ChevronDown, User, LogOut, Mail } from 'lucide-react';
 
-import { useAdminGet, useAdminLogout } from '../hooks/useAdmin';
+import { useAdminLogout } from '../hooks/useAdmin';
 import useAdminAuthStore from '../store/useAdminAuthStore';
 import toast from 'react-hot-toast';
 import NotificationDropdown from './NotificationDropdown';
@@ -12,10 +12,10 @@ function Header({ onToggleSideBar, setCurrentPage }) {
 
     const navigate = useNavigate();
 
-    const { data: getAdmin, isError } = useAdminGet();
-    const { mutate: logoutAdmin, isPending } = useAdminLogout();
-
+    const admin = useAdminAuthStore((state) => state.admin);
     const clearStore = useAdminAuthStore((state) => state.logout);
+
+    const { mutate: logoutAdmin, isPending } = useAdminLogout();
 
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
@@ -92,9 +92,9 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                             className='flex items-center gap-1 sm:gap-2 hover:bg-amber-50 px-1 sm:px-2 py-1 rounded-lg transition-all'
                         >
                             <div className='w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-slate-200 bg-amber-100 overflow-hidden shrink-0'>
-                                {getAdmin?.profilePhoto ? (
+                                {admin?.profilePhoto ? (
                                     <img
-                                        src={getAdmin.profilePhoto}
+                                        src={admin.profilePhoto}
                                         alt="User"
                                         className='w-full h-full object-cover'
                                     />
@@ -106,10 +106,12 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                             {/* Name hidden on very small screens, visible on sm */}
                             <div className='text-left hidden sm:block'>
                                 <p className='text-xs font-semibold text-[#0B1E3D] leading-tight'>
-                                    {getAdmin?.name || "Loading..."}
+                                    {admin?.name || "Loading..."}
                                 </p>
                                 <p className='text-[10px] text-slate-400 leading-tight capitalize'>
-                                    {getAdmin?.role || "System"}
+                                    {admin?.role
+                                        ? admin.role.replace(/([a-z])([A-Z])/g, '$1 $2')
+                                        : "System"}
                                 </p>
                             </div>
 
@@ -122,7 +124,7 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                                 {/* Dropdown content remains same */}
                                 <div className='px-3 md:px-4 py-2 md:py-3 border-b border-slate-100'>
                                     <p className='text-[14px] md:text-sm font-semibold text-[#0B1E3D]'>
-                                        {getAdmin?.name || "Loading..."}
+                                        {admin?.name || "Loading..."}
                                     </p>
                                 </div>
 

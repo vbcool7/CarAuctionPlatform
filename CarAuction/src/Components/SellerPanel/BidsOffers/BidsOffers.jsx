@@ -5,25 +5,7 @@ import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
 import { useGetMyBids } from '../../../hook/useBid';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
-
-const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "active", label: "Active" },
-    { value: "sold", label: "Sold" },
-    { value: "pending", label: "Pending Approval" },
-    { value: "draft", label: "Draft" },
-];
-
-const auctionTypeOptions = [
-    { value: "", label: "All Auction Types" },
-    { value: "live-auction", label: "Live Auction" },
-    { value: "fixed-price", label: "Fixed Price" },
-];
-
-const dateOptions = [
-    { value: "na", label: "NA" },
-    { value: "na", label: "NA" },
-];
+import { useEffect } from 'react';
 
 const recentActivities = [
     {
@@ -84,27 +66,61 @@ export const getAuctionStatusStyle = (status) => {
     }
 };
 
+const filterConfig = [
+    {
+        label: 'Auction Types',
+        key: 'auctionType',
+        options: ['all', 'timed', 'live']
+    },
+];
+
+const mapFiltersToParams = (filters, search, status) => {
+    const params = {};
+
+    if (status) params.status = status;
+    if (filters.auctionType) params.auctionType = filters.auctionType;
+
+    if (search) params.search = search;
+    return params;
+};
+
 function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
 
-    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState('all');
-
-    const { data: myBids, isLoading, isError } = useGetMyBids(page, activeTab === 'all' ? '' : activeTab);
-
+    const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const [status, setStatus] = useState('');
-    const [auctionType, setAuctionType] = useState('');
-    const [date, setDate] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({ auctionType: '', });
+
+    const params = mapFiltersToParams(filters, debouncedSearch, activeTab === 'all' ? '' : activeTab);
+
+    const { data: myBids, isLoading, isError, isPlaceholderData } = useGetMyBids({ page, limit: 10, ...params });
 
     const totalPages = myBids?.pagination?.totalPages || 1;
 
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
     const tabs = [
-        { key: 'all', label: 'All', count: 0 },
-        { key: 'active', label: 'Active Bids', count: 0 },
-        { key: 'won', label: 'Won', count: 0 },
-        { key: 'outbid', label: 'Outbid', count: 0 },
-        { key: 'withdrawn', label: 'Withdrawn', count: 0 },
-        { key: 'canceled', label: 'Canceled', count: 0 },
+        { key: 'all', label: 'All', count: myBids?.tabCounts?.all || 0 },
+        { key: 'active', label: 'Active Bids', count: myBids?.tabCounts?.active || 0 },
+        { key: 'won', label: 'Won', count: myBids?.tabCounts?.won || 0 },
+        { key: 'outbid', label: 'Outbid', count: myBids?.tabCounts?.outbid || 0 },
+        { key: 'withdrawn', label: 'Withdrawn', count: myBids?.tabCounts?.withdrawn || 0 },
+        { key: 'canceled', label: 'Canceled', count: myBids?.tabCounts?.canceled || 0 },
     ];
 
     if (isLoading) return <p className="p-10 text-center">Loading my bids list....</p>;
@@ -145,20 +161,41 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
             {/* filter */}
             <div className="flex flex-wrap gap-3 py-4 px-4 border border-gray-300 bg-white/80 rounded-xl">
                 <div className='flex-1 min-w-50'>
-                    <SearchBar value={search} onChange={setSearch} placeholder="Search by make, model or VIN..." />
+                    <SearchBar
+                        placeholder="Search by make, model, year or listing ID..."
+                        value={search}
+                        onChange={(value) => setSearch(value)}
+                    />
                 </div>
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
-                </div>
+                {/* dropdown */}
+                {filterConfig.map(({ label, key, options }) => (
+                    <div
+                        key={key}
+                        className="w-full sm:w-auto"
+                    >
+                        <FilterDropdown
+                            label={label}
+                            options={options.map((opt) => ({
+                                label: opt,
+                                value: opt,
+                            }))}
+                            value={filters[key]}
+                            onChange={(value) => updateFilter(key, value)}
+                        />
+                    </div>
+                ))}
 
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Auction Types" options={auctionTypeOptions} value={auctionType} onChange={setAuctionType} />
-                </div>
-
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Dates" options={dateOptions} value={date} onChange={setDate} />
-                </div>
+                {/* clear btn */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setSearch("");
+                        setFilters({ status: '', auctionType: '', sortBy: '' });
+                    }}
+                    className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
+                    Clear Filters
+                </button>
             </div>
 
             {/* content grid */}
@@ -172,6 +209,7 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                         <table className="w-full text-left table-fixed">
                             <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                                 <tr>
+                                    <th className="px-6 py-4.5 w-30">Bid ID</th>
                                     <th className="px-6 py-4.5 w-80">Vehicle / Auction</th>
                                     <th className="px-6 py-4.5 w-50">Your Bid / Offer</th>
                                     <th className="px-6 py-4.5 w-40 pl-10">Status</th>
@@ -180,7 +218,7 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                 </tr>
                             </thead>
 
-                            <tbody>
+                            <tbody className={`divide-y divide-slate-100 transition-opacity ${isPlaceholderData ? 'opacity-50 pointer-events-none' : ''}`}>
                                 {myBids?.bids?.length > 0 ? (
                                     myBids.bids.map((bid, index) => {
                                         return (
@@ -188,6 +226,10 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                                 key={bid._id || index}
                                                 className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'
                                             >
+                                                {/* bid id */}
+                                                <td className='px-3 py-3 text-sm text-gray-600'>
+                                                    {bid.bidId}
+                                                </td>
                                                 {/* Vehicle / Auction */}
                                                 <td className='px-3 py-3'>
                                                     <div className='flex items-center gap-3'>
@@ -328,9 +370,16 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                         <tr>
                                             <td
                                                 colSpan={5}
-                                                className="px-6 py-12 text-center text-gray-500"
+                                                className="px-6 py-12 text-center"
                                             >
-                                                No Data Found
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <p className="text-sm font-medium text-gray-500">
+                                                        No Data Found
+                                                    </p>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        There are no bid records available.
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

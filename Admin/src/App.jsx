@@ -29,6 +29,7 @@ import CancelledAuctionsDetail from './Components/AuctionManagement/CancelledAuc
 import CompletedAuctions from './Components/AuctionManagement/CompletedAuctions/CompletedAuctions';
 import CompletedAuctionsDetail from './Components/AuctionManagement/CompletedAuctions/CompletedAuctionsDetail';
 import BidManagement from './Components/BidManagement/BidManagement';
+import Sales from './Components/PayoutManagement/Sales/Sales';
 import Payouts from './Components/PayoutManagement/Payouts/Payouts';
 import CreatePayoutForm from './Components/PayoutManagement/Payouts/CreatePayoutForm';
 import AllPayments from './Components/PayoutManagement/AllPayments/AllPayments';
@@ -62,12 +63,16 @@ import SellerKycVerificationDetail from './Components/KycVerification/SellerKycV
 import VehicleApprovalsDetail from './Components/VehicleApprovals/VehicleApprovalsDetail';
 import BidManagementDetail from './Components/BidManagement/BidManagementDetail';
 import Notifications from './Components/Notifications';
+import AddNewManagerForm from './Components/UserManagement/AddNewUser/AddNewManagerForm';
+import Manager from './Components/UserManagement/Manager';
+import { useEffect } from 'react';
+import ManagerDetail from './Components/UserManagement/ManagerDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('all-auctions');
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -78,6 +83,7 @@ function App() {
   const [selectedBuyerId, setSelectedBuyerId] = useState(null);
   const [selectedSellerId, setSelectedSellerId] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedManagerId, setSelectedManagerId] = useState(null);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
 
@@ -124,6 +130,12 @@ function App() {
     setCurrentPage(page);
     setMobileSidebarOpen(false);
   };
+
+  useEffect(() => {
+    if (token) {
+        setCurrentPage('dashboard');
+    }
+}, [token]);
 
   // Global Toaster 
   const globalToaster = (
@@ -218,11 +230,15 @@ function App() {
 
                 {currentPage === 'staffs' && <Staff onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'staff-detail' && <StaffDetail staff={selectedStaff} setCurrentPage={setCurrentPage} />}
+                
+                {currentPage === 'manager' && <Manager setSelectedManagerId={setSelectedManagerId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'manager-detail' && <ManagerDetail managerId={selectedManagerId} setCurrentPage={setCurrentPage} />}
 
                 {/* user management - form : buyer, seller, staff */}
                 {currentPage === 'add-new-buyer' && <AddNewBuyerForm setCurrentPage={setCurrentPage} />}
                 {currentPage === 'add-new-seller' && <AddNewSellerForm setCurrentPage={setCurrentPage} />}
                 {currentPage === 'add-new-staff' && <AddNewStaffForm setCurrentPage={setCurrentPage} />}
+                {currentPage === 'add-new-manager' && <AddNewManagerForm setCurrentPage={setCurrentPage} />}
 
                 {/* vehicle approval */}
                 {currentPage === 'vehicle-approvals' && <VehicleApprovals setSelectedVehicleAppId={setSelectedVehicleAppId} setCurrentPage={setCurrentPage} />}
@@ -304,6 +320,9 @@ function App() {
                     paymentId={selectedPaymentId}
                   />
                 }
+
+                {/* payout management - sales */}
+                {currentPage === 'sales' && <Sales setCurrentPage={setCurrentPage} />}
 
                 {/* payout management - payouts */}
                 {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}

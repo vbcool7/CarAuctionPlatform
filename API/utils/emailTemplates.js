@@ -1451,3 +1451,66 @@ export const buildSellerReactivatedEmail = (fullName) => {
 
     return { subject, html };
 };
+
+// add manager invitation mail
+export const buildManagerWelcomeEmail = (email, password) => {
+    const loginUrl = process.env.AUCTION_MANAGER_LOGIN_URL || 'http://localhost:5174/admin-login';
+
+    return {
+        subject: "Welcome to BidDrive - Auction Manager Account",
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                
+                <h2>Welcome to BidDrive</h2>
+
+                <p>
+                    Your Auction Manager account has been created successfully.
+                </p>
+
+                <p>
+                    You can use the following credentials to log in:
+                </p>
+
+                <div style="padding: 15px; background: #f5f5f5; border-radius: 8px;">
+                    <p>
+                        <strong>Email:</strong> ${email}
+                    </p>
+                    <p>
+                        <strong>Password:</strong> ${password}
+                    </p>
+                </div>
+
+                <p>
+                    Click the button below to access your Auction Manager account:
+                </p>
+
+                <div style="margin: 25px 0;">
+                    <a
+                        href="${loginUrl}"
+                        style="
+                            display: inline-block;
+                            padding: 12px 24px;
+                            background: #D97706;
+                            color: #ffffff;
+                            text-decoration: none;
+                            border-radius: 6px;
+                            font-weight: bold;
+                        "
+                    >
+                        Login to Auction Manager
+                    </a>
+                </div>
+
+                <p>
+                    Please keep your login credentials secure.
+                </p>
+
+                <p>
+                    Regards,<br />
+                    BidDrive Team
+                </p>
+
+            </div>
+        `
+    };
+};

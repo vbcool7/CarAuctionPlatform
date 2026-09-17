@@ -65,9 +65,6 @@ function AddNewSellerForm({ setCurrentPage }) {
         status: '',
     });
 
-    const [authToggle, setAuthoggle] = useState(true);
-    const [selectedLang, setSelectedLang] = useState("");
-
     const [welcomeEmailToggle, setWelcomeEmailToggle] = useState(true);
 
     // i/p handler

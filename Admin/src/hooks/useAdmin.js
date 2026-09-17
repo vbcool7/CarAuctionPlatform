@@ -5,9 +5,9 @@ import useAdminAuthStore from '../store/useAdminAuthStore';
 
 export const useAdminLogin = () => {
     return useMutation({
-        mutationKey : ["adminLogin"],
+        mutationKey : ["login"],
         mutationFn: async(admin) => {
-            const res = await API.post('/admin/admin-login', admin);
+            const res = await API.post('/admin/login', admin);
             return res.data;
         }
     });
