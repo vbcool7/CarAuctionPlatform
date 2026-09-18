@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Bell, CheckCheck, ChevronRight, Clock3, Gavel, Info, RefreshCw, Trophy } from 'lucide-react';
+import { ArrowLeft, Bell, CheckCheck, ChevronRight, ClipboardCheck, Clock3, Gavel, Info, RefreshCw, Trophy, X } from 'lucide-react';
 import { useGetAllNotificationsInfinite, useMarkAllReadNotification, useReadNotification } from '../../hook/useNotification';
 
 const getIcon = (type) => {
     switch (type) {
+        case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
         case 'new_bid_received': return <Gavel size={17} />;
         case 'reserve_price_met': return <Gavel size={17} />;
         case 'auction_sold': return <Trophy size={17} />;
@@ -17,6 +18,7 @@ const getIcon = (type) => {
 
 const getIconStyle = (type) => {
     switch (type) {
+        case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
         case 'new_bid_received': return 'bg-blue-50 text-blue-600';
         case 'reserve_price_met': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
@@ -28,6 +30,7 @@ const getIconStyle = (type) => {
 };
 
 const NOTIFICATION_REDIRECT_MAP = {
+    vehicle_reviewed: 'my-vehicles',
     new_bid_received: 'my-auctions',
     reserve_price_met: 'my-auctions',
     auction_sold: 'my-auctions',
@@ -88,7 +91,7 @@ function SellerNotifications({ setCurrentPage }) {
     };
 
     return (
-        <div className='min-h-full bg-slate-50/60 p-4 sm:p-6 lg:p-8'>
+        <div className=''>
 
             <div className='max-w-5xl mx-auto'>
 

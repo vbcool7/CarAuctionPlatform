@@ -6,8 +6,8 @@ export const getAllNotifications = async (req, res) => {
     try {
         const recipientId = req.user.id;
         const recipientType = req.user.role === 'buyer' ? 'Buyer'
-            : req.user.role === 'admin' ? 'Admin'
-                : 'Seller';
+            : req.user.role === 'seller' ? 'Seller'
+                : 'Admin';
 
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.max(1, Math.min(50, parseInt(req.query.limit) || 10));
@@ -56,8 +56,8 @@ export const markReadNotification = async (req, res) => {
         const { id } = req.params;
         const recipientId = req.user.id;
         const recipientType = req.user.role === 'buyer' ? 'Buyer'
-            : req.user.role === 'admin' ? 'Admin'
-                : 'Seller';
+            : req.user.role === 'seller' ? 'Seller'
+                : 'Admin';
 
         const notification = await Notification.findOneAndUpdate(
             { _id: id, recipientId, recipientType },
@@ -91,8 +91,8 @@ export const markAllReadNotifications = async (req, res) => {
     try {
         const recipientId = req.user.id;
         const recipientType = req.user.role === 'buyer' ? 'Buyer'
-            : req.user.role === 'admin' ? 'Admin'
-                : 'Seller';
+            : req.user.role === 'seller' ? 'Seller'
+                : 'Admin';
 
         const result = await Notification.updateMany(
             { recipientId, recipientType, isRead: false },

@@ -427,7 +427,8 @@ export const cancelAuction = async (req, res) => {
         vehicle.canceledAt = new Date();
         vehicle.auctionStatus = 'canceled';
         vehicle.currentBid = null;
-        vehicle.canceledBy = role; // 'seller' or 'admin'
+        vehicle.canceledBy = role; // 'seller' or 'admin' or 'auctionManager'
+        vehicle.canceledByUserId = role === 'auctionManager' ? userId : null;
         vehicle.cancellationReason = reason.trim();
         await vehicle.save();
 
@@ -487,6 +488,32 @@ export const cancelAuction = async (req, res) => {
                 });
             }
         }
+
+        if (role === 'auctionManager') {
+            // tell the Seller
+            await createNotification({
+                recipientId: vehicle.sellerId,
+                recipientType: 'Seller',
+                type: 'auction_canceled',
+                vehicleId: vehicle._id,
+                title: 'Auction Canceled',
+                message: `${vehicle.listingId} was canceled by a manager. Reason: ${reason.trim()}`,
+            });
+
+            // tell the Admin 
+            const admin = await Admin.findOne({ role: 'admin' });
+            if (admin) {
+                await createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'auction_canceled',
+                    vehicleId: vehicle._id,
+                    title: 'Auction Canceled by Manager',
+                    message: `${vehicle.listingId} was canceled by a manager. Reason: ${reason.trim()}`,
+                });
+            }
+        }
+
         return res.status(200).json({
             success: true,
             message: "Auction canceled successfully",

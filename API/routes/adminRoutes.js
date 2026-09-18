@@ -47,7 +47,7 @@ router.patch('/edit-manager-permissions/:id', authMiddleware(['admin']), editMan
 router.patch('/toggle-manager-status/:id', authMiddleware(['admin']), toggleManagerStatus);
 
 // ============================ BUYER
-router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
+router.post('/add-new-buyer', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), (req, res, next) => {
     identityDocsUpload(req, res, (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -56,24 +56,22 @@ router.post('/add-new-buyer', authMiddleware(['admin']), (req, res, next) => {
                     message: "File size exceeds 10MB limit"
                 });
             }
-
             return res.status(400).json({
                 success: false,
                 message: err.message || "Invalid file upload"
             });
         }
-
         next();
     })
 }, addNewBuyer);
 
-router.get('/all-buyers-list', authMiddleware(['admin']), getAllBuyers);
-router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin']), toggleBuyerVerification);
-router.get('/get-buyer/:id', authMiddleware(['admin']), getBuyerById);
-router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin']), buyerDocVerification);
-router.patch('/suspend-buyer/:id', authMiddleware(['admin']), suspendBuyer);
-router.patch('/reactivate-buyer/:id', authMiddleware(['admin']), reactivateBuyer);
-router.get('/buyer-stats', authMiddleware(['admin']), getBuyerStats);
+router.get('/all-buyers-list', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getAllBuyers);
+router.patch('/toggle-buyer-verification/:buyerId', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), toggleBuyerVerification);
+router.get('/get-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getBuyerById);
+router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), buyerDocVerification);
+router.patch('/suspend-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), suspendBuyer);
+router.patch('/reactivate-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), reactivateBuyer);
+router.get('/buyer-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getBuyerStats);
 
 // ============================ SELLER
 router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
@@ -109,7 +107,7 @@ router.get('/distinct-makes', authMiddleware(['admin', 'auctionManager']), requi
 router.get('/all-vehicles-list', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getAllVehicles);
 router.get('/get-seller-vehicles/:sellerId', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehiclesBySeller);
 router.get('/get-vehicle/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehicleById);
-router.patch('/vehicle-review/:id', authMiddleware(['admin']), reviewVehicle);
+router.patch('/vehicle-review/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), reviewVehicle);
 router.get('/vehicle-approval-summary', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehicleApprovalSummary);
 
 // ============================ AUCTION

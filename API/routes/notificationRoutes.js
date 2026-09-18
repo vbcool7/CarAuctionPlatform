@@ -5,8 +5,8 @@ import { getAllNotifications, markReadNotification, markAllReadNotifications } f
 
 const router = express.Router();
 
-router.get('/get-all-notifications', authMiddleware(['seller', 'buyer', 'admin']), getAllNotifications);
-router.patch('/mark-read-notification/:id', authMiddleware(['seller', 'buyer', 'admin']), markReadNotification);
-router.patch('/mark-all-read-notifications', authMiddleware(['seller', 'buyer', 'admin']), markAllReadNotifications);
+router.get('/get-all-notifications', authMiddleware(['seller', 'buyer', 'admin', 'auctionManager']), getAllNotifications);
+router.patch('/mark-read-notification/:id', authMiddleware(['seller', 'buyer', 'admin', 'auctionManager']), markReadNotification);
+router.patch('/mark-all-read-notifications', authMiddleware(['seller', 'buyer', 'admin', 'auctionManager']), markAllReadNotifications);
 
 export default router;

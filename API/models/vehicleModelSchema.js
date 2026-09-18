@@ -185,8 +185,8 @@ const vehicleSchema = new mongoose.Schema(
             type: String,
             enum: ["fixed_price", "reserve_price"]
         },
-        startingBidPrice: { 
-            type: Number, 
+        startingBidPrice: {
+            type: Number,
             required: function () { return this.priceType === 'reserve_price'; }
         },
         buyNowPrice: {
@@ -243,7 +243,7 @@ const vehicleSchema = new mongoose.Schema(
         // if auct cancelled by admin/seller
         canceledBy: {
             type: String,
-            enum: ['seller', 'admin', null],
+            enum: ['seller', 'admin', 'auctionManager', null],
             default: null,
         },
         cancellationReason: {
@@ -253,6 +253,11 @@ const vehicleSchema = new mongoose.Schema(
         statusAtCancellation: {  // capture pre auc status before change to canceled
             type: String,
             enum: ['upcoming', 'live'],
+            default: null
+        },
+        canceledByUserId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin',
             default: null
         },
         canceledAt: {

@@ -3,9 +3,11 @@ import axios from 'axios';
 import mongoose from 'mongoose';
 
 import Vehicle from '../models/vehicleModelSchema.js';
+import Admin from '../models/adminModelSchema.js';
 
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextListingId } from '../utils/counterHelper.js';
+import { createNotification } from '../services/notificationService.js';
 
 export const decodeVin = async (req, res) => {
     const { vin } = req.params;
@@ -172,6 +174,22 @@ export const addVehicle = async (req, res) => {
         // Step 6 (next): Vehicle.create()
         const vehicle = await Vehicle.create(vehicleData);
 
+        // Notify admin + auction manager
+        const adminsAndManagers = await Admin.find({
+            role: { $in: ['admin', 'auctionManager'] }
+        }).select('_id role');
+
+        for (const recipient of adminsAndManagers) {
+            await createNotification({
+                recipientId: recipient._id,
+                recipientType: 'Admin',
+                type: 'vehicle_added',
+                vehicleId: vehicle._id,
+                title: 'New Vehicle Listing',
+                message: `${vehicle.listingId} was added by a seller and is pending review.`
+            });
+        }
+
         return res.status(201).json({
             success: true,
             message: 'Vehicle listing created successfully',
@@ -308,7 +326,7 @@ export const getMyVehicles = async (req, res) => {
 export const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;
-        const vehicle = await Vehicle.findById(id);
+        const vehicle = await Vehicle.findById(id).populate('reviewedBy', 'name role');;
 
         if (!vehicle) {
             return res.status(404).json({
@@ -322,6 +340,7 @@ export const getVehicleById = async (req, res) => {
             message: "Here is vehicle detail",
             data: vehicle
         });
+        
     } catch (err) {
         console.error("Get Vehicle By ID Error:", err);
         return res.status(500).json({

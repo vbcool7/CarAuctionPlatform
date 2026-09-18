@@ -593,7 +593,6 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                     </div>
                 </div>
 
-
                 {/* Approval Information */}
                 {vehicleStatus === "approved" && (
                     <div className="mt-6 pt-6 border-t border-slate-100">
@@ -610,7 +609,7 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                                 </p>
 
                                 <p className="text-sm font-semibold text-[#0B1E3D]">
-                                    {vehicle?.reviewedBy?.name || "Admin"}
+                                    {vehicle?.reviewedBy?.name || "---"}
                                 </p>
                             </div>
 

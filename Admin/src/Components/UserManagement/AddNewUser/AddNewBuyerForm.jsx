@@ -321,6 +321,7 @@ function AddNewBuyerForm({ setCurrentPage }) {
                 setFormData(initialFormState);
                 setEmailToggle(false);
                 setPhoneToggle(false);
+                setCurrentPage('buyers');
             },
             onError: (err) => {
                 toast.error(

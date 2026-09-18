@@ -4,7 +4,7 @@ import FormPageHeader from '../Shared/FormPageHeader';
 import InputField from '../Shared/InputField';
 
 import toast from 'react-hot-toast';
-import { useAddNewManager } from '../../../hooks/useManager';
+import { useAddNewManager, useGetAllManagers } from '../../../hooks/useManager';
 
 function AddNewManagerForm({ setCurrentPage }) {
 
@@ -17,18 +17,43 @@ function AddNewManagerForm({ setCurrentPage }) {
             manageAuctions: false,
             manageBids: false,
             manageVehicles: false,
+            manageUsers: false,
+            managePayments: false,
+            managePayouts: false,
+            manageReports: false,
         },
     });
 
     const { mutate: addManager, isPending: isAdding } = useAddNewManager();
+    const { data: allManagersData } = useGetAllManagers({ status: 'active', limit: 100 });
+
+    const permissionMeta = [
+        { key: 'manageAuctions', label: 'Manage Auctions' },
+        { key: 'manageBids', label: 'Manage Bids' },
+        { key: 'manageVehicles', label: 'Manage Vehicles' },
+        { key: 'manageUsers', label: 'Manage Users' },
+        { key: 'managePayments', label: 'Manage Payments' },
+        { key: 'managePayouts', label: 'Manage Payouts' },
+        { key: 'manageReports', label: 'Manage Reports' },
+    ];
+
+    // map: permission key -> name of manager who already holds it
+    const conflictMap = {};
+    (allManagersData?.data || []).forEach((mgr) => {
+        permissionMeta.forEach(({ key }) => {
+            if (mgr.permissions?.[key] === true) {
+                conflictMap[key] = mgr.name;
+            }
+        });
+    });
 
     // field update
     const updateField = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
+    // create
     const handleCreate = () => {
-
         const { name, email, password, permissions } = formData;
 
         if (!name || !email || !password) {
@@ -71,6 +96,10 @@ function AddNewManagerForm({ setCurrentPage }) {
                         manageAuctions: false,
                         manageBids: false,
                         manageVehicles: false,
+                        manageUsers: false,
+                        managePayments: false,
+                        managePayouts: false,
+                        manageReports: false,
                     },
                 });
 
@@ -80,10 +109,14 @@ function AddNewManagerForm({ setCurrentPage }) {
             onError: (err) => {
                 console.error(err);
 
-                toast.error(
-                    err?.response?.data?.message ||
-                    "Failed to add Manager"
-                );
+                const conflicts = err?.response?.data?.conflicts;
+                if (conflicts?.length) {
+                    toast.error(
+                        conflicts.map(c => `${c.permission} is already assigned to ${c.heldBy}`).join('\n')
+                    );
+                } else {
+                    toast.error(err?.response?.data?.message || "Failed to add Manager");
+                }
             },
         });
     };
@@ -156,7 +189,6 @@ function AddNewManagerForm({ setCurrentPage }) {
                         </div>
                     </div>
 
-
                     {/* Permissions */}
                     <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
 
@@ -165,102 +197,44 @@ function AddNewManagerForm({ setCurrentPage }) {
                         </h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {permissionMeta.map(({ key, label }) => {
+                                const isChecked = formData.permissions[key];
+                                const conflictName = conflictMap[key];
+                                const isDisabled = !!conflictName;
 
-                            {/* Manage Auctions */}
-                            <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                                <span className="text-sm text-slate-600">
-                                    Manage Auctions
-                                </span>
+                                return (
+                                    <div
+                                        key={key}
+                                        className={`flex items-center justify-between p-3 border rounded-lg 
+                                            ${isDisabled ? "border-slate-100 bg-slate-50 opacity-60" : "border-slate-200"}`}>
+                                        <div>
+                                            <span className="text-sm text-slate-600">{label}</span>
+                                            {conflictName && (
+                                                <p className="text-xs text-red-500 mt-0.5">Assigned to: {conflictName}</p>
+                                            )}
+                                        </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            permissions: {
-                                                ...prev.permissions,
-                                                manageAuctions: !prev.permissions.manageAuctions,
-                                            },
-                                        }))
-                                    }
-                                    className={`relative w-11 h-6 rounded-full transition-colors ${formData.permissions.manageAuctions
-                                        ? "bg-[#D97706]"
-                                        : "bg-slate-200"
-                                        }`}
-                                >
-                                    <span
-                                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${formData.permissions.manageAuctions
-                                            ? "translate-x-5"
-                                            : "translate-x-0"
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-
-
-                            {/* Manage Bids */}
-                            <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                                <span className="text-sm text-slate-600">
-                                    Manage Bids
-                                </span>
-
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            permissions: {
-                                                ...prev.permissions,
-                                                manageBids: !prev.permissions.manageBids,
-                                            },
-                                        }))
-                                    }
-                                    className={`relative w-11 h-6 rounded-full transition-colors ${formData.permissions.manageBids
-                                        ? "bg-[#D97706]"
-                                        : "bg-slate-200"
-                                        }`}
-                                >
-                                    <span
-                                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${formData.permissions.manageBids
-                                            ? "translate-x-5"
-                                            : "translate-x-0"
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-
-
-                            {/* Manage Vehicles */}
-                            <div className="flex items-center justify-between p-3 border border-slate-200 rounded-lg">
-                                <span className="text-sm text-slate-600">
-                                    Manage Vehicles
-                                </span>
-
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            permissions: {
-                                                ...prev.permissions,
-                                                manageVehicles: !prev.permissions.manageVehicles,
-                                            },
-                                        }))
-                                    }
-                                    className={`relative w-11 h-6 rounded-full transition-colors ${formData.permissions.manageVehicles
-                                        ? "bg-[#D97706]"
-                                        : "bg-slate-200"
-                                        }`}
-                                >
-                                    <span
-                                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${formData.permissions.manageVehicles
-                                            ? "translate-x-5"
-                                            : "translate-x-0"
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-
+                                        <button
+                                            type="button"
+                                            disabled={isDisabled}
+                                            onClick={() =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    permissions: {
+                                                        ...prev.permissions,
+                                                        [key]: !prev.permissions[key],
+                                                    },
+                                                }))
+                                            }
+                                            className={`relative w-11 h-6 rounded-full transition-colors 
+                                                ${isChecked ? "bg-[#D97706]" : "bg-slate-200"} ${isDisabled ? "cursor-not-allowed" : ""}`}>
+                                            <span
+                                                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform 
+                                                ${isChecked ? "translate-x-5" : "translate-x-0"}`} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 

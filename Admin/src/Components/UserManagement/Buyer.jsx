@@ -301,7 +301,7 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                 <th className="px-6 py-4 font-medium min-w-35">Buyer Type</th>
                 <th className="px-6 py-4 font-medium min-w-40">Joined On</th>
                 <th className="px-6 py-4 font-medium min-w-40">Last Login</th>
-                <th className="px-6 py-4 font-medium min-w-30">Created By</th>
+                <th className="px-6 py-4 font-medium min-w-42">Created By</th>
                 <th className="px-6 py-4 font-medium min-w-35">Acc Status</th>
                 <th className="px-6 py-4 font-medium min-w-30">Status</th>
                 <th className="px-6 py-4 font-medium min-w-40 text-center">Actions</th>
@@ -401,10 +401,16 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border
                           ${buyer.createdBy === "admin"
                             ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : buyer.createdBy === "auctionManager"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
                           }`}
                       >
-                        {buyer.createdBy === "admin" ? "Admin" : "Self"}
+                        {buyer.createdBy === "admin"
+                          ? "Admin"
+                          : buyer.createdBy === "auctionManager"
+                            ? "Auction Manager"
+                            : "Self"}
                       </span>
                     </td>
 

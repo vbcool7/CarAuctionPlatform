@@ -266,7 +266,7 @@ function ManagerDetail({ setCurrentPage, managerId }) {
                         {permissionKeys.map((key) => {
                             const isChecked = !!editedPermissions?.[key];
                             const conflictName = conflictMap[key];
-                            const isDisabled = !manager?.isActive || (!!conflictName && !isChecked);
+                            const isDisabled = !!conflictName && !isChecked;
 
                             const label = key.replace(/^manage/, "").replace(/([A-Z])/g, " $1").trim();
 
@@ -298,18 +298,16 @@ function ManagerDetail({ setCurrentPage, managerId }) {
                         })}
                     </div>
 
-                    {manager?.isActive && (
-                        <div className="flex justify-end mt-5">
-                            <button
-                                onClick={handleSave}
-                                disabled={!hasChanges || isUpdating}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isUpdating && <Loader2 size={14} className="animate-spin" />}
-                                Save Changes
-                            </button>
-                        </div>
-                    )}
+                    <div className="flex justify-end mt-5">
+                        <button
+                            onClick={handleSave}
+                            disabled={!hasChanges || isUpdating}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isUpdating && <Loader2 size={14} className="animate-spin" />}
+                            Save Changes
+                        </button>
+                    </div>
                 </div>
 
             </div>

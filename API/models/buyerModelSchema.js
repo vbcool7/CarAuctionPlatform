@@ -75,6 +75,10 @@ const buyerSchema = new mongoose.Schema({
         },
         submittedAt: { type: Date },
         reviewedAt: { type: Date },
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin'
+        },
         rejectionReason: { type: String }
     },
 
@@ -100,6 +104,10 @@ const buyerSchema = new mongoose.Schema({
         },
         submittedAt: { type: Date },
         reviewedAt: { type: Date },
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin'
+        },
         rejectionReason: { type: String }
     },
 
@@ -130,7 +138,7 @@ const buyerSchema = new mongoose.Schema({
 
     createdBy: {
         type: String,
-        enum: ['self', 'admin'],
+        enum: ['self', 'admin', 'auctionManager'],
         default: 'self'
     },
     addedByAdminId: {
@@ -152,6 +160,12 @@ const buyerSchema = new mongoose.Schema({
     },
     suspendedAt: { type: Date },
     suspendedReason: { type: String },
+
+    verifiedBy: {     // for email
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin',
+        default: null
+    },
 
 }, { timestamps: true });
 

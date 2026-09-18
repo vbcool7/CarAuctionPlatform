@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut, CarFront } from 'lucide-react';
-import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line } from "react-icons/ri";
+import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line, RiMoneyDollarCircleLine } from "react-icons/ri";
 import useAdminAuthStore from '../store/useAdminAuthStore';
 
 const menuItems = [
@@ -16,12 +16,12 @@ const menuItems = [
         id: "user-management",
         icon: RiUserLine,
         label: "User Management",
-        adminOnly: true,  // only admin
+        permissionKey: "manageUsers",
         submenu: [
             { id: "buyers", label: "Buyers" },
             { id: "sellers", label: "Sellers" },
-            { id: "staffs", label: "Staff" },
-            { id: "manager", label: "Manager" },
+            { id: "staffs", label: "Staff", adminOnly: true },
+            { id: "manager", label: "Manager", adminOnly: true },
         ]
     },
     {
@@ -55,16 +55,25 @@ const menuItems = [
     {
         id: "payment-management",
         icon: RiBankCardLine,
-        label: "Payout Management",
-        adminOnly: true,
+        label: "Payment Management",
+        permissionKey: "managePayments",
         active: false,
         submenu: [
             { id: "all-payments", label: "All Payments" },
             { id: "sales", label: "Sales" },
-            { id: "payouts", label: "Payouts" },
             { id: "refunds", label: "Refunds" },
             { id: "transactions", label: "Transactions" },
-            { id: "payment-gateways", label: "Payment Gateways" },
+            { id: "payment-gateways", label: "Payment Gateways", adminOnly: true },
+        ]
+    },
+    {
+        id: "payout-management",
+        icon: RiMoneyDollarCircleLine,
+        label: "Payouts",
+        permissionKey: "managePayouts",
+        active: false,
+        submenu: [
+            { id: "payouts", label: "Payouts" },
         ]
     },
     {
@@ -93,7 +102,7 @@ const menuItems = [
         id: "reports-analytics",
         icon: RiBarChartGroupedLine,
         label: "Reports & Analytics",
-        adminOnly: true,
+        permissionKey: "manageReports",
         active: false,
     },
     {
@@ -115,7 +124,7 @@ const menuItems = [
         id: "kyc-verification",
         icon: RiVerifiedBadgeLine,
         label: "KYC Verification",
-        adminOnly: true,
+        permissionKey: "manageUsers",
         active: false,
         submenu: [
             { id: "buyer-kyc", label: "Buyers" },
@@ -135,12 +144,21 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
 
     const admin = useAdminAuthStore((state) => state.admin);
 
-    const visibleMenuItems = menuItems.filter((item) => {
-        if (admin?.role === 'admin') return true; // admin sab dekhega
-        if (item.adminOnly) return false; // manager ko adminOnly items nahi milenge
-        if (item.permissionKey) return admin?.permissions?.[item.permissionKey] === true;
-        return true; // koi restriction nahi (jaise Dashboard) — sabko dikhega
-    });
+    const visibleMenuItems = menuItems
+        .filter((item) => {
+            if (admin?.role === 'admin') return true;
+            if (item.adminOnly) return false;
+            if (item.permissionKey) return admin?.permissions?.[item.permissionKey] === true;
+            return true;
+        })
+        .map((item) => {
+            if (admin?.role === 'admin' || !item.submenu) return item;
+
+            // filter out adminOnly submenu items for managers
+            const filteredSubmenu = item.submenu.filter((sub) => !sub.adminOnly);
+
+            return { ...item, submenu: filteredSubmenu };
+        });
 
     const [expandedItems, setExpandedItems] = useState(new Set(['dashboard']));
 

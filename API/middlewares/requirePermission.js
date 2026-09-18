@@ -4,7 +4,7 @@ import Admin from '../models/adminModelSchema.js';
 const requirePermission = (permission) => {
     return async (req, res, next) => {
         try {
-            if (req.user.role === 'admin') return next(); // admin full access
+            if (req.user.role === 'admin' || req.user.role === 'seller') return next(); // admin + seller by pass
 
             if (req.user.role !== 'auctionManager') {
                 return res.status(403).json({

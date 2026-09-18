@@ -378,11 +378,6 @@ function Manager({ setCurrentPage, setSelectedManagerId }) {
                       </button>
 
                       <button
-                        className="px-3 py-1.5 text-xs font-medium text-amber-600 border border-amber-100 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors">
-                        Edit
-                      </button>
-
-                      <button
                         onClick={() => toggleManagerStatus(manager)}
                         disabled={isUpdating}
                         className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors 

@@ -225,15 +225,23 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                                     <p className="text-[11px] font-medium text-slate-500">
                                         Cancelled By
                                     </p>
+
                                     <span
                                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
                                             ${vehicle.canceledBy === "admin"
                                                 ? "bg-blue-50 text-blue-600"
-                                                : "bg-purple-50 text-purple-600"
+                                                : vehicle.canceledBy === "seller"
+                                                    ? "bg-purple-50 text-purple-600"
+                                                    : "bg-amber-50 text-amber-600"
                                             }`}
                                     >
                                         {formatLabel(vehicle.canceledBy)}
                                     </span>
+                                    {vehicle.canceledBy === "auctionManager" && vehicle.canceledByUserId?.name && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            {vehicle.canceledByUserId.name}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Reason */}

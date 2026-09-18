@@ -1,37 +1,41 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BellRing, Bell, Trophy, Clock3, X, Info, CheckCheck } from 'lucide-react';
+import { BellRing, Bell, Trophy, Clock3, X, Info, CheckCheck, Car, ClipboardCheck, UserPlus, UserCheck, FileCheck } from 'lucide-react';
 import { useGetAllNotifications, useMarkAllReadNotification, useReadNotification } from '../hooks/useNotification';
 
 const getIcon = (type) => {
     switch (type) {
-        case 'auction_sold':
-            return <Trophy size={18} />;
-
-        case 'auction_canceled':
-            return <X size={18} />;
-
-        default:
-            return <Info size={18} />;
+        case 'buyer_added': return <UserPlus size={18} />;
+        case 'buyer_verification_changed': return <UserCheck size={18} />;
+        case 'buyer_document_reviewed': return <FileCheck size={18} />;
+        case 'auction_sold': return <Trophy size={18} />;
+        case 'auction_canceled': return <X size={18} />;
+        case 'vehicle_added': return <Car size={18} />;
+        case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
+        default: return <Info size={18} />;
     }
 };
 
 const getIconStyle = (type) => {
     switch (type) {
-        case 'auction_sold':
-            return 'bg-green-50 text-green-600';
-
-        case 'auction_canceled':
-            return 'bg-red-50 text-red-600';
-
-        default:
-            return 'bg-slate-50 text-slate-600';
+        case 'buyer_added': return 'bg-purple-50 text-purple-600';
+        case 'buyer_verification_changed': return 'bg-green-50 text-green-600';
+        case 'buyer_document_reviewed': return 'bg-amber-50 text-amber-600';
+        case 'auction_sold': return 'bg-green-50 text-green-600';
+        case 'auction_canceled': return 'bg-red-50 text-red-600';
+        case 'vehicle_added': return 'bg-blue-50 text-blue-600';
+        case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
+        default: return 'bg-slate-50 text-slate-600';
     }
 };
 
 const NOTIFICATION_REDIRECT_MAP = {
+    buyer_added: 'buyers',
+    buyer_verification_changed: 'buyers',
+    buyer_document_reviewed: 'buyers',
     auction_sold: 'completed-auctions',
     auction_canceled: 'canceled-auctions',
+    vehicle_added: 'vehicle-approvals',
 };
 
 function NotificationDropdown({ setCurrentPage }) {

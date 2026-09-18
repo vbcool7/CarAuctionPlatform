@@ -213,11 +213,18 @@ function CanceledAuctionRow({ auction, onSelectVehicle }) {
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
                         ${auction.canceledBy === "admin"
                             ? "bg-blue-50 text-blue-600"
-                            : "bg-purple-50 text-purple-600"
+                            : auction.canceledBy === "seller"
+                                ? "bg-purple-50 text-purple-600"
+                                : "bg-amber-50 text-amber-600"
                         }`}
                 >
                     {formatLabel(auction.canceledBy)}
                 </span>
+                {auction.canceledBy === "auctionManager" && auction.canceledByUserId?.name && (
+                    <div className="text-xs text-gray-500 mt-1">
+                        {auction.canceledByUserId.name}
+                    </div>
+                )}
             </td>
 
             {/* Status */}

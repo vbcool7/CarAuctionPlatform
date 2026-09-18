@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import sendEmail from '../utils/sendEmail.js';
-import mongoose from 'mongoose';
 import {
     buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail,
     buildBuyerSuspendedEmail, buildBuyerReactivatedEmail, buildSellerSuspendedEmail, buildSellerReactivatedEmail,
@@ -20,6 +19,7 @@ import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Bid from '../models/bidModelSchema.js';
 import Payout from '../models/payoutModelSchema.js';
+import { createNotification } from '../services/notificationService.js';
 
 export const adminSignup = async (req, res) => {
     try {
@@ -458,12 +458,12 @@ export const editManagerPermissions = async (req, res) => {
             });
         }
 
-        if (!manager.isActive) {
-            return res.status(400).json({
-                success: false,
-                message: "Cannot edit permissions of a deactivated manager. Reactivate the manager first."
-            });
-        }
+        // if (!manager.isActive) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: "Cannot edit permissions of a deactivated manager. Reactivate the manager first."
+        //     });
+        // }
 
         let parsedPermissions;
         try {
@@ -559,8 +559,42 @@ export const toggleManagerStatus = async (req, res) => {
             });
         }
 
-        manager.isActive = isActive;
+        // Only check when reactivating (false -> true)
+        if (isActive === true && manager.isActive === false) {
+            const permissionFields = [
+                'manageVehicles', 'manageBids', 'manageAuctions',
+                'manageUsers', 'managePayments', 'managePayouts', 'manageReports'
+                // apni actual 7 permission field names yahan confirm karke daalo
+            ];
 
+            const trueFields = permissionFields.filter(f => manager[f] === true);
+
+            if (trueFields.length > 0) {
+                const conflictQuery = { isActive: true, _id: { $ne: manager._id } };
+                conflictQuery.$or = trueFields.map(f => ({ [f]: true }));
+
+                const conflicts = await Admin.find(conflictQuery).select('name ' + trueFields.join(' '));
+
+                if (conflicts.length > 0) {
+                    // build which field conflicts with which manager
+                    const conflictDetails = [];
+                    for (const c of conflicts) {
+                        for (const f of trueFields) {
+                            if (c[f] === true) {
+                                conflictDetails.push({ field: f, assignedTo: c.name });
+                            }
+                        }
+                    }
+                    return res.status(409).json({
+                        success: false,
+                        message: "Cannot reactivate — permission conflict",
+                        conflicts: conflictDetails
+                    });
+                }
+            }
+        }
+
+        manager.isActive = isActive;
         await manager.save();
 
         return res.status(200).json({
@@ -695,7 +729,7 @@ export const addNewBuyer = async (req, res) => {
             payment: { method: paymentMethod },
 
             status: 'approved',
-            createdBy: 'admin',
+            createdBy: req.user.role === 'admin' ? 'admin' : 'auctionManager',
             addedByAdminId: req.user.id
         });
 
@@ -717,6 +751,20 @@ export const addNewBuyer = async (req, res) => {
                 : "Buyer created. Pending verification email sent.",
             data: buyerToReturn
         });
+
+        // notify to admin - if manager added
+        if (req.user.role === 'auctionManager') {
+            const admin = await Admin.findOne({ role: 'admin' });
+            if (admin) {
+                await createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'buyer_added',
+                    title: 'New Buyer Added by Manager',
+                    message: `${newBuyer.buyerId} (${newBuyer.firstName} ${newBuyer.lastName}) was added by a manager.`,
+                });
+            }
+        }
 
         if (shouldSendWelcomeEmail !== 'false') {
             try {
@@ -815,62 +863,11 @@ export const getAllBuyers = async (req, res) => {
     }
 };
 
-// toggle - buyer email/phone verification
-export const toggleBuyerVerification = async (req, res) => {
-    try {
-        const { buyerId } = req.params;
-        const { isVerified } = req.body;
-
-        const buyer = await Buyer.findById(buyerId);
-        if (!buyer) {
-            return res.status(404).json({
-                success: false,
-                message: "Buyer not found"
-            });
-        }
-
-        const wasUnverified = !buyer.isEmailVerified;
-        const nowVerified = isVerified === true || isVerified === 'true';
-
-        buyer.isEmailVerified = nowVerified;
-        buyer.isMobileVerified = nowVerified;
-
-        if (wasUnverified && nowVerified) {
-            const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10); // ← new password generate
-            buyer.password = await bcrypt.hash(rawPassword, 10);
-
-            await buyer.save();
-
-            const { subject, html } = buildBuyerWelcomeEmail(buyer.email, rawPassword);
-            try {
-                await sendEmail(buyer.email, subject, html);
-            } catch (emailErr) {
-                console.error("Verification welcome email failed:", emailErr);
-                // response abhi bhi success jayega — email fail hone se verification revert nahi honi chahiye
-            }
-        } else {
-            await buyer.save();
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: nowVerified ? "Buyer verified and activated" : "Buyer marked unverified"
-        });
-
-    } catch (err) {
-        console.error("Toggle Verification Error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error Occurred"
-        });
-    }
-};
-
 // get buyer by id
 export const getBuyerById = async (req, res) => {
     try {
         const { id } = req.params;
-        const buyer = await Buyer.findById(id);
+        const buyer = await Buyer.findById(id).populate('verifiedBy', 'name role');
 
         if (!buyer) {
             return res.status(404).json({
@@ -891,6 +888,85 @@ export const getBuyerById = async (req, res) => {
             message: "Server Error Occurred"
         });
     };
+};
+
+// toggle - buyer email/phone verification
+export const toggleBuyerVerification = async (req, res) => {
+    try {
+        const { buyerId } = req.params;
+        const { isVerified } = req.body;
+
+        const buyer = await Buyer.findById(buyerId);
+        if (!buyer) {
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+
+        const wasUnverified = !buyer.isEmailVerified;
+        const nowVerified = isVerified === true || isVerified === 'true';
+
+        buyer.isEmailVerified = nowVerified;
+        buyer.isMobileVerified = nowVerified;
+        buyer.verifiedBy = req.user.id;   // naya — tracking
+
+        if (wasUnverified && nowVerified) {
+            const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10);
+            buyer.password = await bcrypt.hash(rawPassword, 10);
+
+            await buyer.save();
+
+            const { subject, html } = buildBuyerWelcomeEmail(buyer.email, rawPassword);
+            try {
+                await sendEmail(buyer.email, subject, html);
+            } catch (emailErr) {
+                console.error("Verification welcome email failed:", emailErr);
+            }
+        } else {
+            await buyer.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: nowVerified ? "Buyer verified and activated" : "Buyer marked unverified"
+        });
+
+        try {
+            // manager ---> to admin
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'buyer_verification_changed',
+                        title: `Buyer ${nowVerified ? 'Verified' : 'Unverified'} by Manager`,
+                        message: `${buyer.buyerId || buyer.email} was marked ${nowVerified ? 'verified' : 'unverified'} by a manager.`,
+                    });
+                }
+            }
+            // Sirf unverify-case mein buyer ko notify
+            if (!nowVerified) {
+                await createNotification({
+                    recipientId: buyer._id,
+                    recipientType: 'Buyer',
+                    type: 'buyer_verification_changed',
+                    title: 'Verification Status Changed',
+                    message: `Your account has been marked as unverified. Please contact support if you believe this is a mistake.`,
+                });
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
+        }
+
+    } catch (err) {
+        console.error("Toggle Verification Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
 };
 
 // buyer doc verification
@@ -958,24 +1034,41 @@ export const buyerDocVerification = async (req, res) => {
             data: buyerToReturn
         });
 
-        if (action === 'reject') {
-            try {
-                const secret = process.env.JWT_SECRET_KEY;
-                const token = jwt.sign({ id: buyer._id, group, purpose: 'kyc_reupload' }, secret, { expiresIn: '7d' });
+        try {
+            if (action === 'reject') {
+                try {
+                    const secret = process.env.JWT_SECRET_KEY;
+                    const token = jwt.sign({ id: buyer._id, group, purpose: 'kyc_reupload' }, secret, { expiresIn: '7d' });
 
-                const frontendUrl = process.env.REUPLOAD_DOC_URL || "http://localhost:5173/reupload-buyer-docs";
-                const link = `${frontendUrl}/${buyer._id}/${token}/${group}`;
+                    const frontendUrl = process.env.REUPLOAD_DOC_URL || "http://localhost:5173/reupload-buyer-docs";
+                    const link = `${frontendUrl}/${buyer._id}/${token}/${group}`;
 
-                const { subject, html } = reUploadDocumentEmail(
-                    buyer.email,
-                    group,
-                    rejectionReason.trim(),
-                    link
-                );
-                await sendEmail(buyer.email, subject, html);
-            } catch (emailErr) {
-                console.error("Rejection email failed to send:", emailErr);
+                    const { subject, html } = reUploadDocumentEmail(
+                        buyer.email,
+                        group,
+                        rejectionReason.trim(),
+                        link
+                    );
+                    await sendEmail(buyer.email, subject, html);
+                } catch (emailErr) {
+                    console.error("Rejection email failed to send:", emailErr);
+                }
             }
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'buyer_document_reviewed',
+                        title: `Buyer ${group} Document ${action === 'approve' ? 'Approved' : 'Rejected'} by Manager`,
+                        message: `${buyer.buyerId || buyer.email}'s ${group} verification was ${action}d by a manager.`,
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Post-response error (non-fatal):", err);
         }
 
     } catch (err) {
@@ -1297,6 +1390,33 @@ export const getAllSellers = async (req, res) => {
     }
 }
 
+// get seller by id
+export const getSellerById = async (req, res) => {
+    try {
+        const { sellerId } = req.params;
+        const seller = await Seller.findById(sellerId);
+
+        if (!seller) {
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is seller detail",
+            data: seller
+        });
+    } catch (err) {
+        console.error("Get Seller By ID Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    };
+};
+
 // toggle - seller email/phone verification
 export const toggleSellerVerification = async (req, res) => {
     try {
@@ -1345,33 +1465,6 @@ export const toggleSellerVerification = async (req, res) => {
             message: "Server Error Occurred"
         });
     }
-};
-
-// get seller by id
-export const getSellerById = async (req, res) => {
-    try {
-        const { sellerId } = req.params;
-        const seller = await Seller.findById(sellerId);
-
-        if (!seller) {
-            return res.status(404).json({
-                success: false,
-                message: "Seller not found"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Here is seller detail",
-            data: seller
-        });
-    } catch (err) {
-        console.error("Get Seller By ID Error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error Occurred"
-        });
-    };
 };
 
 // seller doc verification
@@ -1466,8 +1559,7 @@ export const sellerDocVerification = async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Failed to update document verification",
-            error: err.message
+            message: "Server Error Occured"
         });
     }
 };
@@ -1658,7 +1750,7 @@ export const getAllVehicles = async (req, res) => {
                 })
                 .populate({
                     path: 'reviewedBy',
-                    select: 'name profilePhoto'
+                    select: 'name profilePhoto role'
                 })
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -1679,6 +1771,35 @@ export const getAllVehicles = async (req, res) => {
 
     } catch (err) {
         console.error("All Vehicles Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get vehcile by id
+export const getVehicleById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const vehicle = await Vehicle.findById(id)
+            .populate("sellerId", "fullName email phone profileImage status");
+
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: "Vehicle not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Here is vehicle detail",
+            data: vehicle
+        });
+
+    } catch (err) {
+        console.error("Get Vehicle By ID Error:", err);
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
@@ -1737,6 +1858,36 @@ export const reviewVehicle = async (req, res) => {
 
         await vehicle.save();
 
+        const role = req.user.role; // 'admin' or 'auctionManager'
+        const actionLabel = action === 'approve' ? 'approved' : 'rejected';
+
+        // notification to seller - if approve/rejected by admin or manager
+        await createNotification({
+            recipientId: vehicle.sellerId,
+            recipientType: 'Seller',
+            type: 'vehicle_reviewed',
+            vehicleId: vehicle._id,
+            title: `Vehicle ${actionLabel === 'approved' ? 'Approved' : 'Rejected'}`,
+            message: role === 'admin'
+                ? `${vehicle.listingId} was ${actionLabel} by admin.${action === 'reject' ? ' Reason: ' + rejectionReason.trim() : ''}`
+                : `${vehicle.listingId} was ${actionLabel} by a manager.${action === 'reject' ? ' Reason: ' + rejectionReason.trim() : ''}`
+        });
+
+        // notification to admin - if approve/rejected by manager
+        if (role === 'auctionManager') {
+            const admin = await Admin.findOne({ role: 'admin' });
+            if (admin) {
+                await createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'vehicle_reviewed',
+                    vehicleId: vehicle._id,
+                    title: `Vehicle ${actionLabel === 'approved' ? 'Approved' : 'Rejected'} by Manager`,
+                    message: `${vehicle.listingId} was ${actionLabel} by a manager.${action === 'reject' ? ' Reason: ' + rejectionReason.trim() : ''}`
+                });
+            }
+        }
+
         return res.status(200).json({
             success: true,
             message: `Vehicle ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
@@ -1781,34 +1932,6 @@ export const getVehiclesBySeller = async (req, res) => {
 
     } catch (err) {
         console.error("Get Vehicles By Seller Error:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Server Error Occurred"
-        });
-    }
-};
-
-// get vehcile by id
-export const getVehicleById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const vehicle = await Vehicle.findById(id)
-            .populate("sellerId", "fullName email phone profileImage status");
-
-        if (!vehicle) {
-            return res.status(404).json({
-                success: false,
-                message: "Vehicle not found"
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Here is vehicle detail",
-            data: vehicle
-        });
-    } catch (err) {
-        console.error("Get Vehicle By ID Error:", err);
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
@@ -1937,7 +2060,7 @@ export const getAllAuctions = async (req, res) => {
         else if (sortBy === 'highest_bid') sortOption = { currentBid: -1 };
 
         const [vehicles, totalCount] = await Promise.all([
-            Vehicle.find(filter).sort(sortOption).skip(skip).limit(limit),
+            Vehicle.find(filter).populate('canceledByUserId', 'name email role').sort(sortOption).skip(skip).limit(limit),
             Vehicle.countDocuments(filter)
         ]);
 
@@ -2002,7 +2125,7 @@ export const getAuctionDetail = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const vehicle = await Vehicle.findById(id);
+        const vehicle = await Vehicle.findById(id).populate('canceledByUserId', 'name email role');
 
         if (!vehicle) {
             return res.status(404).json({

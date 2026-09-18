@@ -463,13 +463,21 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
 
                                                         {/* approved by or rejected by */}
                                                         {(col.key === "approvedBy" || col.key === "rejectedBy") && (
-                                                            <div className="flex items-center gap-2">
-                                                                <img
-                                                                    src={item.reviewedBy?.profilePhoto || "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-image-182145777.jpg"}
-                                                                    alt={item.reviewedBy?.name || "Admin"}
-                                                                    className="w-7 h-7 rounded-full object-cover"
-                                                                />
-                                                                <span className="text-xs font-semibold text-gray-900 truncate">
+                                                            <div className="flex flex-col gap-1">
+                                                                {item.reviewedBy?.role && (
+                                                                    <span
+                                                                        className={`inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] font-medium
+                                                                            ${item.reviewedBy.role === "admin"
+                                                                                ? "bg-blue-50 text-blue-600"
+                                                                                : item.reviewedBy.role === "auctionManager"
+                                                                                    ? "bg-amber-50 text-amber-600"
+                                                                                    : "bg-slate-50 text-slate-600"
+                                                                            }`}
+                                                                    >
+                                                                        {formatLabel(item.reviewedBy.role)}
+                                                                    </span>
+                                                                )}
+                                                                <span className="pl-2.5 text-xs text-gray-700 truncate">
                                                                     {item.reviewedBy?.name || "—"}
                                                                 </span>
                                                             </div>
