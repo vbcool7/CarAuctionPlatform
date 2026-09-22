@@ -892,3 +892,151 @@ export const reuploadSellerDocs = async (req, res) => {
         });
     }
 };
+
+// update profile
+const EDITABLE_FIELDS = [
+    "fullName", "businessName", "businessType", "licenseNumber", "businessYear",
+    "website", "businessDescription", "employees",
+    "emirate", "city", "area", "streetAddress", "building", "poBox", "zipCode",
+];
+
+// inme se koi bhi badla to trade license dobara upload karna hoga
+const LICENSE_TRIGGER_FIELDS = ["licenseNumber", "businessName", "businessType", "businessYear"];
+
+export const updateMyProfile = async (req, res) => {
+    const files = req.files || {};
+    const newImage = files.profileImage?.[0];
+    const newLicense = files.tradeLicense?.[0];
+    const newEmiratesId = files.emiratesId?.[0];
+
+    // upload.fields() ke saath req.files object hota hai, tumhara deleteCloudinaryFiles isse handle karta hai
+    const cleanup = async () => {
+        if (req.files) await deleteCloudinaryFiles(req.files);
+    };
+
+    try {
+        const seller = await Seller.findById(req.user.id);
+        if (!seller) {
+            await cleanup();
+            return res.status(404).json({ success: false, message: "Seller not found" });
+        }
+
+        if (seller.accountStatus === "suspended" || seller.status !== "approved") {
+            await cleanup();
+            return res.status(403).json({ success: false, message: "Profile cannot be edited in current account state" });
+        }
+
+        // sirf allowed fields
+        const blocked = Object.keys(req.body).filter((k) => !EDITABLE_FIELDS.includes(k));
+        if (blocked.length) {
+            await cleanup();
+            return res.status(400).json({ success: false, message: `These fields cannot be edited here: ${blocked.join(", ")}` });
+        }
+
+        const updates = {};
+        for (const key of EDITABLE_FIELDS) {
+            if (req.body[key] !== undefined) {
+                updates[key] = typeof req.body[key] === "string" ? req.body[key].trim() : req.body[key];
+            }
+        }
+
+        // sach mein value badli hai ya nahi (frontend sab fields bheje to bhi galat trigger na ho)
+        const changed = (key) =>
+            updates[key] !== undefined && String(seller[key] ?? "") !== String(updates[key]);
+
+        const licenseChanged = LICENSE_TRIGGER_FIELDS.some(changed);
+        const emirateChanged = changed("emirate");
+
+        if (licenseChanged && !newLicense) {
+            await cleanup();
+            return res.status(400).json({
+                success: false,
+                message: "Trade license number, business name, type or year changed. Please upload a new trade license.",
+            });
+        }
+        if (emirateChanged && !newEmiratesId) {
+            await cleanup();
+            return res.status(400).json({
+                success: false,
+                message: "Emirate changed. Please upload a new Emirates ID.",
+            });
+        }
+
+        if (Object.keys(updates).length === 0 && !newImage && !newLicense && !newEmiratesId) {
+            return res.status(400).json({ success: false, message: "No valid fields to update" });
+        }
+
+        // purani files yaad rakho, save ke BAAD delete hongi
+        const oldImage = seller.profileImage;
+        const oldLicenseUrl = seller.tradeLicense?.url;
+        const oldEidUrl = seller.emiratesId?.url;
+
+        seller.set(updates);
+
+        if (newImage) seller.profileImage = newImage.path;
+
+        // nayi document = status wapas pending, admin dobara review karega
+        if (newLicense) {
+            seller.tradeLicense = { url: newLicense.path, status: "pending" };
+        }
+        if (newEmiratesId) {
+            seller.emiratesId = { url: newEmiratesId.path, status: "pending" };
+        }
+
+        await seller.save();
+
+        // save ho gaya, ab purani files hatao (ye functions khud error handle karte hain)
+        if (newImage && oldImage) await deleteOldFileFromCloudinary(oldImage);
+        if (newLicense && oldLicenseUrl) await deleteOldFileFromCloudinary(oldLicenseUrl);
+        if (newEmiratesId && oldEidUrl) await deleteOldFileFromCloudinary(oldEidUrl);
+
+        const data = seller.toObject();
+        delete data.password;
+        return res.status(200).json({ success: true, message: "Profile updated", data });
+
+    } catch (err) {
+        await cleanup();
+
+        // enum / required galat ho to 500 nahi, 400
+        if (err.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: Object.values(err.errors).map((e) => e.message).join(", "),
+            });
+        }
+
+        console.error("Update Seller Profile Error:", err);
+        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+    }
+};
+
+// change password
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Both passwords are required" });
+        }
+
+        if (newPassword === currentPassword) {
+            return res.status(400).json({ success: false, message: "New password must be different from current" });
+        }
+
+        const seller = await Seller.findById(req.user.id).select("+password"); // _id nahi, id
+
+        const ok = seller && (await bcrypt.compare(currentPassword, seller.password));
+        if (!ok) return res.status(401).json({ success: false, message: "Current password is incorrect" });
+
+        seller.password = await bcrypt.hash(newPassword, 10);
+        seller.passwordChangedAt = new Date();
+        await seller.save();
+
+        const token = jwt.sign({ id: seller._id, role: seller.role }, process.env.JWT_SECRET_KEY, { expiresIn: '1d' });
+
+        return res.status(200).json({ success: true, message: "Password changed", token });
+    } catch (err) {
+        console.error("Seller Change Password error:", err);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};

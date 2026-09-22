@@ -3,9 +3,10 @@ import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/imageStorage.js';
 
-import { 
-    registerStep1, registerStep2, registerStep3, registerStep4, registerStep5, registerStep6, registerStep7, 
-    sellerLogin, sellerForgotPass, sellerResetpassword, sellerLogout, sellerGet , reuploadSellerDocs, 
+import {
+    registerStep1, registerStep2, registerStep3, registerStep4, registerStep5, registerStep6, registerStep7,
+    sellerLogin, sellerForgotPass, sellerResetpassword, sellerLogout, sellerGet, reuploadSellerDocs, updateMyProfile,
+    changePassword
 } from '../controllers/sellerController.js';
 
 const router = express.Router();
@@ -31,5 +32,16 @@ router.post('/seller-logout', sellerLogout);
 router.get('/seller-get', authMiddleware(['seller']), sellerGet);
 
 router.patch('/seller-reupload/:seller_id/:token/:document', sellerUploads, reuploadSellerDocs);
+router.patch(
+    '/update-my-profile',
+    authMiddleware(['seller']),
+    upload.fields([
+        { name: 'profileImage', maxCount: 1 },
+        { name: 'tradeLicense', maxCount: 1 },
+        { name: 'emiratesId', maxCount: 1 },
+    ]),
+    updateMyProfile
+);
+router.put('/change-password', authMiddleware(['seller']), changePassword);
 
 export default router;

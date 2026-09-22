@@ -158,8 +158,20 @@ const buyerSchema = new mongoose.Schema({
         enum: ['active', 'suspended'],
         default: 'active'
     },
+    suspendedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+    },
     suspendedAt: { type: Date },
     suspendedReason: { type: String },
+
+    reactivatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+    },
+    reactivatedAt: {
+        type: Date
+    },
 
     verifiedBy: {     // for email
         type: mongoose.Schema.Types.ObjectId,

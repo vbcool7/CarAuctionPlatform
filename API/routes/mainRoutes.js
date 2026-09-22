@@ -9,6 +9,7 @@ import auctionRoutes from './auctionRoutes.js';
 import bidRoutes from './bidRoutes.js';
 import purchaseRoutes from './purchaseRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
+import watchlistRoutes from './watchlistRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -21,5 +22,6 @@ rootRouter.use('/auction', auctionRoutes);
 rootRouter.use('/bid', bidRoutes);
 rootRouter.use('/purchase', purchaseRoutes);
 rootRouter.use('/notification', notificationRoutes);
+rootRouter.use('/watchlist', watchlistRoutes);
 
 export default rootRouter;

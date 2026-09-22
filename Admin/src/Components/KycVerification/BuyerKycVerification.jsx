@@ -167,8 +167,8 @@ function BuyerKycVerification({ setSelectedBuyerKycId, setCurrentPage }) {
                             <th className="px-6 py-4 w-28">ID</th>
                             <th className="px-6 py-4 w-60">User Details</th>
                             <th className="px-6 py-4 w-35">User Type</th>
-                            <th className="px-6 py-4 w-35">Identity Verification</th>
-                            <th className="px-6 py-4 w-35">Address Verification</th>
+                            <th className="px-6 py-4 w-55">Identity Verification</th>
+                            <th className="px-6 py-4 w-55">Address Verification</th>
                             <th className="px-6 py-4 w-32">Submitted On</th>
                             <th className="px-6 py-4 w-35">Status</th>
                             <th className="px-6 py-4 w-35">Actions</th>
@@ -228,47 +228,84 @@ function BuyerKycVerification({ setSelectedBuyerKycId, setCurrentPage }) {
                                     </span>
                                 </td>
 
-                                {/* Identity Verification */}
+                                {/* identity Verification */}
                                 <td className="px-6 py-4">
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${buyer.identityVerification?.status === "approved"
-                                            ? "bg-green-50 text-green-600"
-                                            : buyer.identityVerification?.status === "rejected"
-                                                ? "bg-red-50 text-red-600"
-                                                : "bg-amber-50 text-amber-600"
-                                            }`}
-                                    >
-                                        {buyer.identityVerification?.status === "approved"
-                                            ? "✓"
-                                            : buyer.identityVerification?.status === "rejected"
-                                                ? "✕"
-                                                : "●"
-                                        }
+                                    <div className="flex flex-col gap-2">
+                                        <span
+                                            className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium ${buyer.identityVerification?.status === "approved"
+                                                ? "bg-green-50 text-green-600"
+                                                : buyer.identityVerification?.status === "rejected"
+                                                    ? "bg-red-50 text-red-600"
+                                                    : "bg-amber-50 text-amber-600"
+                                                }`}
+                                        >
+                                            <span className="text-[10px]">
+                                                {buyer.identityVerification?.status === "approved"
+                                                    ? "✓"
+                                                    : buyer.identityVerification?.status === "rejected"
+                                                        ? "✕"
+                                                        : "●"}
+                                            </span>
 
-                                        {buyer.identityVerification?.status || "Pending"}
-                                    </span>
+                                            {buyer.identityVerification?.status || "Pending"}
+                                        </span>
+
+                                        {/* Reviewed By */}
+                                        {buyer.identityVerification?.reviewedBy && (
+                                            <div className="flex items-center gap-1 text-[11px]">
+                                                <span className="text-slate-400">
+                                                    Reviewed by
+                                                </span>
+
+                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 capitalize">
+                                                    {buyer.identityVerification.reviewedBy.role?.replace(
+                                                        "_",
+                                                        " "
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </td>
 
                                 {/* Address Verification */}
                                 <td className="px-6 py-4">
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium 
-                                            ${buyer.addressVerification?.status === "approved"
+                                    <div className="flex flex-col gap-2">
+                                        <span
+                                            className={`inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium ${buyer.identityVerification?.status === "approved"
                                                 ? "bg-green-50 text-green-600"
                                                 : buyer.addressVerification?.status === "rejected"
                                                     ? "bg-red-50 text-red-600"
                                                     : "bg-amber-50 text-amber-600"
-                                            }`}
-                                    >
-                                        {buyer.addressVerification?.status === "approved"
-                                            ? "✓"
-                                            : buyer.addressVerification?.status === "rejected"
-                                                ? "✕"
-                                                : "●"
-                                        }
+                                                }`}
+                                        >
+                                            <span className="text-[10px]">
+                                                {buyer.addressVerification?.status === "approved"
+                                                    ? "✓"
+                                                    : buyer.addressVerification?.status === "rejected"
+                                                        ? "✕"
+                                                        : "●"}
+                                            </span>
 
-                                        {buyer.addressVerification?.status || "Pending"}
-                                    </span>
+                                            {buyer.addressVerification?.status || "Pending"}
+                                        </span>
+
+                                        {/* Reviewed By */}
+                                        {buyer.addressVerification?.reviewedBy && (
+                                            <div className="flex items-center gap-1 text-[11px]">
+                                                <span className="text-slate-400">
+                                                    Reviewed by
+                                                </span>
+
+                                                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 capitalize">
+                                                    {buyer.addressVerification.reviewedBy.role?.replace(
+                                                        "_",
+                                                        " "
+                                                    ) || '---'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </td>
 
                                 {/* Submitted On */}

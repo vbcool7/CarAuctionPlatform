@@ -123,7 +123,19 @@ export const useReuploadSellerDoc = () => {
         },
         onError: (err) => {
             console.error("Re-upload seller docs failed:", err);
-            toast.error( err?.response?.data?.message || "Failed to re-upload documents");
+            toast.error(err?.response?.data?.message || "Failed to re-upload documents");
         }
+    });
+};
+
+// update seller profile
+export const useUpdateSellerProfile = () => {
+    return useMutation({
+        mutationKey: ['updateSellerProfile'],
+        mutationFn: async (formData) => {
+
+            const res = await API.patch('/seller/update-my-profile', formData);
+            return res.data;
+        },
     });
 };

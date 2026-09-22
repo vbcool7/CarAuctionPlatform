@@ -211,7 +211,7 @@ function SellerDetail({ sellerId, setSelectedVehicleId, setCurrentPage }) {
                                     <p className="mt-1 text-xs sm:text-sm text-slate-500">
                                         Seller ID:
                                         <span className="ml-1 font-semibold text-slate-900">
-                                            SLR - {seller._id ? seller._id.slice(-6).toUpperCase() : "--"}
+                                            {seller.sellerId}
                                         </span>
                                     </p>
 

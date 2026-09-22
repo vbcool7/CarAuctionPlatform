@@ -6,9 +6,9 @@ const sellerSchema = new mongoose.Schema({
         type: String,
         default: 'seller'
     },
-    sellerId: { 
-        type: String, 
-        unique: true 
+    sellerId: {
+        type: String,
+        unique: true
     },
     registrationStep: {
         type: Number,
@@ -178,6 +178,7 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
@@ -189,6 +190,7 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
@@ -200,12 +202,14 @@ const sellerSchema = new mongoose.Schema({
             }
         },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
     vatCertificate: {
-        url: { type: String }, 
+        url: { type: String },
         status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         reviewedAt: { type: Date },
         rejectionReason: { type: String }
     },
@@ -224,15 +228,15 @@ const sellerSchema = new mongoose.Schema({
 
     createdBy: {
         type: String,
-        enum: ['self', 'admin'],
+        enum: ['self', 'admin', 'auctionManager'],
         default: 'self'
     },
     addedByAdminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Admin'
     },
-    lastLoginAt: { 
-        type: Date 
+    lastLoginAt: {
+        type: Date
     },
     status: {                                       // registration-lifecycle
         type: String,
@@ -244,8 +248,27 @@ const sellerSchema = new mongoose.Schema({
         enum: ['active', 'suspended'],
         default: 'active'
     },
+    suspendedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+    },
+     suspendedReason: { type: String },
     suspendedAt: { type: Date },
-    suspendedReason: { type: String },
+   
+    reactivatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin'
+    },
+    reactivatedAt: { type: Date },
+
+    verifiedBy: {  // for email
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Admin' 
+    },
+
+    passowrdChangeAt: {
+        type: Date
+    },
 
 }, { timestamps: true })
 

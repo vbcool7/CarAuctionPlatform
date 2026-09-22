@@ -663,13 +663,18 @@ function BuyerDetail({ buyerId, setCurrentPage }) {
                         <AccountStatusCard
                             fields={[
                                 {
-                                    label: 'Status',
-                                    value: buyer?.status || 'active',
+                                    label: 'Account Status',
+                                    value: buyer?.accountStatus || 'active',
                                     type: 'badge',
                                 },
                                 {
-                                    label: 'KYC Status',
-                                    value: buyer?.kycStatus || 'pending',
+                                    label: 'Verified By',
+                                    value: buyer?.verifiedBy?.name || 'pending',
+                                    type: 'badge',
+                                },
+                                {
+                                    label: 'Role',
+                                    value: buyer?.verifiedBy?.role || '---',
                                     type: 'badge',
                                 },
                                 {

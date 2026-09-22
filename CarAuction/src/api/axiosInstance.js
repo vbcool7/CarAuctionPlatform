@@ -20,8 +20,12 @@ API.interceptors.request.use((config) => {
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        const isAuthEndpoint = error.config?.url?.includes('/buyer-login') || error.config?.url?.includes('/seller-login');
-        if (error.response?.status === 401 && !isAuthEndpoint) {
+        const url = error.config?.url || '';
+        const isAuthEndpoint = url.includes('/buyer-login') || url.includes('/seller-login');
+        const status = error.response?.status;
+        const code = error.response?.data?.code;
+
+        if (!isAuthEndpoint && (status === 401 || (status === 403 && code === 'ACCOUNT_SUSPENDED'))) {
             useAuthStore.getState().logout();
             window.location.href = '/login';
         }

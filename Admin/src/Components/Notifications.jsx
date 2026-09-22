@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, BellRing, Trophy, X, Check, CheckCheck, Info, Search, ArrowLeft, RefreshCw, ChevronRight, ClipboardCheck, Car, UserPlus, UserCheck, FileCheck } from 'lucide-react';
+import { Bell, BellRing, Trophy, X, Check, CheckCheck, Info, Search, ArrowLeft, RefreshCw, ChevronRight, ClipboardCheck, Car, UserPlus, UserCheck, FileCheck, UserX } from 'lucide-react';
 import { useGetAllNotificationsInfinite, useMarkAllReadNotification, useReadNotification } from '../hooks/useNotification';
 import { useEffect } from 'react';
 
@@ -9,6 +9,13 @@ const getIcon = (type) => {
         case 'buyer_added': return <UserPlus size={18} />;
         case 'buyer_verification_changed': return <UserCheck size={18} />;
         case 'buyer_document_reviewed': return <FileCheck size={18} />;
+        case 'buyer_suspended': return <UserX size={18} />;
+        case 'buyer_reactivated': return <UserCheck size={18} />;
+        case 'seller_added': return <UserPlus size={18} />;
+        case 'seller_verification_changed': return <UserCheck size={18} />;
+        case 'seller_document_reviewed': return <FileCheck size={18} />;
+        case 'seller_suspended': return <UserX size={18} />;
+        case 'seller_reactivated': return <UserCheck size={18} />;
         case 'auction_sold': return <Trophy size={18} />;
         case 'auction_canceled': return <X size={18} />;
         case 'vehicle_added': return <Car size={18} />;
@@ -22,6 +29,13 @@ const getIconStyle = (type) => {
         case 'buyer_added': return 'bg-purple-50 text-purple-600';
         case 'buyer_verification_changed': return 'bg-green-50 text-green-600';
         case 'buyer_document_reviewed': return 'bg-amber-50 text-amber-600';
+        case 'buyer_suspended': return 'bg-red-50 text-red-600';
+        case 'buyer_reactivated': return 'bg-green-50 text-green-600';
+        case 'seller_added': return 'bg-purple-50 text-purple-600';
+        case 'seller_verification_changed': return 'bg-green-50 text-green-600';
+        case 'seller_document_reviewed': return 'bg-amber-50 text-amber-600';
+        case 'seller_suspended': return 'bg-red-50 text-red-600';
+        case 'seller_reactivated': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
         case 'auction_canceled': return 'bg-red-50 text-red-600';
         case 'vehicle_added': return 'bg-blue-50 text-blue-600';
@@ -34,9 +48,17 @@ const NOTIFICATION_REDIRECT_MAP = {
     buyer_added: 'buyers',
     buyer_verification_changed: 'buyers',
     buyer_document_reviewed: 'buyers',
+    buyer_suspended: 'buyers',
+    buyer_reactivated: 'buyers',
+    seller_added: 'sellers',
+    seller_verification_changed: 'sellers',
+    seller_document_reviewed: 'sellers',
+    seller_suspended: 'sellers',
+    seller_reactivated: 'sellers',
     auction_sold: 'completed-auctions',
     auction_canceled: 'canceled-auctions',
     vehicle_added: 'vehicle-approvals',
+    vehicle_reviewed: 'vehicle-approvals',
 };
 
 function Notifications({ setCurrentPage }) {

@@ -834,7 +834,9 @@ export const getAllBuyers = async (req, res) => {
 
         const [buyers, filteredCount, totalCount] = await Promise.all([
             Buyer.find(filter)
-                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status accountStatus lastLoginAt createdAt createdBy isEmailVerified identityVerification.status identityVerification.documentType addressVerification.status addressVerification.documentType')
+                .select('buyerId firstName lastName profileImageUrl email mobile buyerType status accountStatus lastLoginAt createdAt createdBy isEmailVerified identityVerification.status identityVerification.documentType identityVerification.reviewedBy addressVerification.status addressVerification.documentType addressVerification.reviewedBy')
+                .populate('identityVerification.reviewedBy', 'name role')
+                .populate('addressVerification.reviewedBy', 'name role')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -867,7 +869,10 @@ export const getAllBuyers = async (req, res) => {
 export const getBuyerById = async (req, res) => {
     try {
         const { id } = req.params;
-        const buyer = await Buyer.findById(id).populate('verifiedBy', 'name role');
+        const buyer = await Buyer.findById(id)
+            .populate('verifiedBy', 'name role')
+            .populate('identityVerification.reviewedBy', 'name role')
+            .populate('addressVerification.reviewedBy', 'name role');
 
         if (!buyer) {
             return res.status(404).json({
@@ -1008,6 +1013,7 @@ export const buyerDocVerification = async (req, res) => {
         const fieldKey = group === 'identity' ? 'identityVerification' : 'addressVerification';
 
         buyer[fieldKey].status = action === 'approve' ? 'approved' : 'rejected';
+        buyer[fieldKey].reviewedBy = req.user.id;
         buyer[fieldKey].reviewedAt = new Date();
         buyer[fieldKey].rejectionReason = action === 'reject' ? rejectionReason.trim() : undefined;
 
@@ -1111,6 +1117,7 @@ export const suspendBuyer = async (req, res) => {
         buyer.accountStatus = 'suspended';
         buyer.suspendedAt = new Date();
         buyer.suspendedReason = reason.trim();
+        buyer.suspendedBy = req.user.id;
         await buyer.save();
 
         // Send suspension email
@@ -1120,6 +1127,31 @@ export const suspendBuyer = async (req, res) => {
 
         } catch (emailError) {
             console.error("Suspension Email Error:", emailError);
+        }
+
+        try {
+            await createNotification({
+                recipientId: buyer._id,
+                recipientType: 'Buyer',
+                type: 'buyer_suspended',
+                title: 'Account Suspended',
+                message: `Your account has been suspended. Reason: ${buyer.suspendedReason}`,
+            });
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'buyer_suspended',
+                        title: 'Buyer Suspended by Manager',
+                        message: `${buyer.buyerId || buyer.email} was suspended by a manager. Reason: ${buyer.suspendedReason}`,
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
         }
 
         return res.status(200).json({
@@ -1159,15 +1191,41 @@ export const reactivateBuyer = async (req, res) => {
         buyer.accountStatus = 'active';
         buyer.suspendedAt = undefined;
         buyer.suspendedReason = undefined;
+        buyer.reactivatedBy = req.user.id;
+        buyer.reactivatedAt = new Date();
         await buyer.save();
 
         // Send reactivation email
         const { subject, html } = buildBuyerReactivatedEmail(buyer.firstName);
         try {
             await sendEmail(buyer.email, subject, html);
-
         } catch (emailError) {
             console.error("Reactivation Email Error:", emailError);
+        }
+
+        try {
+            await createNotification({
+                recipientId: buyer._id,
+                recipientType: 'Buyer',
+                type: 'buyer_reactivated',
+                title: 'Account Reactivated',
+                message: `Your account has been reactivated. You can now use all features.`,
+            });
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'buyer_reactivated',
+                        title: 'Buyer Reactivated by Manager',
+                        message: `${buyer.buyerId || buyer.email} was reactivated by a manager.`,
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
         }
 
         return res.status(200).json({
@@ -1287,11 +1345,11 @@ export const addNewSeller = async (req, res) => {
 
             isComplete: true,
             status: status || 'approved',               // admin-created = active immediately, per earlier decision
-            createdBy: 'admin',
+            createdBy: req.user.role === 'admin' ? 'admin' : 'auctionManager',
             isEmailVerified: isEmailVerified === 'true' || isEmailVerified === true,
             isPhoneVerified: isPhoneVerified === 'true' || isPhoneVerified === true,
             registrationStep: 7,           // treat as fully complete; wizard doesn't apply here
-            addedByAdminId: req.admin?.id,
+            addedByAdminId: req.user.id,
         });
 
         const isVerified = seller.isEmailVerified;
@@ -1307,6 +1365,20 @@ export const addNewSeller = async (req, res) => {
                 : "Seller created. Pending verification email sent.",
             sellerId: seller._id
         });
+
+        // notify to admin
+        if (req.user.role === 'auctionManager') {
+            const admin = await Admin.findOne({ role: 'admin' });
+            if (admin) {
+                await createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'seller_added',
+                    title: 'New Seller Added by Manager',
+                    message: `${seller.sellerId} (${seller.fullName}) was added by a manager.`,
+                });
+            }
+        }
 
         if (shouldSendWelcomeEmail !== 'false') {
             try {
@@ -1361,7 +1433,7 @@ export const getAllSellers = async (req, res) => {
 
         const [sellers, filteredCount, totalCount] = await Promise.all([
             Seller.find(filter)
-                .select('fullName profileImage email phone businessName businessType licenseNumber status accountStatus lastLoginAt createdAt createdBy isEmailVerified tradeLicense emiratesId bankStatement vatCertificate submittedAt')
+                .select('sellerId fullName profileImage email phone businessName businessType licenseNumber status accountStatus lastLoginAt createdAt createdBy isEmailVerified tradeLicense emiratesId bankStatement vatCertificate submittedAt')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -1394,7 +1466,15 @@ export const getAllSellers = async (req, res) => {
 export const getSellerById = async (req, res) => {
     try {
         const { sellerId } = req.params;
-        const seller = await Seller.findById(sellerId);
+        const seller = await Seller.findById(sellerId)
+            .populate('addedByAdminId', 'name role')
+            .populate('verifiedBy', 'name role')
+            .populate('suspendedBy', 'name role')
+            .populate('reactivatedBy', 'name role')
+            .populate('tradeLicense.reviewedBy', 'name role')
+            .populate('emiratesId.reviewedBy', 'name role')
+            .populate('bankStatement.reviewedBy', 'name role')
+            .populate('vatCertificate.reviewedBy', 'name role');
 
         if (!seller) {
             return res.status(404).json({
@@ -1436,6 +1516,7 @@ export const toggleSellerVerification = async (req, res) => {
 
         seller.isEmailVerified = nowVerified;
         seller.isPhoneVerified = nowVerified;
+        seller.verifiedBy = req.user.id;
 
         if (wasUnverified && nowVerified) {
             const rawPassword = crypto.randomBytes(6).toString('base64').slice(0, 10); // ← new password generate
@@ -1453,10 +1534,36 @@ export const toggleSellerVerification = async (req, res) => {
             await seller.save();
         }
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: nowVerified ? "Seller verified and activated" : "Seller marked unverified"
         });
+
+        try {
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'seller_verification_changed',
+                        title: `Seller ${nowVerified ? 'Verified' : 'Unverified'} by Manager`,
+                        message: `${seller.sellerId || seller.email} was marked ${nowVerified ? 'verified' : 'unverified'} by a manager.`,
+                    });
+                }
+            }
+            if (!nowVerified) {
+                await createNotification({
+                    recipientId: seller._id,
+                    recipientType: 'Seller',
+                    type: 'seller_verification_changed',
+                    title: 'Verification Status Changed',
+                    message: `Your account has been marked as unverified. Please contact support if you believe this is a mistake.`,
+                });
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
+        }
 
     } catch (err) {
         console.error("Toggle Verification Error:", err);
@@ -1507,6 +1614,7 @@ export const sellerDocVerification = async (req, res) => {
 
         // add here doc
         seller[document].status = action === 'approve' ? 'approved' : 'rejected';
+        seller[document].reviewedBy = req.user.id;
         seller[document].reviewedAt = new Date();
         seller[document].rejectionReason = action === 'reject' ? rejectionReason.trim() : '';
 
@@ -1518,7 +1626,8 @@ export const sellerDocVerification = async (req, res) => {
         const mandatoryApproved = mandatoryDocs.every(d => seller[d]?.status === 'approved');
         const vatOk = !seller.vatCertificate?.url || seller.vatCertificate.status === 'approved';
 
-        seller.status = hasRejected ? 'pending' : (mandatoryApproved && vatOk ? 'approved' : 'pending');
+        // seller.status = hasRejected ? 'pending' : (mandatoryApproved && vatOk ? 'approved' : 'pending');
+        seller.status = hasRejected ? 'rejected' : (mandatoryApproved && vatOk ? 'approved' : 'pending');
 
         await seller.save();
 
@@ -1531,29 +1640,48 @@ export const sellerDocVerification = async (req, res) => {
             data: sellerToReturn
         });
 
-        if (action === 'reject') {
-            try {
-                const secret = process.env.JWT_SECRET_KEY;
-                const token = jwt.sign(
-                    { id: seller._id, document, purpose: 'kyc_reupload' },
-                    secret,
-                    { expiresIn: '7d' }
-                );
+        try {
+            if (action === 'reject') {
+                try {
+                    const secret = process.env.JWT_SECRET_KEY;
+                    const token = jwt.sign(
+                        { id: seller._id, document, purpose: 'kyc_reupload' },
+                        secret,
+                        { expiresIn: '7d' }
+                    );
 
-                const frontendUrl = process.env.SELLER_REUPLOAD_DOC_URL || "http://localhost:5173/reupload-seller-docs";
-                const link = `${frontendUrl}/${seller._id}/${token}/${document}`;
+                    const frontendUrl = process.env.SELLER_REUPLOAD_DOC_URL || "http://localhost:5173/reupload-seller-docs";
+                    const link = `${frontendUrl}/${seller._id}/${token}/${document}`;
 
-                const { subject, html } = reUploadSellerDocumentEmail(
-                    seller.email,
-                    document,
-                    rejectionReason.trim(),
-                    link
-                );
-                await sendEmail(seller.email, subject, html);
-            } catch (emailErr) {
-                console.error("Rejection email failed to send:", emailErr);
+                    const { subject, html } = reUploadSellerDocumentEmail(
+                        seller.email,
+                        document,
+                        rejectionReason.trim(),
+                        link
+                    );
+                    await sendEmail(seller.email, subject, html);
+                } catch (emailErr) {
+                    console.error("Rejection email failed to send:", emailErr);
+                }
             }
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'seller_document_reviewed',
+                        title: `Seller ${document} Document ${action === 'approve' ? 'Approved' : 'Rejected'} by Manager`,
+                        message: `${seller.sellerId || seller.email}'s ${document} verification was ${action}d by a manager.`,
+                    });
+                }
+            }
+
+        } catch (err) {
+            console.error("Post-response error (non-fatal):", err);
         }
+
     } catch (err) {
         console.error("Seller document verification error:", err);
 
@@ -1595,6 +1723,7 @@ export const suspendSeller = async (req, res) => {
         seller.accountStatus = 'suspended';
         seller.suspendedAt = new Date();
         seller.suspendedReason = reason.trim();
+        seller.suspendedBy = req.user.id;
         await seller.save();
 
         const { subject, html } = buildSellerSuspendedEmail(seller.fullName, seller.suspendedReason);
@@ -1604,10 +1733,30 @@ export const suspendSeller = async (req, res) => {
             console.error("Seller Suspension Email Error:", emailError);
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Seller suspended successfully"
-        });
+        try {
+            await createNotification({
+                recipientId: seller._id,
+                recipientType: 'Seller',
+                type: 'seller_suspended',
+                title: 'Account Suspended',
+                message: `Your account has been suspended. Reason: ${seller.suspendedReason}`,
+            });
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'seller_suspended',
+                        title: 'Seller Suspended by Manager',
+                        message: `${seller.sellerId || seller.email} was suspended by a manager. Reason: ${seller.suspendedReason}`,
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
+        }
 
     } catch (err) {
         console.error("Suspend Seller Error:", err);
@@ -1641,6 +1790,8 @@ export const reactivateSeller = async (req, res) => {
         seller.accountStatus = 'active';
         seller.suspendedAt = undefined;
         seller.suspendedReason = undefined;
+        seller.reactivatedBy = req.user.id;
+        seller.reactivatedAt = new Date();
         await seller.save();
 
         const { subject, html } = buildSellerReactivatedEmail(seller.fullName);
@@ -1650,11 +1801,29 @@ export const reactivateSeller = async (req, res) => {
             console.error("Seller Reactivation Email Error:", emailError);
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Seller reactivated successfully"
-        });
-
+        try {
+            await createNotification({
+                recipientId: seller._id,
+                recipientType: 'Seller',
+                type: 'seller_reactivated',
+                title: 'Account Reactivated',
+                message: `Your account has been reactivated. You can now use all features.`,
+            });
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'seller_reactivated',
+                        title: 'Seller Reactivated by Manager',
+                        message: `${seller.sellerId || seller.email} was reactivated by a manager.`,
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error("Notification error (non-fatal):", notifErr);
+        }
     } catch (err) {
         console.error("Reactivate Seller Error:", err);
         return res.status(500).json({
@@ -2602,247 +2771,178 @@ export const getCanceledAuctionStats = async (req, res) => {
 
 // ============================================ BIDS
 
-// CHATGPT not work proper - get bids stats
+// get bid stats
 export const getBidStats = async (req, res) => {
     try {
-        const now = new Date();
-
-        // Current month start
-        const currentMonthStart = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            1
-        );
-
-        // Tomorrow - so today's complete data is included
-        const tomorrow = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate() + 1
-        );
-
-        // Previous month start
-        const previousMonthStart = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            1
-        );
-
-        // Previous period end
-        // Same number of days as current month-to-date
-        const daysPassed =
-            now.getDate();
-
-        const previousPeriodEnd = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            daysPassed + 1
-        );
-
-        const [
-            totalBids,
-            activeBids,
-            wonBids,
-            outbidBids,
-
-            currentMonthBids,
-            previousMonthBids,
-
-            currentActiveBids,
-            previousActiveBids,
-
-            currentWonBids,
-            previousWonBids,
-
-            currentOutbidBids,
-            previousOutbidBids
-        ] = await Promise.all([
-
-            // Current total counts
+        const [totalBids, activeBids, wonBids, outbidBids, withdrawnBids, canceledBids] = await Promise.all([
             Bid.countDocuments(),
-
             Bid.countDocuments({ status: 'active' }),
-
             Bid.countDocuments({ status: 'won' }),
-
             Bid.countDocuments({ status: 'outbid' }),
-
-
-            // Current month-to-date
-            Bid.countDocuments({
-                createdAt: {
-                    $gte: currentMonthStart,
-                    $lt: tomorrow
-                }
-            }),
-
-            // Previous month same period
-            Bid.countDocuments({
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lt: previousPeriodEnd
-                }
-            }),
-
-
-            // Active - current period
-            Bid.countDocuments({
-                status: 'active',
-                createdAt: {
-                    $gte: currentMonthStart,
-                    $lt: tomorrow
-                }
-            }),
-
-            // Active - previous period
-            Bid.countDocuments({
-                status: 'active',
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lt: previousPeriodEnd
-                }
-            }),
-
-
-            // Won - current period
-            Bid.countDocuments({
-                status: 'won',
-                createdAt: {
-                    $gte: currentMonthStart,
-                    $lt: tomorrow
-                }
-            }),
-
-            // Won - previous period
-            Bid.countDocuments({
-                status: 'won',
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lt: previousPeriodEnd
-                }
-            }),
-
-
-            // Outbid - current period
-            Bid.countDocuments({
-                status: 'outbid',
-                createdAt: {
-                    $gte: currentMonthStart,
-                    $lt: tomorrow
-                }
-            }),
-
-            // Outbid - previous period
-            Bid.countDocuments({
-                status: 'outbid',
-                createdAt: {
-                    $gte: previousMonthStart,
-                    $lt: previousPeriodEnd
-                }
-            })
+            Bid.countDocuments({ status: 'withdrawn' }),
+            Bid.countDocuments({ status: 'canceled' })
         ]);
-
-
-        const calculatePercentage = (current, previous) => {
-            if (previous === 0) {
-                return current === 0 ? 0 : 100;
-            }
-
-            return Number(
-                (((current - previous) / previous) * 100).toFixed(1)
-            );
-        };
-
 
         return res.status(200).json({
             success: true,
-            message: 'Bid stats fetched successfully',
-
-            stats: {
-                totalBids: {
-                    count: totalBids,
-                    percentage: calculatePercentage(
-                        currentMonthBids,
-                        previousMonthBids
-                    )
-                },
-
-                activeBids: {
-                    count: activeBids,
-                    percentage: calculatePercentage(
-                        currentActiveBids,
-                        previousActiveBids
-                    )
-                },
-
-                wonBids: {
-                    count: wonBids,
-                    percentage: calculatePercentage(
-                        currentWonBids,
-                        previousWonBids
-                    )
-                },
-
-                outbidBids: {
-                    count: outbidBids,
-                    percentage: calculatePercentage(
-                        currentOutbidBids,
-                        previousOutbidBids
-                    )
-                }
+            data: {
+                totalBids,
+                activeBids,
+                wonBids,
+                outbidBids,
+                withdrawnBids,
+                canceledBids
             }
         });
 
-    } catch (error) {
-        console.error('Get Bid Stats Error:', error);
+    } catch (err) {
+        console.error("Get Bid Stats Error:", err);
 
         return res.status(500).json({
             success: false,
-            message: 'Server Error Occured'
+            message: "Server Error Occurred"
         });
     }
 };
 
-// get all bids 
+// get all bids
 export const getAllBids = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { status } = req.query;
-
         const skip = (page - 1) * limit;
+
+        const {
+            status,
+            auctionStatus,
+            bidderType,
+            search,
+            startDate,
+            endDate
+        } = req.query;
 
         const filter = {};
 
+        // ==================== Bid Status Filter ====================
         if (status && status !== 'all') {
             filter.status = status;
         }
 
+        // ==================== Bidder Type Filter ====================
+        if (bidderType && bidderType !== 'all') {
+            filter.bidderType =
+                bidderType === 'buyer' ? 'Buyer' : 'Seller';
+        }
+
+        // ==================== Auction Status Filter ====================
+        if (auctionStatus && auctionStatus !== 'all') {
+            const vehicles = await Vehicle.find({
+                auctionStatus
+            }).select('_id');
+
+            const vehicleIds = vehicles.map(vehicle => vehicle._id);
+
+            filter.vehicleId = { $in: vehicleIds };
+        }
+
+        // ==================== Search ====================
+        if (search) {
+            const searchTerm = search.trim();
+            const searchRegex = new RegExp(searchTerm, 'i');
+
+            const orConditions = [
+                { bidId: searchRegex }
+            ];
+
+            // Search vehicles by make, model, VIN
+            const matchingVehicles = await Vehicle.find({
+                $or: [
+                    { make: searchRegex },
+                    { model: searchRegex },
+                    { vin: searchRegex }
+                ]
+            }).select('_id');
+
+            const vehicleIds = matchingVehicles.map(vehicle => vehicle._id);
+
+            if (vehicleIds.length > 0) {
+                orConditions.push({
+                    vehicleId: { $in: vehicleIds }
+                });
+            }
+
+            // Search buyers by first name / last name
+            const matchingBuyers = await Buyer.find({
+                $or: [
+                    { firstName: searchRegex },
+                    { lastName: searchRegex }
+                ]
+            }).select('_id');
+
+            // Search sellers by full name
+            const matchingSellers = await Seller.find({
+                fullName: searchRegex
+            }).select('_id');
+
+            const bidderIds = [
+                ...matchingBuyers.map(buyer => buyer._id),
+                ...matchingSellers.map(seller => seller._id)
+            ];
+
+            if (bidderIds.length > 0) {
+                orConditions.push({
+                    bidderId: { $in: bidderIds }
+                });
+            }
+
+            filter.$or = orConditions;
+        }
+
+        // ==================== Date Range ====================
+        if (startDate || endDate) {
+            filter.createdAt = {};
+
+            if (startDate) {
+                filter.createdAt.$gte = new Date(startDate);
+            }
+
+            if (endDate) {
+                filter.createdAt.$lte = new Date(endDate);
+            }
+        }
+
+        // ==================== Get Bids ====================
         const [bids, totalCount] = await Promise.all([
             Bid.find(filter)
                 .select('bidId vehicleId bidderId bidderType amount status createdAt')
                 .populate({
                     path: 'vehicleId',
-                    select: 'listingId images vin make model year startingBidPrice'
+                    select: 'listingId images vin make model year startingBidPrice auctionStatus'
                 })
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
+
             Bid.countDocuments(filter)
         ]);
 
+        // ==================== Get Bidder Details ====================
         const formattedBids = await Promise.all(
             bids.map(async (bid) => {
                 let bidder = null;
 
                 if (bid.bidderType === 'Buyer') {
                     bidder = await Buyer.findById(bid.bidderId)
-                        .select('buyerId profileImageUrl firstName lastName email mobile');
+                        .select(
+                            'buyerId profileImageUrl firstName lastName email mobile'
+                        );
                 }
 
                 if (bid.bidderType === 'Seller') {
                     bidder = await Seller.findById(bid.bidderId)
-                        .select('sellerId profileImage fullName email phone');
+                        .select(
+                            'sellerId profileImage fullName email phone'
+                        );
                 }
 
                 return {

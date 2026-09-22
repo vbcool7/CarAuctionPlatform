@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft,ChevronRight, Check, X, FileText, Info, ZoomIn, X as CloseIcon } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Check, X, FileText, Info, ZoomIn, X as CloseIcon } from 'lucide-react';
 import { useGetBuyerById, useVerifyBuyerDoc } from '../../hooks/useBuyer';
 import toast from 'react-hot-toast';
 
@@ -213,6 +213,41 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
                         <div className="flex justify-between">
                             <span className="text-slate-500">Registration Date</span>
                             <span className="font-medium text-slate-700">{submittedDateStr}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Identity Reviewed By</span>
+
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="font-medium text-slate-700">
+                                    {record.identityVerification.reviewedBy.name}
+                                </span>
+
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                    {record.identityVerification.reviewedBy.role === "auctionManager"
+                                        ? "Auction Manager"
+                                        : record.identityVerification.reviewedBy.role === "admin"
+                                            ? "Admin"
+                                            : record.identityVerification.reviewedBy.role}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Address Reviewed By</span>
+
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="font-medium text-slate-700">
+                                    {record.addressVerification.reviewedBy.name}
+                                </span>
+
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                                    {record.addressVerification.reviewedBy.role === "auctionManager"
+                                        ? "Auction Manager"
+                                        : record.addressVerification.reviewedBy.role === "admin"
+                                            ? "Admin"
+                                            : record.addressVerification.reviewedBy.role}
+                                </span>
+                            </div>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-slate-500">KYC Submitted On</span>

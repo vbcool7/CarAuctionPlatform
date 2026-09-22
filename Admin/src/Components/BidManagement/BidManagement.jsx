@@ -1,52 +1,15 @@
 
 import React, { useState } from 'react';
-import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History, Eye } from 'lucide-react';
+import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History, Eye, ArrowDownUp } from 'lucide-react';
 import { bidsList } from '../Data';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 
-import { useGetAllBids } from '../../hooks/useBid';
-import { getPaginationRange } from '../utils/getPaginationRange';
-
-const bidStats = [
-    {
-        title: "Total Bids",
-        value: "1,248",
-        icon: Gavel,
-        theme: "text-violet-600 bg-violet-50",
-        subTitle: "18.6% from last month",
-        subTextColor: "text-green-600",
-        isPositive: true
-    },
-    {
-        title: "Active Bids",
-        value: "342",
-        icon: TrendingUp,
-        theme: "text-green-600 bg-green-50",
-        subTitle: "16.3% from last month",
-        subTextColor: "text-green-600",
-        isPositive: true
-    },
-    {
-        title: "Won Bids",
-        value: "128",
-        icon: Trophy,
-        theme: "text-amber-500 bg-amber-50",
-        subTitle: "14.8% from last month",
-        subTextColor: "text-green-600",
-        isPositive: true
-    },
-    {
-        title: "Outbid Bids",
-        value: "978",
-        icon: XCircle,
-        theme: "text-red-500 bg-red-50",
-        subTitle: "4.1% from last month",
-        subTextColor: "text-red-500",
-        isPositive: false
-    }
-];
+import { useGetAllBids, useGetBidStats } from '../../hooks/useBid';
+import { getPaginationRange } from '../utils/getPaginationRange'
+import { useEffect } from 'react';
+import DateRangePicker from '../SharedComponents/DateRangePicker';
 
 // tabs
 const tabs = [
@@ -58,19 +21,116 @@ const tabs = [
     { id: 'canceled', label: 'Canceled', },
 ];
 
+const filterConfig = [
+    {
+        label: 'All Auction Status',
+        key: 'auctionStatus',
+        options: ['all', 'live', 'upcoming', 'sold', 'unsold', 'reserve-not-met', 'canceled'],
+    },
+    {
+        label: 'All Bidder Type',
+        key: 'bidderType',
+        options: ['all', 'seller', 'buyer'],
+    },
+];
+
+const mapFiltersToParams = (filters, search, startDate, endDate) => {
+    const params = {};
+    if (filters.auctionStatus) params.auctionStatus = filters.auctionStatus;
+    if (filters.bidderType) params.bidderType = filters.bidderType;
+
+    if (search) params.search = search;
+    if (startDate) params.startDate = startDate.toISOString();
+    if (endDate) params.endDate = endDate.toISOString();
+    return params;
+};
+
 function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
-    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState("all");
-    const [selectedAuction, setSelectedAuction] = useState("");
-    const [selectedType, setSelectedType] = useState("");
-    const [selectedStatus, setSelectedStatus] = useState("");
-    const [selectedBidder, setSelectedBidder] = useState("");
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        auctionStatus: '',
+        bidderType: '',
+    });
 
-    const { data: allBids, isLoading, isError } = useGetAllBids(page, activeTab);
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    const params = mapFiltersToParams(filters, debouncedSearch, startDate, endDate);
+
+    const { data: bidStatsData } = useGetBidStats();
+    const { data: allBids, isLoading, isError } = useGetAllBids({ page, limit: 10, status: activeTab, ...params });
 
     const bids = allBids?.bids || [];
     const totalPages = allBids?.pagination?.totalPages || 1;
+
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search, startDate, endDate]);
+
+    // debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    // stats
+    const bidStats = [
+        {
+            title: "Total Bids",
+            value: bidStatsData?.data?.totalBids?.toLocaleString() || "0",
+            icon: Gavel,
+            theme: "text-violet-600 bg-violet-50",
+            subTitle: "18.6% from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
+        },
+        {
+            title: "Active Bids",
+            value: bidStatsData?.data?.activeBids?.toLocaleString() || "0",
+            icon: TrendingUp,
+            theme: "text-green-600 bg-green-50",
+            subTitle: "16.3% from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
+        },
+        {
+            title: "Won Bids",
+            value: bidStatsData?.data?.wonBids?.toLocaleString() || "0",
+            icon: Trophy,
+            theme: "text-amber-500 bg-amber-50",
+            subTitle: "14.8% from last month",
+            subTextColor: "text-green-600",
+            isPositive: true
+        },
+        {
+            title: "Outbid Bids",
+            value: bidStatsData?.data?.outbidBids?.toLocaleString() || "0",
+            icon: ArrowDownUp,
+            theme: "text-red-500 bg-red-50",
+            subTitle: "4.1% from last month",
+            subTextColor: "text-red-500",
+            isPositive: false
+        },
+        {
+            title: "Canceled Bids",
+            value: bidStatsData?.data?.canceledBids?.toLocaleString() || "0",
+            icon: XCircle,
+            theme: "text-slate-500 bg-slate-100",
+            subTitle: "4.1% from last month",
+            subTextColor: "text-red-500",
+            isPositive: false
+        }
+    ];
 
     if (isLoading) return <p className="p-10 text-center">Loading bid list....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load bid list</p>;
@@ -121,7 +181,7 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
             </div>
 
             {/* stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 {bidStats.map((stat, index) => {
                     const Icon = stat.icon;
                     return (
@@ -159,82 +219,63 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
                     {/* Search */}
                     <div className="flex-1 sm:w-75">
-                        <SearchBar />
-                    </div>
-
-                    {/* all auc */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Auctions"
-                            options={[
-                                { label: "NA", value: "na" },
-                                { label: "NA", value: "na" }
-                            ]}
-                            value={selectedAuction}
-                            onChange={setSelectedAuction}
+                        <SearchBar
+                            placeholder="Search by make, model or listing ID..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* type */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Types"
-                            options={[
-                                { label: "Standard", value: "standard" },
-                                { label: "Reserve", value: "reserve" }
-                            ]}
-                            value={selectedType}
-                            onChange={setSelectedType}
-                        />
-                    </div>
-
-                    {/* status */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedStatus}
-                            onChange={setSelectedStatus}
-                        />
-                    </div>
-
-                    {/* bidders */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Bidders"
-                            options={[
-                                { label: "SUV", value: "suv" },
-                                { label: "Sedan", value: "sedan" }
-                            ]}
-                            value={selectedBidder}
-                            onChange={setSelectedBidder}
-                        />
-                    </div>
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-45"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
 
                     {/* Date Range */}
-                    <div className="w-full sm:w-auto flex items-center gap-2 h-9.5 px-3 md:px-4 border border-slate-300 rounded-lg bg-white text-[13px] md:text-sm text-slate-600">
-                        <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
-                        <span className="truncate">
-                            May 01, 2024 - May 31, 2024
-                        </span>
-                    </div>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={(update) => {
+                            setStartDate(update[0]);
+                            setEndDate(update[1]);
+                        }}
+                    />
 
-                    {/* Clear Filters */}
-                    <button className="text-xs md:text-sm font-medium text-[#D97706] hover:underline">
+                    {/* clear btn */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch("");
+                            setFilters({ autionStatus: '', status: '', bidderType: '' });
+                            setStartDate(null);
+                            setEndDate(null);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
+
                 </div>
 
             </div>
 
             {/* main section */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 pb-6 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 pb-6 gap-6 items-start">
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
@@ -512,14 +553,15 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
                     <SummaryDonutCard
                         title="Bid Summary"
-                        centerValue="1248"
+                        centerValue={bidStatsData?.data?.totalBids?.toLocaleString() || "0"}
                         centerLabel="Total Bids"
                         showPercentage={true}
                         segments={[
-                            { name: 'Won', value: 128, color: '#00B050' },
-                            { name: 'Outbid', value: 978, color: '#FF6B72' },
-                            { name: 'Active', value: 342, color: '#2B7FFF' },
-                            { name: 'Withdrawn', value: 42, color: '#FF9900' },
+                            { name: 'Won', value: bidStatsData?.data?.wonBids || 0, color: '#16A34A' },
+                            { name: 'Outbid', value: bidStatsData?.data?.outbidBids || 0, color: '#F59E0B' },
+                            { name: 'Active', value: bidStatsData?.data?.activeBids || 0, color: '#2563EB' },
+                            { name: 'Withdrawn', value: bidStatsData?.data?.withdrawnBids || 0, color: '#64748B' },
+                            { name: 'Canceled', value: bidStatsData?.data?.canceledBids || 0, color: '#DC2626' },
                         ]}
                     />
 

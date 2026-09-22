@@ -18,7 +18,8 @@ const useAdminAuthStore = create(
 
             logout: () => {
                 set({ admin: null, token: null });
-                window.location.href = '/login';
+                const base = import.meta.env.PROD ? '/CarAuctionAdmin' : '';
+                window.location.href = `${base}/admin-login`;
             }
         }),
         {

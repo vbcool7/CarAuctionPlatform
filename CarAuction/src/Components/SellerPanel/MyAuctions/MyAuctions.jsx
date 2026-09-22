@@ -48,7 +48,12 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage, isPlacehol
     const countdown = UseCountDown(isLive ? vehicle.auctionEndDateTime : null);
 
     const formatDate = (d) =>
-        d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+        d ? new Date(d).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            timeZone: 'Asia/Dubai'
+        }) : '—';
 
     const bidAmount = isLive ? (vehicle.currentBid ?? vehicle.startingBidPrice) : vehicle.startingBidPrice;
 
@@ -439,9 +444,9 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                     <div className='bg-white rounded-xl border border-gray-200 p-5'>
                         <div className='flex items-center justify-between mb-3'>
                             <h3 className='text-sm font-semibold text-[#0B1E3D]'>Upcoming Auction</h3>
-                            {activeTab !== 'upcoming' && (
+                            {activeTab !== 'scheduled' && (
                                 <button
-                                    onClick={() => setActiveTab('upcoming')}
+                                    onClick={() => setActiveTab('scheduled')}
                                     className='text-xs text-[#D97706] font-medium'
                                 >
                                     View All

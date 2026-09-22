@@ -264,7 +264,8 @@ function AddNewSellerForm({ setCurrentPage }) {
                     bankStatement: "",
                     vatCertificate: ""
                 });
-                setWelcomeEmailToggle(true);
+                setWelcomeEmailToggle(false);
+                setCurrentPage('sellers');
             },
             onError: (err) => {
                 console.error(err);

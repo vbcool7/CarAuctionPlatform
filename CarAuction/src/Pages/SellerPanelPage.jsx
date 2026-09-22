@@ -21,11 +21,13 @@ import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 import { useSellerLogout } from '../hook/useSeller';
 import useAuthStore from '../store/useAuthStore';
 import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
+import Watchlist from '../Components/SellerPanel/Watchlist/Watchlist';
+import ProfileSetting from '../Components/SellerPanel/ProfileSetting/ProfileSetting';
 
 function SellerPanelPage() {
 
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('bids-offers');
+  const [currentPage, setCurrentPage] = useState('profile-settings');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -125,6 +127,12 @@ function SellerPanelPage() {
               {/* payout */}
               {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'payouts-detail' && <PayoutDetails payoutId={selectedPayoutId} setCurrentPage={setCurrentPage} />}
+
+              {/* watchlist */}
+              {currentPage === 'watchlist' && <Watchlist setCurrentPage={setCurrentPage} />}
+
+              {/* profile-settings */}
+              {currentPage === 'profile-settings' && <ProfileSetting setCurrentPage={setCurrentPage} />}
 
               {/* notifications */}
               {currentPage === 'notifications' && <SellerNotifications setCurrentPage={setCurrentPage} />}

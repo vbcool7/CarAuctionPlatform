@@ -303,7 +303,7 @@ function Buyer({ setCurrentPage, onViewBuyer }) {
                 <th className="px-6 py-4 font-medium min-w-40">Last Login</th>
                 <th className="px-6 py-4 font-medium min-w-42">Created By</th>
                 <th className="px-6 py-4 font-medium min-w-35">Acc Status</th>
-                <th className="px-6 py-4 font-medium min-w-30">Status</th>
+                <th className="px-6 py-4 font-medium min-w-30">KYC Status</th>
                 <th className="px-6 py-4 font-medium min-w-40 text-center">Actions</th>
               </tr>
             </thead>

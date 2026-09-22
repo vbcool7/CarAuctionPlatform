@@ -89,6 +89,7 @@ export const useVerifySellerDoc = () => {
             return res.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sellers'] });
             queryClient.invalidateQueries({ queryKey: ['sellerDetail'] });
         },
         onError: (err) => {

@@ -11,7 +11,7 @@ import {
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats,
     getAllBids, getBidDetail, getBidStats,
     getAllSales,
-    addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus, 
+    addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -74,7 +74,7 @@ router.patch('/reactivate-buyer/:id', authMiddleware(['admin', 'auctionManager']
 router.get('/buyer-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getBuyerStats);
 
 // ============================ SELLER
-router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
+router.post('/add-new-seller', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), (req, res, next) => {
     sellerDocsUpload(req, res, (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {
@@ -94,13 +94,13 @@ router.post('/add-new-seller', authMiddleware(['admin']), (req, res, next) => {
     });
 }, addNewSeller);
 
-router.get('/all-sellers-list', authMiddleware(['admin']), getAllSellers);
-router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin']), toggleSellerVerification);
-router.get('/get-seller/:sellerId', authMiddleware(['admin']), getSellerById);
-router.patch('/seller-document-verification/:id/:document', authMiddleware(['admin']), sellerDocVerification);
-router.patch('/suspend-seller/:id', authMiddleware(['admin']), suspendSeller);
-router.patch('/reactivate-seller/:id', authMiddleware(['admin']), reactivateSeller);
-router.get('/seller-stats', authMiddleware(['admin']), getSellerStats);
+router.get('/all-sellers-list', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getAllSellers);
+router.patch('/toggle-seller-verification/:sellerId', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), toggleSellerVerification);
+router.get('/get-seller/:sellerId', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getSellerById);
+router.patch('/seller-document-verification/:id/:document', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), sellerDocVerification);
+router.patch('/suspend-seller/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), suspendSeller);
+router.patch('/reactivate-seller/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), reactivateSeller);
+router.get('/seller-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getSellerStats);
 
 // ============================ VEHICLE
 router.get('/distinct-makes', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getDistinctMakes);
