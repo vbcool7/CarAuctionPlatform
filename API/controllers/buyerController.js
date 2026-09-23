@@ -393,17 +393,17 @@ export const buyerLogout = async (req, res) => {
 
 export const getBuyer = async (req, res) => {
     try {
-        const { buyer_id } = req.params;
-        const loggedInBuyer = req.buyer;
+        const { id } = req.params;
+        const loggedInBuyer = req.user;
 
-        if (loggedInBuyer.id !== buyer_id) {
+        if (loggedInBuyer.id !== id) {
             return res.status(403).json({
                 success: false,
                 message: "Access Denied: You can only view your own profile."
             });
         }
 
-        const buyer = await Buyer.findById(buyer_id).select("-password");
+        const buyer = await Buyer.findById(id).select("-password");
 
         if (!buyer) {
             return res.status(404).json({

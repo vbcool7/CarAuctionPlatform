@@ -48,14 +48,26 @@ export const useResetpassword = () => {
     });
 };
 
-export const useBuyerGet = (buyer_id) => {
+// buyer get
+export const useBuyerGet = (id) => {
     return useQuery({
-        queryKey: ['buyer', buyer_id],
+        queryKey: ['buyer', id],
         queryFn: async () => {
-            const { data } = await API.get(`/buyer/buyer-get/${buyer_id}`);
+            const { data } = await API.get(`/buyer/buyer-get/${id}`);
             return data.data;
         },
-        enabled: !!buyer_id,
+        enabled: !!id,
+    });
+};
+
+// buyer logout
+export const useBuyerLogout = () => {
+    return useMutation({
+        mutationKey: ['buyerLogout'],
+        mutationFn: async () => {
+            const res = await API.post('/buyer/buyer-logout');
+            return res.data;
+        }
     });
 };
 

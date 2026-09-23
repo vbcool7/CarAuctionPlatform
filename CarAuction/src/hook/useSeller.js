@@ -139,3 +139,19 @@ export const useUpdateSellerProfile = () => {
         },
     });
 };
+
+// change password
+export const useChangeSellerPassword = () => {
+    return useMutation({
+        mutationKey: ['changeSellerPassword'],
+        mutationFn: async (payload) => {
+            const res = await API.put('/seller/change-password', payload);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            if (data?.token) {
+                useAuthStore.setState({ token: data.token });
+            }
+        },
+    });
+};

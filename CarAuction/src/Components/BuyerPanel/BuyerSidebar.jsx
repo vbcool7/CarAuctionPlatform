@@ -1,11 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-    LayoutDashboard, Gavel, Radio, CalendarDays, Heart,
-    Trophy, XCircle, Tag, MessageSquareText, CreditCard,
-    FileText, User, Headset, LogOut, ChevronDown
-} from 'lucide-react';
+import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, MessageSquareText, CreditCard, FileText, User, Headset, LogOut, ChevronDown } from 'lucide-react';
 
 const menuItems = [
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", active: true },
@@ -69,17 +65,17 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                 </div>
 
                 {/* Nav */}
-                <nav className='flex-1 p-4 space-y-1 overflow-y-auto no-scrollbar'>
+                <nav className='flex-1 p-4 space-y-2 overflow-y-auto no-scrollbar'>
                     {menuItems.map((item) => {
                         const isActive = currentPage === item.id;
                         const isExpanded = expandedItems.has(item.id);
-                        const Icon = item.icon;  
+                        const Icon = item.icon;
 
                         return (
                             <div key={item.id}>
                                 <button
                                     className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-between"} 
-                                px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer
+                                px-3 py-3 rounded-xl transition-all duration-200 cursor-pointer
                                         ${isActive
                                             ? "bg-[#0B1E3D] text-white"
                                             : "text-slate-600 hover:bg-slate-100 hover:text-[#0B1E3D]"
@@ -99,8 +95,8 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                                 >
                                     <div className='flex items-center gap-3'>
                                         {/* Icon */}
-                                        <div className={`shrink-0
-                                    ${isActive ? "text-white" : "text-slate-400"}`}>
+                                        <div className={`shrink-0 
+                                    ${isActive ? "text-white" : "text-slate-400 hover:text-[#D97706]"}`}>
                                             <Icon size={18} />
                                         </div>
 

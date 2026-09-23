@@ -23,11 +23,14 @@ import useAuthStore from '../store/useAuthStore';
 import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
 import Watchlist from '../Components/SellerPanel/Watchlist/Watchlist';
 import ProfileSetting from '../Components/SellerPanel/ProfileSetting/ProfileSetting';
+import Support from '../Components/SellerPanel/Support/Support';
+import CreateTicket from '../Components/SellerPanel/Support/CreateTicket';
+import SupportDetail from '../Components/SellerPanel/Support/SupportDetail';
 
 function SellerPanelPage() {
 
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('profile-settings');
+  const [currentPage, setCurrentPage] = useState('support');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -36,11 +39,12 @@ function SellerPanelPage() {
   const { mutate: logoutSeller, isPending: isLoggingOut } = useSellerLogout();
   const clearStore = useAuthStore((state) => state.logout);
 
-  const [selectedMyVehicleId, setSelectedMyVehicleId] = useState();
-  const [selectedAuctionId, setSelectedAuctionId] = useState();
-  const [selectedBidsOfferId, setSelectedBidsOfferId] = useState();
-  const [selectedSalesId, setSelectedSalesId] = useState();
-  const [selectedPayoutId, setSelectedPayoutId] = useState();
+  const [selectedMyVehicleId, setSelectedMyVehicleId] = useState(null);
+  const [selectedAuctionId, setSelectedAuctionId] = useState(null);
+  const [selectedBidsOfferId, setSelectedBidsOfferId] = useState(null);
+  const [selectedSalesId, setSelectedSalesId] = useState(null);
+  const [selectedPayoutId, setSelectedPayoutId] = useState(null);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -133,6 +137,11 @@ function SellerPanelPage() {
 
               {/* profile-settings */}
               {currentPage === 'profile-settings' && <ProfileSetting setCurrentPage={setCurrentPage} />}
+
+              {/* support */}
+              {currentPage === 'support' && <Support setSelectedTicketId={setSelectedTicketId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'support-detail' && <SupportDetail ticketId={selectedTicketId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'create-ticket' && <CreateTicket setCurrentPage={setCurrentPage} />}
 
               {/* notifications */}
               {currentPage === 'notifications' && <SellerNotifications setCurrentPage={setCurrentPage} />}

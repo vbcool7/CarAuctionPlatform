@@ -1,10 +1,34 @@
 
+import { useNavigate } from 'react-router-dom';
 import { LogOut, X } from 'lucide-react';
+import { toast } from 'react-toastify';
+
+import useAuthStore from '../../store/useAuthStore';
+import { useBuyerLogout } from '../../hook/useBuyer';
 
 function BuyerLogout({ onClose }) {
+
+    const navigate = useNavigate();
+
+    const { mutate: logoutBuyer, isPending: isLoggingOut } = useBuyerLogout();
+    const clearStore = useAuthStore((state) => state.logout);
+
     const handleConfirmLogout = () => {
-        onClose();
-        // Logout logic here
+
+        logoutBuyer(null, {
+            onSuccess: (res) => {
+                onClose();
+                clearStore();
+                navigate('/login');
+                toast.success(res.message || "Logout successful!");
+            },
+            onError: (err) => {
+                onClose();
+                clearStore();
+                navigate('/login');
+                toast.error(err.response?.data?.message || "Logout failed, but you've been signed out locally");
+            }
+        })
     };
 
     return (
@@ -33,11 +57,14 @@ function BuyerLogout({ onClose }) {
                     {/* Action Buttons */}
                     <div className='flex flex-col gap-2 mt-8'>
                         <button
+                            type="button"
                             onClick={handleConfirmLogout}
-                            className='w-full bg-[#0B1E3D] hover:bg-[#1a2d4d] text-white font-semibold py-3.5 rounded-2xl transition-all active:scale-95'
+                            disabled={isLoggingOut}
+                            className="w-full bg-[#0B1E3D] hover:bg-[#162D4D] text-white font-semibold py-3.5 rounded-2xl transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Yes, Log Out
+                            {isLoggingOut ? 'Logging Out...' : 'Yes, Log Out'}
                         </button>
+
                         <button
                             onClick={onClose}
                             className='w-full text-slate-500 hover:text-slate-700 font-semibold py-3.5 rounded-2xl transition-all'

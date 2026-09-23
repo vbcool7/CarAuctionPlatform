@@ -900,7 +900,7 @@ const EDITABLE_FIELDS = [
     "emirate", "city", "area", "streetAddress", "building", "poBox", "zipCode",
 ];
 
-// inme se koi bhi badla to trade license dobara upload karna hoga
+// if change any field from below enums then need to upload trade license
 const LICENSE_TRIGGER_FIELDS = ["licenseNumber", "businessName", "businessType", "businessYear"];
 
 export const updateMyProfile = async (req, res) => {
@@ -909,7 +909,6 @@ export const updateMyProfile = async (req, res) => {
     const newLicense = files.tradeLicense?.[0];
     const newEmiratesId = files.emiratesId?.[0];
 
-    // upload.fields() ke saath req.files object hota hai, tumhara deleteCloudinaryFiles isse handle karta hai
     const cleanup = async () => {
         if (req.files) await deleteCloudinaryFiles(req.files);
     };
@@ -926,7 +925,7 @@ export const updateMyProfile = async (req, res) => {
             return res.status(403).json({ success: false, message: "Profile cannot be edited in current account state" });
         }
 
-        // sirf allowed fields
+        // only allowed fields
         const blocked = Object.keys(req.body).filter((k) => !EDITABLE_FIELDS.includes(k));
         if (blocked.length) {
             await cleanup();
@@ -940,7 +939,6 @@ export const updateMyProfile = async (req, res) => {
             }
         }
 
-        // sach mein value badli hai ya nahi (frontend sab fields bheje to bhi galat trigger na ho)
         const changed = (key) =>
             updates[key] !== undefined && String(seller[key] ?? "") !== String(updates[key]);
 
@@ -966,7 +964,7 @@ export const updateMyProfile = async (req, res) => {
             return res.status(400).json({ success: false, message: "No valid fields to update" });
         }
 
-        // purani files yaad rakho, save ke BAAD delete hongi
+        // remember old files, delete after save
         const oldImage = seller.profileImage;
         const oldLicenseUrl = seller.tradeLicense?.url;
         const oldEidUrl = seller.emiratesId?.url;
@@ -975,7 +973,7 @@ export const updateMyProfile = async (req, res) => {
 
         if (newImage) seller.profileImage = newImage.path;
 
-        // nayi document = status wapas pending, admin dobara review karega
+        // new document = doc status pending then admin approve
         if (newLicense) {
             seller.tradeLicense = { url: newLicense.path, status: "pending" };
         }
@@ -983,9 +981,10 @@ export const updateMyProfile = async (req, res) => {
             seller.emiratesId = { url: newEmiratesId.path, status: "pending" };
         }
 
+
+
         await seller.save();
 
-        // save ho gaya, ab purani files hatao (ye functions khud error handle karte hain)
         if (newImage && oldImage) await deleteOldFileFromCloudinary(oldImage);
         if (newLicense && oldLicenseUrl) await deleteOldFileFromCloudinary(oldLicenseUrl);
         if (newEmiratesId && oldEidUrl) await deleteOldFileFromCloudinary(oldEidUrl);
@@ -996,8 +995,6 @@ export const updateMyProfile = async (req, res) => {
 
     } catch (err) {
         await cleanup();
-
-        // enum / required galat ho to 500 nahi, 400
         if (err.name === "ValidationError") {
             return res.status(400).json({
                 success: false,
@@ -1016,17 +1013,26 @@ export const changePassword = async (req, res) => {
         const { currentPassword, newPassword } = req.body;
 
         if (!currentPassword || !newPassword) {
-            return res.status(400).json({ success: false, message: "Both passwords are required" });
+            return res.status(400).json({
+                success: false,
+                message: "Both passwords are required"
+            });
         }
 
         if (newPassword === currentPassword) {
-            return res.status(400).json({ success: false, message: "New password must be different from current" });
+            return res.status(400).json({
+                success: false,
+                message: "New password must be different from current"
+            });
         }
 
-        const seller = await Seller.findById(req.user.id).select("+password"); // _id nahi, id
+        const seller = await Seller.findById(req.user.id).select("+password");
 
         const ok = seller && (await bcrypt.compare(currentPassword, seller.password));
-        if (!ok) return res.status(401).json({ success: false, message: "Current password is incorrect" });
+        if (!ok) return res.status(401).json({
+            success: false,
+            message: "Current password is incorrect"
+        });
 
         seller.password = await bcrypt.hash(newPassword, 10);
         seller.passwordChangedAt = new Date();
@@ -1034,9 +1040,16 @@ export const changePassword = async (req, res) => {
 
         const token = jwt.sign({ id: seller._id, role: seller.role }, process.env.JWT_SECRET_KEY, { expiresIn: '1d' });
 
-        return res.status(200).json({ success: true, message: "Password changed", token });
+        return res.status(200).json({
+            success: true,
+            message: "Password changed",
+            token
+        });
     } catch (err) {
         console.error("Seller Change Password error:", err);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };

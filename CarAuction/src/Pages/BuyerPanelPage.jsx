@@ -25,7 +25,7 @@ import SellerInventoryDetail from '../Components/BuyerPanel/BuyerSharedComponent
 import BuyerLostAuctionsDetail from '../Components/BuyerPanel/BuyerLostAuctions/BuyerLostAuctionsDetail';
 import PlaceBidModal from '../Components/BuyerPanel/BuyerSharedComponents/PlaceBidModal';
 import BidPlacedModal from '../Components/BuyerPanel/BuyerSharedComponents/BidPlacedModal';
-import BuyerLogout from '../Components/BuyerPanel/BuyerSharedComponents/BuyerLogout';
+import BuyerLogout from '../Components/BuyerPanel/BuyerLogout';
 import BuyerAuctionResultDetail from '../Components/BuyerPanel/BuyerSharedComponents/BuyerAuctionResultDetail';
 
 function BuyerPanelPage() {
@@ -70,7 +70,7 @@ function BuyerPanelPage() {
     };
 
     return (
-        <div className='min-h-screen bg-white transition-all duration-500'>
+        <div className='min-h-screen bg-slate-50 transition-all duration-500'>
 
             {mobileSidebarOpen && (
                 <div
@@ -182,9 +182,7 @@ function BuyerPanelPage() {
 
                             {/* won auctions */}
                             {currentPage === "won-auctions" && <BuyerWonAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "won-auctions-detail" && (
-                                <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />)
-                            }
+                            {currentPage === "won-auctions-detail" && <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />}
 
                             {/* lost auctions */}
                             {currentPage === "lost-auctions" && <BuyerLostAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}

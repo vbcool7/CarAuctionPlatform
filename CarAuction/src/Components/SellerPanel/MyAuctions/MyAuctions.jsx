@@ -195,14 +195,14 @@ function AuctionCard({ vehicle, setSelectedAuctionId, setCurrentPage, isPlacehol
 
             {/* Tags */}
             <div className='flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100'>
-                {[vehicle.vin, vehicle.vehicleType, vehicle.transmission, vehicle.drivetrain, `${vehicle.mileage} miles`, vehicle.fuelType]
+                {[vehicle.listingId, vehicle.vin, vehicle.vehicleType, vehicle.transmission, `${vehicle.mileage} miles`, vehicle.fuelType]
                     .filter(Boolean)
                     .map((tag, index) => (
                         <span
                             key={index}
                             className='px-3 py-1 rounded-md bg-gray-50 text-[10px] sm:text-xs font-medium text-gray-500'
                         >
-                            {index === 0 ? `VIN: ${tag}` : formatLabel(tag)}
+                            {index === 1 ? `VIN: ${tag}` : formatLabel(tag)}
                         </span>
                     ))}
             </div>

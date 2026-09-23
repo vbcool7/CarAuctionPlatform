@@ -24,7 +24,7 @@ router.post('/buyer-forgot-password', buyerForgotPass);
 router.post('/buyer-reset-password/:buyer_id/:token', buyerResetpassword);
 
 router.post('/buyer-logout', authMiddleware(['buyer']), buyerLogout);
-router.get('/buyer-get/:buyer_id', authMiddleware(['buyer']), getBuyer);
+router.get('/buyer-get/:id', authMiddleware(['buyer']), getBuyer);
 router.put('/buyer-change-password', authMiddleware(['buyer']), buyerChangePassword);
 
 router.patch('/buyer-reupload/:buyer_id/:token/:group', buyerUploads, reuploadBuyerDocs);
