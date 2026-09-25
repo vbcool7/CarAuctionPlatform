@@ -528,3 +528,284 @@ export const cancelAuction = async (req, res) => {
         });
     }
 };
+
+// ================================= BUYER SIDE
+
+// all auctions 
+export const getDistinctMakes = async (req, res) => {
+    try {
+        const makes = await Vehicle.distinct('make', { adminStatus: 'approved' });
+        return res.status(200).json({ success: true, data: makes.sort() });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+    }
+};
+
+export const getDistinctModels = async (req, res) => {
+    try {
+        const { make } = req.query;
+        if (!make) {
+            return res.status(400).json({ success: false, message: "make is required" });
+        }
+        const models = await Vehicle.distinct('model', { adminStatus: 'approved', make });
+        return res.status(200).json({ success: true, data: models.sort() });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+    }
+};
+
+export const getDateFilterRange = (dateFilter) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setDate(endOfToday.getDate() + 1);
+
+    const endOfThisWeek = new Date(startOfToday);
+    endOfThisWeek.setDate(endOfThisWeek.getDate() + 7);
+
+    const endOfNextWeek = new Date(startOfToday);
+    endOfNextWeek.setDate(endOfNextWeek.getDate() + 14);
+
+    switch (dateFilter) {
+        case 'today':
+            return { $gte: startOfToday, $lt: endOfToday };
+        case 'this_week':
+            return { $gte: startOfToday, $lt: endOfThisWeek };
+        case 'next_week':
+            return { $gte: endOfThisWeek, $lt: endOfNextWeek };
+        default:
+            return null; // 'all' or n any param
+    }
+};
+
+export const getAllAuctions = async (req, res) => {
+    try {
+        const { tab, make, model, year, bodyType, priceRange, sortBy, search, dateFilter, page = 1, limit = 20 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const matchStage = {
+            adminStatus: 'approved',
+        };
+
+        // ---- tab filter ----
+        switch (tab) {
+            case 'live':
+                matchStage.auctionStatus = 'live';
+                break;
+            case 'upcoming':
+                matchStage.auctionStatus = 'upcoming';
+                if (dateFilter) {
+                    const range = getDateFilterRange(dateFilter);
+                    if (range) matchStage.auctionStartDateTime = range;
+                }
+                break;
+            case 'ended':
+                matchStage.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
+                break;
+            case 'canceled':
+                matchStage.auctionStatus = 'canceled';
+                break;
+            case 'all':
+            default:
+                matchStage.auctionStatus = { $in: ['upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'] };
+                break;
+        }
+
+        if (make) matchStage.make = make;
+        if (model) matchStage.model = model;
+        if (year) matchStage.year = Number(year);
+        if (bodyType) matchStage.bodyType = bodyType;
+
+        // ---- search filter (make, model, listingId) ----
+        if (search && search.trim()) {
+            const searchRegex = new RegExp(search.trim(), 'i');
+            matchStage.$or = [
+                { make: searchRegex },
+                { model: searchRegex },
+                { listingId: searchRegex },
+            ];
+
+            // ---- year: numeric search, only add if search term is a valid number ----
+            const searchAsNumber = Number(search.trim());
+            if (!isNaN(searchAsNumber)) {
+                matchStage.$or.push({ year: searchAsNumber });
+            }
+        }
+
+        const pipeline = [
+            { $match: matchStage },
+
+            // ---- effective price computed field ----
+            {
+                $addFields: {
+                    effectivePrice: {
+                        $ifNull: [
+                            "$currentBid",
+                            { $ifNull: ["$startingBidPrice", "$buyNowPrice"] }
+                        ]
+                    }
+                }
+            },
+
+            // ---- bids lookup (active/outbid/won only) ----
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vehicleId: '$_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ['$vehicleId', '$$vehicleId'] },
+                                status: { $in: ['active', 'outbid', 'won'] }
+                            }
+                        }
+                    ],
+                    as: 'bidsArr'
+                }
+            },
+            {
+                $addFields: { totalBids: { $size: '$bidsArr' } }
+            },
+
+            // seller info
+            {
+                $lookup: {
+                    from: 'sellers',
+                    localField: 'sellerId',
+                    foreignField: '_id',
+                    as: 'sellerInfo'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$sellerInfo',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+        ];
+
+        // ---- price range filter 
+        if (priceRange) {
+            const [min, max] = priceRange.split('-').map(Number);
+            pipeline.push({
+                $match: {
+                    effectivePrice: { $gte: min, $lte: max }
+                }
+            });
+        }
+
+        // ---- sort ----
+        switch (sortBy) {
+            case 'price_low_high':
+                pipeline.push({ $sort: { effectivePrice: 1 } });
+                break;
+            case 'price_high_low':
+                pipeline.push({ $sort: { effectivePrice: -1 } });
+                break;
+            case 'ending_soon':
+                pipeline.push({ $sort: { auctionEndDateTime: 1 } });
+                break;
+            case 'newest':
+            default:
+                pipeline.push({ $sort: { createdAt: -1 } });
+                break;
+        }
+
+        pipeline.push({
+            $facet: {
+                data: [
+                    { $skip: skip },
+                    { $limit: Number(limit) },
+                    {
+                        $project: {
+                            listingId: 1, make: 1, model: 1, year: 1, trim: 1, mileage: 1,
+                            transmission: 1, fuelType: 1, images: 1, currentBid: 1,
+                            startingBidPrice: 1, buyNowPrice: 1, effectivePrice: 1,
+                            auctionStatus: 1, auctionStartDateTime: 1, auctionEndDateTime: 1,
+                            canceledAt: 1, emirate: 1, city: 1, totalBids: 1, priceType: 1,
+                            overallCondition: 1,
+                            'sellerInfo.businessName': 1,
+                            'sellerInfo.fullName': 1,
+                            'sellerInfo.businessDescription': 1,
+                        }
+                    }
+                ],
+                totalCount: [{ $count: 'count' }]
+            }
+        });
+
+        const result = await Vehicle.aggregate(pipeline);
+        const vehicles = result[0].data;
+        const total = result[0].totalCount[0]?.count || 0;
+
+        return res.status(200).json({
+            success: true,
+            message: "Auctions fetched",
+            data: vehicles,
+            pagination: { page: Number(page), limit: Number(limit), total, totalPages: Math.ceil(total / Number(limit)) }
+        });
+
+    } catch (err) {
+        console.error("All auctions error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// get live auc stats
+
+
+// get upcoming auction date
+export const getupcomingAuctionDates = async (req, res) => {
+    try {
+        const result = await Vehicle.aggregate([
+            {
+                $match: {
+                    adminStatus: 'approved',
+                    auctionStatus: 'upcoming',
+                    auctionStartDateTime: { $exists: true, $ne: null }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$auctionStartDateTime",
+                            timezone: "Asia/Dubai"
+                        }
+                    },
+                    count: {
+                        $sum: 1
+                    }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        const data = result.map((item) => ({
+            date: item._id,
+            count: item.count
+        }));
+
+        const totalUpcomingAuctions = data.reduce(
+            (total, item) => total + item.count, 0
+        );
+
+        return res.status(200).json({
+            success: true,
+            data,
+            totalUpcomingAuctions
+        });
+
+    } catch (err) {
+        console.log("Get upcoming auction dates error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};

@@ -523,7 +523,8 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                                                     {/* Status */}
                                                     <td className="px-6 py-4">
                                                         <span
-                                                            className={`px-2 py-1 rounded-full text-[10px] font-medium flex w-fit items-center gap-1.5 ${statusStyles}`}
+                                                            className={`px-2 py-1 rounded-full text-[10px] font-medium flex w-fit items-center gap-1.5 
+                                                                ${statusStyles}`}
                                                         >
                                                             <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                                                             {formatLabel(status)}

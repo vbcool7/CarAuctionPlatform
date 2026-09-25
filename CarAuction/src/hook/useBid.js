@@ -17,7 +17,7 @@ export const useGetMyBids = ({
         queryKey: ['myBids', status, page, limit, search, auctionType],
         queryFn: async () => {
             const params = new URLSearchParams({ page, limit });
- 
+
             if (status !== 'all') params.append('status', status);
             if (search.trim()) params.append('search', search.trim());
             if (auctionType !== 'all') params.append('auctionType', auctionType);
@@ -53,5 +53,20 @@ export const useGetVehicleBids = (page = 1, limit = 10, id) => {
             return res.data;
         },
         keepPreviousData: true,
+    });
+};
+
+// =========================== BUYER
+
+// top bidders
+export const useGetTopBidders = (limit) => {
+    return useQuery({
+        queryKey: ['topBidders', limit],
+        queryFn: async () => {
+            const res = await API.get(`/bid/get-top-bidders?limit=${limit}`);
+            return res.data;
+        },
+        staleTime: 5 * 60 * 1000,
+        placeholderData: keepPreviousData,
     });
 };

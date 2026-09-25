@@ -18,12 +18,19 @@ export const toggleWatchlist = async (req, res) => {
             });
         }
 
-        const vehicle = await Vehicle.findById(vehicleId).select('sellerId');
+        const vehicle = await Vehicle.findById(vehicleId).select('sellerId auctionStatus');
 
         if (!vehicle) {
             return res.status(404).json({
                 success: false,
                 message: "Vehicle not found"
+            });
+        }
+
+        if (vehicle.auctionStatus === 'draft') {
+            return res.status(400).json({
+                success: false,
+                message: "This vehicle is not available for watchlisting"
             });
         }
 
@@ -155,6 +162,7 @@ export const getMyWatchlist = async (req, res) => {
                                     model: '$vehicle.model',
                                     vin: '$vehicle.vin',
                                     bodyType: '$vehicle.bodyType',
+                                    mileage: '$vehicle.mileage',
                                     exteriorColor: '$vehicle.exteriorColor',
                                     transmission: '$vehicle.transmission',
                                     fuelType: '$vehicle.fuelType',
@@ -169,6 +177,7 @@ export const getMyWatchlist = async (req, res) => {
                                     auctionStartTime: '$vehicle.auctionStartTime',
                                     auctionStartDateTime: '$vehicle.auctionStartDateTime',
                                     auctionEndDateTime: '$vehicle.auctionEndDateTime',
+                                    canceledAt: '$vehicle.canceledAt',
                                     auctionStatus: '$vehicle.auctionStatus',
                                 },
                             },

@@ -293,7 +293,8 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.key
+                        className={`py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors 
+                            ${activeTab === tab.key
                             ? 'border-[#D97706] text-[#D97706]'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}

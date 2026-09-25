@@ -512,3 +512,68 @@ export const withdrawBid = async (req, res) => {
         });
     }
 };
+
+// get top bidders
+export const getTopBidders = async (req, res) => {
+    try {
+        const { limit = 10 } = req.query;
+        const requestedLimit = Number(limit);
+        const bufferLimit = requestedLimit + 10; // suspended-filter ke liye extra buffer
+
+        const topBidders = await Bid.aggregate([
+            { $match: { status: { $in: ['active', 'outbid', 'won', 'withdrawn'] } } },
+            {
+                $group: {
+                    _id: { bidderId: '$bidderId', bidderType: '$bidderType' },
+                    totalBids: { $sum: 1 }
+                }
+            },
+            { $sort: { totalBids: -1 } },
+            { $limit: bufferLimit },
+        ]);
+
+        const populated = await Promise.all(
+            topBidders.map(async (b) => {
+                const isBuyer = b._id.bidderType === 'Buyer';
+                const Model = isBuyer ? Buyer : Seller;
+                const fieldsToSelect = isBuyer
+                    ? 'firstName lastName profileImageUrl accountStatus'
+                    : 'fullName profileImage accountStatus';
+
+                const bidder = await Model.findById(b._id.bidderId).select(fieldsToSelect);
+                if (!bidder || bidder.accountStatus === 'suspended') return null;
+
+                const displayName = isBuyer
+                    ? `${bidder.firstName || ''} ${bidder.lastName || ''}`.trim() || 'Unknown'
+                    : bidder.fullName || 'Unknown';
+                const profileImage = isBuyer
+                    ? bidder.profileImageUrl || null
+                    : bidder.profileImage || null;
+
+                return {
+                    bidderId: b._id.bidderId,
+                    bidderType: b._id.bidderType,
+                    fullName: displayName,
+                    profileImage,
+                    totalBids: b.totalBids,
+                };
+            })
+        );
+
+        const finalList = populated.filter(Boolean).slice(0, requestedLimit);
+
+        return res.status(200).json({
+            success: true,
+            message: "Top 10 bidders",
+            data: finalList,
+            hasMore: finalList.length === requestedLimit,
+        });
+
+    } catch (err) {
+        console.error("Top bidders error:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Server Error Occurred" 
+        });
+    }
+};

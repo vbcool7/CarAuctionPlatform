@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Radio, Star } from 'lucide-react';
+
 import { vehicles } from '../../Data';
 import BuyerLiveAuctionDetailBidPanel from './BuyerLiveAuctionDetailBidPanel';
 import BuyerLiveAuctionDetailSpecs from './BuyerLiveAuctionDetailSpecs';

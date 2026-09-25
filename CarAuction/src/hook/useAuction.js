@@ -3,7 +3,9 @@ import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-q
 import { useQuery } from '@tanstack/react-query';
 import API from '../api/axiosInstance';
 
-// get all auctions
+// ============================================= SELLER
+
+// get my auctions
 export const useGetMyAuctions = ({
     tab = 'active',
     page = 1,
@@ -57,5 +59,71 @@ export const useCancelAuction = () => {
             queryClient.invalidateQueries({ queryKey: ['myAuctions'] });
             queryClient.invalidateQueries({ queryKey: ['auctionDetail', variables.id] });
         },
+    });
+};
+
+// ============================================= BUYER
+
+// all auctions
+
+// get distinct makes (for filter dropdown)
+export const useGetDistinctMakes = () => {
+    return useQuery({
+        queryKey: ['vehicle-makes'],
+        queryFn: async () => {
+            const res = await API.get(`/auction/distinct-makes`);
+            return res.data;
+        },
+        staleTime: 1000 * 60 * 10,
+    });
+};
+
+// get distinct model (for filter dropdown) — cascading on selected make
+export const useGetDistinctModel = (make) => {
+    return useQuery({
+        queryKey: ['vehicle-model', make],
+        queryFn: async () => {
+            const res = await API.get(`/auction/distinct-model`, { params: { make } });
+            return res.data;
+        },
+        enabled: !!make,
+        staleTime: 1000 * 60 * 10,
+    });
+};
+
+// get all auctions
+export const useGetAllAuctions = ({
+    tab = 'all', make = '', model = '', year = '', priceRange = '',
+    bodyType = '', sortBy = 'newest', search = '', dateFilter = '', page = 1, limit = 20,
+} = {}) => {
+    return useQuery({
+        queryKey: ['allAuctions', tab, make, model, year, priceRange, bodyType, sortBy, search, dateFilter, page, limit],
+        queryFn: async () => {
+            const params = new URLSearchParams({ tab, page: String(page), limit: String(limit) });
+
+            if (make && make !== 'all') params.append('make', make);
+            if (model && model !== 'all') params.append('model', model);
+            if (year && year !== 'all') params.append('year', year);
+            if (priceRange && priceRange !== 'all') params.append('priceRange', priceRange);
+            if (bodyType && bodyType !== 'all') params.append('bodyType', bodyType);
+            if (sortBy) params.append('sortBy', sortBy);
+            if (search && search.trim()) params.append('search', search.trim());
+            if (dateFilter && dateFilter !== 'all') params.append('dateFilter', dateFilter);
+
+            const res = await API.get(`/auction/get-all-auctions?${params.toString()}`);
+            return res.data;
+        },
+        placeholderData: keepPreviousData,
+    });
+};
+
+// get upcoming dates
+export const useGetUpcomingAuctionDates = () => {
+    return useQuery({
+        queryKey: ['upcomingDates'],
+        queryFn: async() => {
+            const res = await API.get('/auction/get-upcoming-auction-dates');
+            return res.data;
+        }
     });
 };
