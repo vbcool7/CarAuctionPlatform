@@ -122,7 +122,7 @@ const mapFiltersToParams = (filters) => {
     return params;
 };
 
-function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId }) {
+function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPage }) {
 
     const [search, setSearch] = useState();
     const [page, setPage] = useState(1);
@@ -322,18 +322,14 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId }) {
 
                     {/* Cards */}
                     <div
-                        className={`grid gap-6 ${view === 'grid'
-                                ? 'grid-cols-1 md:grid-cols-2'
-                                : 'grid-cols-1'
-                            }`}
-                    >
+                        className={`grid gap-6 
+                            ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1' }`}>
                         {auctions?.length > 0 ? (
                             auctions.map((item, index) => (
                                 <div
                                     key={item._id || index}
                                     className={`bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex
-                    ${view === 'list' ? 'flex-row' : 'flex-col'}`}
-                                >
+                                                ${view === 'list' ? 'flex-row' : 'flex-col'}`}>
                                     <div
                                         className={`relative ${view === 'list'
                                                 ? 'w-70 h-full shrink-0'
@@ -384,7 +380,7 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId }) {
                                             </span>
                                         </div>
 
-                                        {/* Bids / Market Value */}
+                                        {/* price / Bids */}
                                         <div className="grid grid-cols-3 gap-2 mb-4">
                                             <div className="bg-slate-50 p-2 rounded-lg">
                                                 <p className="text-[10px] text-slate-500">
@@ -437,8 +433,9 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId }) {
                                         >
                                             <button
                                                 onClick={() => {
-                                                    setCurrentPage('live-auctions-detail');
                                                     setSelectedVehicleId(item._id);
+                                                    setPreviousPage('live-auctions');
+                                                    setCurrentPage('browse-auctions-detail');
                                                 }}
                                                 className="w-full bg-[#0B1E3D] text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-[#1a2d4d] transition-colors"
                                             >

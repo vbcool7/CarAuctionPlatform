@@ -10,3 +10,8 @@ export const emitToRole = (role, event, payload) => {
     const io = getIO();
     io.to(`role:${role}`).emit(event, payload);
 };
+
+export const emitToVehicle = (vehicleId, event, payload) => {
+    const io = getIO();
+    io.to(`vehicle:${vehicleId}`).emit(event, payload);
+};

@@ -39,6 +39,16 @@ export const initSocket = (httpServer, allowedOrigins) => {
 
         console.log(`[socket] connected: user:${id} (${role})`);
 
+        // ---- NAYA: bidding-ke-liye-vehicle-room ----
+        socket.on('joinVehicleRoom', (vehicleId) => {
+            socket.join(`vehicle:${vehicleId}`);
+        });
+
+        socket.on('leaveVehicleRoom', (vehicleId) => {
+            socket.leave(`vehicle:${vehicleId}`);
+        });
+        // ---- NAYA-khatam ----
+
         socket.on('disconnect', () => {
             console.log(`[socket] disconnected: user:${id}`);
         });

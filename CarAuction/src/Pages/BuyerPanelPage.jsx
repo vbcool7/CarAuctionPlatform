@@ -5,9 +5,7 @@ import BuyerNavbar from '../Components/BuyerPanel/BuyerNavbar';
 import BuyerDashboard from '../Components/BuyerPanel/BuyerDashboard/BuyerDashboard';
 import BuyerBrowseAuction from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuction';
 import BuyerUpcomingAuctions from '../Components/BuyerPanel/BuyerUpcomingAuctions/BuyerUpcomingAuctions';
-import BuyerUpcomingAuctionDetail from '../Components/BuyerPanel/BuyerUpcomingAuctions/BuyerUpcomingAuctionDetail';
 import BuyerLiveAuctions from '../Components/BuyerPanel/BuyerLiveAuctions/BuyerLiveAuctions';
-import BuyerLiveAuctionDetail from '../Components/BuyerPanel/BuyerLiveAuctions/BuyerLiveAuctionDetail';
 import BuyerWatchlist from '../Components/BuyerPanel/BuyerWatchlist/BuyerWatchlist';
 import BuyerMyBids from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBids';
 import BuyerWonAuctions from '../Components/BuyerPanel/BuyerWonAuctions/BuyerWonAuctions';
@@ -27,19 +25,24 @@ import PlaceBidModal from '../Components/BuyerPanel/BuyerSharedComponents/PlaceB
 import BidPlacedModal from '../Components/BuyerPanel/BuyerSharedComponents/BidPlacedModal';
 import BuyerLogout from '../Components/BuyerPanel/BuyerLogout';
 import BuyerAuctionResultDetail from '../Components/BuyerPanel/BuyerSharedComponents/BuyerAuctionResultDetail';
+import BuyerMyBidsDetail from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBidsDetail';
+import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuctionsDetail';
 
 function BuyerPanelPage() {
 
-    const [currentPage, setCurrentPage] = useState("dashboard");
+    const [currentPage, setCurrentPage] = useState("browse-auctions");
+    const [previousPage, setPreviousPage] = useState(null);
     const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     const [selectedVehicleId, setSelectedVehicleId] = useState(null);
     const [selectedSellerId, setSelectedSellerId] = useState(null);
-    const [previousPage, setPreviousPage] = useState(null);
+    const [selectedBidId, setSelectedBidId] = useState(null);
+    const [selectedLostId, setSelectedLostId] = useState(null);
 
     // bid placed
+    const [bidResultData, setBidResultData] = useState(null);
     const [isBidModalOpen, setIsBidModalOpen] = useState(false);
     const [bidVehicleId, setBidVehicleId] = useState(null);
     const [bidStep, setBidStep] = useState('form'); // 'form' | 'success'
@@ -61,6 +64,7 @@ function BuyerPanelPage() {
         setBidVehicleId(vehicleId);
         setPreviousPage(fromPage);
         setBidStep('form');
+        setBidResultData(null);
         setIsBidModalOpen(true);
     };
 
@@ -119,16 +123,29 @@ function BuyerPanelPage() {
                                     openBidModal={openBidModal}
                                 />}
 
-                            {/* upcoming auctions */}
-                            {currentPage === "upcoming-auctions" && <BuyerUpcomingAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "upcoming-auctions-detail" &&
-                                <BuyerUpcomingAuctionDetail
-                                    vehicleId={selectedVehicleId}
+                            {currentPage === 'browse-auctions-detail' &&
+                                <BuyerBrowseAuctionsDetail
+                                    selectedVehicleId={selectedVehicleId}
                                     setCurrentPage={setCurrentPage}
-                                    setSelectedSellerId={setSelectedSellerId}
+                                    previousPage={previousPage}
+                                    openBidModal={openBidModal}
+                                />}
+
+                            {/* live auctions */}
+                            {currentPage === "live-auctions" &&
+                                <BuyerLiveAuctions
+                                    setSelectedVehicleId={setSelectedVehicleId}
+                                    setCurrentPage={setCurrentPage}
                                     setPreviousPage={setPreviousPage}
-                                />
-                            }
+                                />}
+
+                            {/* upcoming auctions */}
+                            {currentPage === "upcoming-auctions" &&
+                                <BuyerUpcomingAuctions
+                                    setSelectedVehicleId={setSelectedVehicleId}
+                                    setCurrentPage={setCurrentPage}
+                                    setPreviousPage={setPreviousPage}
+                                />}
 
                             {/* seller profile */}
                             {currentPage === "seller-profile" && (
@@ -149,19 +166,6 @@ function BuyerPanelPage() {
                                 />
                             )}
 
-                            {/* live auctions */}
-                            {currentPage === "live-auctions" && <BuyerLiveAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "live-auctions-detail" && (
-                                <BuyerLiveAuctionDetail
-                                    vehicleId={selectedVehicleId}
-                                    setCurrentPage={setCurrentPage}
-                                    setSelectedSellerId={setSelectedSellerId}
-                                    setPreviousPage={setPreviousPage}
-                                    openBidModal={openBidModal}
-                                    previousPage={previousPage}
-                                />)
-                            }
-
                             {/* watchlist */}
                             {currentPage === "watchlist" &&
                                 <BuyerWatchlist
@@ -172,32 +176,20 @@ function BuyerPanelPage() {
                                 />}
 
                             {/* bids */}
-                            {currentPage === "bids" && (
-                                <BuyerMyBids
-                                    setCurrentPage={setCurrentPage}
-                                    setSelectedVehicleId={setSelectedVehicleId}
-                                    setPreviousPage={setPreviousPage}
-                                />
-                            )}
+                            {currentPage === "bids" && (<BuyerMyBids setCurrentPage={setCurrentPage} setSelectedBidId={setSelectedBidId} setPreviousPage={setPreviousPage} />)}
+                            {currentPage === 'bids-detail' && <BuyerMyBidsDetail bidId={selectedBidId} setCurrentPage={setCurrentPage} />}
 
                             {/* won auctions */}
                             {currentPage === "won-auctions" && <BuyerWonAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
                             {currentPage === "won-auctions-detail" && <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />}
 
                             {/* lost auctions */}
-                            {currentPage === "lost-auctions" && <BuyerLostAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "lost-auctions-detail" &&
-                                <BuyerLostAuctionsDetail
-                                    vehicleId={selectedVehicleId}
-                                    setCurrentPage={setCurrentPage}
-                                />
-                            }
+                            {currentPage === "lost-auctions" && <BuyerLostAuctions setSelectedLostId={setSelectedLostId} setCurrentPage={setCurrentPage} />}
+                            {currentPage === "lost-auctions-detail" && <BuyerLostAuctionsDetail lostId={selectedLostId} setCurrentPage={setCurrentPage} />}
 
                             {/* my offers */}
                             {currentPage === "my-offers" && <BuyerMyOffers setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "offers-detail" && (
-                                <BuyerMyOffersDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />)
-                            }
+                            {currentPage === "offers-detail" && (<BuyerMyOffersDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />)}
 
                             {/* payments */}
                             {currentPage === "payments" && <BuyerPayments setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
@@ -224,12 +216,17 @@ function BuyerPanelPage() {
                                 <PlaceBidModal
                                     vehicleId={bidVehicleId}
                                     onClose={closeBidModal}
-                                    onBidPlaced={() => setBidStep('success')}
+                                    onBidPlaced={(data) => {
+                                        setBidResultData(data);
+                                        setBidStep('success');
+                                    }}
                                 />
                             )}
-                            {isBidModalOpen && bidStep === 'success' && (
+                            {isBidModalOpen && bidStep === 'success' && bidResultData && (
                                 <BidPlacedModal
-                                    vehicleId={bidVehicleId}
+                                    vehicle={bidResultData.vehicle}
+                                    newBid={bidResultData.newBid}
+                                    previousBid={bidResultData.previousBid}
                                     previousPage={previousPage}
                                     setCurrentPage={setCurrentPage}
                                     onClose={closeBidModal}

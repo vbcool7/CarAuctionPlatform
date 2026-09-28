@@ -64,8 +64,6 @@ export const useCancelAuction = () => {
 
 // ============================================= BUYER
 
-// all auctions
-
 // get distinct makes (for filter dropdown)
 export const useGetDistinctMakes = () => {
     return useQuery({
@@ -117,6 +115,18 @@ export const useGetAllAuctions = ({
     });
 };
 
+// get auction detail
+export const useGetBuyerAuctionDetail = (id) => {
+    return useQuery({
+        queryKey: ['auctionDetail', id],
+        queryFn: async () => {
+            const res = await API.get(`/auction/get-auction-detail/${id}`);
+            return res.data;
+        },
+        enabled: !!id,
+    });
+};
+
 // get upcoming dates
 export const useGetUpcomingAuctionDates = () => {
     return useQuery({
@@ -125,5 +135,19 @@ export const useGetUpcomingAuctionDates = () => {
             const res = await API.get('/auction/get-upcoming-auction-dates');
             return res.data;
         }
+    });
+};
+
+// get lost auctions
+export const useGetLostAuctions = ({ tab = 'all', page = 1, limit = 10 } = {}) => {
+    return useQuery({
+        queryKey: ['lostAuctions', tab, page, limit],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-lost-auctions-buyer', {
+                params: { tab, page, limit }
+            });
+            return res.data;
+        },
+        placeholderData: keepPreviousData,
     });
 };

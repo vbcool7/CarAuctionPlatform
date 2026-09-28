@@ -14,9 +14,9 @@ import InspectionTab from '../../InspectionTab';
 import ConditionTab from '../../ConditionTab';
 import ShippingPaymentsTab from '../../ShippingPaymentsTab';
 
-function BuyerLostAuctionsDetail({ vehicleId, setCurrentPage }) {
+function BuyerLostAuctionsDetail({ lostId, setCurrentPage }) {
 
-    const vehicle = vehicles.find(item => item.id === vehicleId);
+    const vehicle = vehicles.find(item => item.id === lostId);
 
     const lostAuctionTabs = [
         {

@@ -89,7 +89,7 @@ const mapFiltersToParams = (filters) => {
     return params;
 };
 
-function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId }) {
+function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPage }) {
 
     const [activeTab, setActiveTab] = useState('all');
     const [page, setPage] = useState(1);
@@ -315,7 +315,7 @@ function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId }) {
 
                                                     {/* Auction Date & Time */}
                                                     <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
-                                                        <Calendar size={15} className="text-[#D97706] flex-shrink-0" />
+                                                        <Calendar size={15} className="text-[#D97706] shrink-0" />
 
                                                         <div>
                                                             <p className="text-xs font-semibold text-slate-700">
@@ -348,7 +348,8 @@ function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId }) {
                                                     <button
                                                         onClick={() => {
                                                             setSelectedVehicleId(item._id);
-                                                            setCurrentPage("upcoming-auctions-detail");
+                                                            setPreviousPage('upcoming-auctions');
+                                                            setCurrentPage('browse-auctions-detail');
                                                         }}
                                                         className={`inline-flex items-center justify-center px-5 py-2.5 bg-[#D97706] text-white text-xs font-bold rounded-lg hover:bg-[#0B1E3D] transition-all duration-200 active:scale-[0.98] shadow-sm
                                                             ${view === 'grid'

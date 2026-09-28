@@ -80,7 +80,7 @@ export const AuctionCountdown = ({ item }) => {
     return null;
 }
 
-function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousPage, openBidModal }) {
+function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousPage }) {
 
     const [activeTab, setActiveTab] = useState('all');
     const [filters, setFilters] = useState({
@@ -358,19 +358,9 @@ function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousP
                                     <div className={`p-5 ${view === 'list' ? 'flex items-center w-48' : 'pt-0'}`}>
                                         <button
                                             onClick={() => {
-                                                if (item.auctionStatus === 'live') {
-                                                    openBidModal(item.id, 'dashboard');
-                                                } else if (item.auctionStatus === 'upcoming') {
-                                                    setSelectedVehicleId(item.id);
-                                                    setPreviousPage('dashboard');
-                                                    setCurrentPage('upcoming-auctions-detail');
-                                                } else if (
-                                                    ['sold', 'unsold', 'reserve-not-met', 'canceled'].includes(item.auctionStatus)
-                                                ) {
-                                                    setSelectedVehicleId(item.id);
-                                                    setPreviousPage('dashboard');
-                                                    setCurrentPage('auction-result-detail');
-                                                }
+                                                setSelectedVehicleId(item._id)
+                                                setPreviousPage('browse-auctions')
+                                                setCurrentPage('browse-auctions-detail')
                                             }}
                                             className={`w-full px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2
                                                 ${item.auctionStatus === 'live'

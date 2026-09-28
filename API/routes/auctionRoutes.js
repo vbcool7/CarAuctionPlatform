@@ -6,7 +6,7 @@ import requirePermission from '../middlewares/requirePermission.js';
 import {
     getMyAuctions, getMyAuctionById,
     cancelAuction,
-    getAllAuctions, getDistinctMakes, getDistinctModels, getupcomingAuctionDates, 
+    getAllAuctions, getDistinctMakes, getDistinctModels, getupcomingAuctionDates, getLostAuctions, getAuctionDetail, 
 } from '../controllers/auctionController.js';
 
 const router = express.Router();
@@ -23,6 +23,8 @@ router.patch('/cancel-auction/:id', authMiddleware(['seller', 'admin', 'auctionM
 router.get('/distinct-makes', getDistinctMakes);
 router.get('/distinct-model', getDistinctModels);
 router.get('/get-all-auctions', getAllAuctions);
+router.get('/get-auction-detail/:id',authMiddleware(['buyer']), getAuctionDetail)
 router.get('/get-upcoming-auction-dates', getupcomingAuctionDates);
+router.get('/get-lost-auctions-buyer', authMiddleware(['buyer']), getLostAuctions);
 
 export default router;

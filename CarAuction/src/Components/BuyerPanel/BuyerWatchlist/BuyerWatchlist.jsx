@@ -178,16 +178,17 @@ function BuyerWatchlist({ setCurrentPage, setSelectedVehicleId, setPreviousPage,
                 <div className="flex gap-8 border-b border-gray-100 mb-8">
                     {tabs.map((tab) => (
                         <button
-                            key={tab}
+                            key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             className={`pb-4 text-[13px] md:text-sm font-semibold transition-all relative whitespace-nowrap
-                                        ${activeTab === tab.key
+                               ${activeTab === tab.key
                                     ? 'text-[#0B1E3D]'
                                     : 'text-slate-400 hover:text-[#0B1E3D]'
                                 }`}
                         >
                             {tab.label}
-                            {(activeTab === tab.key) && (
+
+                            {activeTab === tab.key && (
                                 <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#D97706] rounded-t-full" />
                             )}
                         </button>
@@ -392,7 +393,7 @@ function BuyerWatchlist({ setCurrentPage, setSelectedVehicleId, setPreviousPage,
                     </div>
 
                 )}
-                
+
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex items-center justify-between gap-4 px-5 py-4 mt-5 ">

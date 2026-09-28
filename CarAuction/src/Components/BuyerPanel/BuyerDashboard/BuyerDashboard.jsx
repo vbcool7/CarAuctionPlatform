@@ -482,22 +482,12 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
                             {/* Action Button */}
                             <button
                               onClick={() => {
-                                if (item.auctionStatus === 'live') {
-                                  openBidModal(item.id, 'dashboard');
-                                } else if (item.auctionStatus === 'upcoming') {
-                                  setSelectedVehicleId(item.id);
-                                  setPreviousPage('dashboard');
-                                  setCurrentPage('upcoming-auctions-detail');
-                                } else if (
-                                  ['sold', 'unsold', 'reserve-not-met', 'canceled'].includes(item.auctionStatus)
-                                ) {
-                                  setSelectedVehicleId(item.id);
-                                  setPreviousPage('dashboard');
-                                  setCurrentPage('auction-result-detail');
-                                }
+                                setSelectedVehicleId(item._id);
+                                setCurrentPage('browse-auctions-detail');
+                                setPreviousPage('dashboard');
                               }}
                               className={`w-full px-5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2
-                                                ${item.auctionStatus === 'live'
+                                ${item.auctionStatus === 'live'
                                   ? 'bg-[#0B1E3D] hover:bg-[#D97706] text-white shadow-sm hover:shadow-md'
                                   : item.auctionStatus === 'upcoming'
                                     ? 'bg-white border border-[#0B1E3D] text-[#0B1E3D] hover:bg-[#0B1E3D] hover:text-white'

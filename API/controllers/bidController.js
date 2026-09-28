@@ -7,8 +7,9 @@ import mongoose from 'mongoose';
 
 import { getNextBidId } from '../utils/counterHelper.js';
 import { createNotification } from '../services/notificationService.js';
+import { emitToVehicle } from '../sockets/socketEmitter.js';
 
-// seller + buyer : place bid only for price_type = reserve_price
+// SELLER + BUYER : place bid only for price_type = reserve_price
 export const placeBid = async (req, res) => {
     try {
         const { vehicleId, amount } = req.body;
@@ -106,6 +107,14 @@ export const placeBid = async (req, res) => {
 
         await vehicle.save();
 
+        // ---- NAYA: real-time-broadcast (bidding) ----
+        emitToVehicle(vehicleId, 'bidUpdate', {
+            vehicleId,
+            currentBid: vehicle.currentBid,
+            auctionEndDateTime: vehicle.auctionEndDateTime,
+            extensionCount: vehicle.extensionCount,
+        });
+
         // ---- NOTIFICATION TRIGGERS ----
         if (isFirstBid) {
             await createNotification({
@@ -198,7 +207,7 @@ export const getVehicleBids = async (req, res) => {
     }
 };
 
-// get my-bids
+// SELLER + BUYER : get my-bids 
 const BID_STATUSES = ['active', 'outbid', 'won', 'withdrawn', 'canceled'];
 
 export const getMyBids = async (req, res) => {
@@ -210,13 +219,6 @@ export const getMyBids = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const { status, search, auctionType } = req.query;
-
-        if (status && status !== 'all' && !BID_STATUSES.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: `Invalid status: ${status}`
-            });
-        }
 
         // ---- step 1: resolve vehicleIds if search/auctionType filters are present ----
 
@@ -261,11 +263,25 @@ export const getMyBids = async (req, res) => {
         // ---- step 2: build the actual Bid filter ----
         const filter = { bidderId: new mongoose.Types.ObjectId(bidderId) };
 
-        if (status && status !== 'all') {
-            filter.status = status;
-        }
+        if (status === 'lost') {
+            const endedVehicles = await Vehicle.find({
+                auctionStatus: { $in: ['sold', 'unsold', 'reserve-not-met'] }
+            }).select('_id');
+            let lostVehicleIds = endedVehicles.map(v => v._id.toString());
 
-        if (vehicleIdFilter) {
+            if (vehicleIdFilter) {
+                const searchIds = vehicleIdFilter.map(id => id.toString());
+                lostVehicleIds = lostVehicleIds.filter(id => searchIds.includes(id));
+            }
+
+            filter.status = 'outbid';
+            filter.vehicleId = { $in: lostVehicleIds };
+        } else if (status && status !== 'all') {
+            filter.status = status;
+            if (vehicleIdFilter) {
+                filter.vehicleId = { $in: vehicleIdFilter };
+            }
+        } else if (vehicleIdFilter) {
             filter.vehicleId = { $in: vehicleIdFilter };
         }
 
@@ -274,7 +290,11 @@ export const getMyBids = async (req, res) => {
                 .select('bidId vehicleId bidderId bidderType amount status createdAt')
                 .populate({
                     path: 'vehicleId',
-                    select: 'images make model year listingId currentBid auctionStatus auctionType auctionEndDateTime vin reservePrice'
+                    select: 'images make model year listingId currentBid auctionStatus auctionType auctionEndDateTime vin reservePrice mileage transmission fuelType emirate city',
+                    populate: {
+                        path: 'sellerId',
+                        select: 'businessName createdAt'
+                    }
                 })
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -340,7 +360,111 @@ export const getMyBids = async (req, res) => {
     }
 };
 
-// NOT WORKED - get my bid detail
+// SELLER + BUYER : bid withdraw
+export const withdrawBid = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const bid = await Bid.findById(id);
+
+        if (!bid) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bid not found'
+            });
+        }
+
+        // Ownership check — only the bidder can withdraw their own bid
+        if (bid.bidderId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only withdraw your own bid'
+            });
+        }
+
+        // Only active bids can be withdrawn
+        if (bid.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot withdraw a bid with status '${bid.status}'`
+            });
+        }
+
+        const vehicle = await Vehicle.findById(bid.vehicleId);
+        if (!vehicle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found'
+            });
+        }
+
+        if (vehicle.auctionStatus !== 'live') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot withdraw bid — auction is not currently live'
+            });
+        }
+
+        // Withdraw-lock window check (same field as anti-sniping)
+        const now = new Date();
+        const timeUntilEnd = vehicle.auctionEndDateTime - now;
+        const windowMs = (vehicle.antiSnipingWindow ?? 2) * 60 * 1000;
+        if (timeUntilEnd <= windowMs) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot withdraw bid this close to auction end'
+            });
+        }
+
+        bid.status = 'withdrawn';
+        await bid.save();
+
+        // Find next-highest bid among outbid bids
+        const nextHighest = await Bid.findOne({
+            vehicleId: vehicle._id,
+            status: 'outbid'
+        }).sort({ amount: -1 });
+
+        if (nextHighest) {
+            nextHighest.status = 'active';
+            await nextHighest.save();
+            vehicle.currentBid = nextHighest.amount;
+        } else {
+            vehicle.currentBid = vehicle.startingBidPrice;
+        }
+
+        await vehicle.save();
+
+        // ---- NAYA: real-time-broadcast  ----
+        try {
+            emitToVehicle(vehicle._id.toString(), 'bidUpdate', {
+                vehicleId: vehicle._id.toString(),
+                currentBid: vehicle.currentBid,
+                auctionEndDateTime: vehicle.auctionEndDateTime,
+                extensionCount: vehicle.extensionCount,
+            });
+        } catch (socketErr) {
+            console.error('[socket] bidUpdate-emit-failed:', socketErr.message);
+        }
+       
+        return res.status(200).json({
+            success: true,
+            message: 'Bid withdrawn successfully'
+        });
+
+    } catch (err) {
+        console.error("Withdraw Bid Error :", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// ============================== SELLER
+
+// get my bid detail
 export const getMyBidDetail = async (req, res) => {
     try {
         const { id } = req.params;
@@ -423,92 +547,64 @@ export const getMyBidDetail = async (req, res) => {
     }
 };
 
-// bid withdraw
-export const withdrawBid = async (req, res) => {
+// ============================== BUYER
+
+// get my bid detail
+export const getMyBidDetailBuyer = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
+        const bidderId = req.user.id;
 
-        const bid = await Bid.findById(id);
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.max(1, parseInt(req.query.limit) || 10);
+        const skip = (page - 1) * limit;
+
+        const bid = await Bid.findOne({ _id: id, bidderId: bidderId })
+            .select('vehicleId bidderId bidderType bidId amount status createdAt')
+            .populate({
+                path: 'vehicleId',
+                select: `listingId images vin make model year transmission overallCondition drivetrain fuelType 
+                        bodyType startingBidPrice currentBid priceType buyNowPrice reservePrice
+                        auctionStatus auctionStartDateTime auctionEndDateTime auctionDuration`
+            });
 
         if (!bid) {
             return res.status(404).json({
                 success: false,
-                message: 'Bid not found'
+                message: "Bid not found!"
             });
         }
 
-        // Ownership check — only the bidder can withdraw their own bid
-        if (bid.bidderId.toString() !== userId.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'You can only withdraw your own bid'
-            });
-        }
+        const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id });
 
-        // Only active bids can be withdrawn
-        if (bid.status !== 'active') {
-            return res.status(400).json({
-                success: false,
-                message: `Cannot withdraw a bid with status '${bid.status}'`
-            });
-        }
+        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id })
+            .select('bidId amount status createdAt')
+            .sort({ amount: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
 
-        const vehicle = await Vehicle.findById(bid.vehicleId);
-        if (!vehicle) {
-            return res.status(404).json({
-                success: false,
-                message: 'Vehicle not found'
-            });
-        }
-
-        if (vehicle.auctionStatus !== 'live') {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot withdraw bid — auction is not currently live'
-            });
-        }
-
-        // Withdraw-lock window check (same field as anti-sniping)
-        const now = new Date();
-        const timeUntilEnd = vehicle.auctionEndDateTime - now;
-        const windowMs = (vehicle.antiSnipingWindow ?? 2) * 60 * 1000;
-        if (timeUntilEnd <= windowMs) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot withdraw bid this close to auction end'
-            });
-        }
-
-        bid.status = 'withdrawn';
-        await bid.save();
-
-        // Find next-highest bid among outbid bids
-        const nextHighest = await Bid.findOne({
-            vehicleId: vehicle._id,
-            status: 'outbid'
-        }).sort({ amount: -1 });
-
-        if (nextHighest) {
-            nextHighest.status = 'active';
-            await nextHighest.save();
-            vehicle.currentBid = nextHighest.amount;
-        } else {
-            vehicle.currentBid = vehicle.startingBidPrice;
-        }
-
-        await vehicle.save();
+        // koi bidder-lookup nahi — naam, email, phone kuch bhi nahi fetch/return ho raha
 
         return res.status(200).json({
             success: true,
-            message: 'Bid withdrawn successfully'
+            message: "My bid details fetched successfully",
+            bid: bid,
+            vehicle: bid.vehicleId,
+            bids: vehicleBids,
+            pagination: {
+                page,
+                limit,
+                totalBids,
+                totalPages: Math.max(1, Math.ceil(totalBids / limit)),
+            }
         });
 
     } catch (err) {
-        console.error("Withdraw Bid Error :", err);
-        res.status(500).json({
+        console.log('Get MyBidDetail (Buyer) error:', err);
+        return res.status(500).json({
             success: false,
-            message: "Server Error Occured"
+            message: 'Server Error Occured'
         });
     }
 };
@@ -571,9 +667,9 @@ export const getTopBidders = async (req, res) => {
 
     } catch (err) {
         console.error("Top bidders error:", err);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Server Error Occurred" 
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

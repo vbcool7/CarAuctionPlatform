@@ -3,9 +3,31 @@ import { useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-q
 import { useQuery } from '@tanstack/react-query';
 import API from '../api/axiosInstance';
 
+// =========================== SELLER + BUYER
+
+// place bid 
+export const usePlaceBid = () => {
+    return useMutation({
+        mutationFn: async ({ vehicleId, amount }) => {
+            const res = await API.post('/bid/place-bid', { vehicleId, amount });
+            return res.data;
+        },
+    });
+};
+
+// withdraw-bid
+export const useWithdrawBid = () => {
+    return useMutation({
+        mutationFn: async (bidId) => {
+            const res = await API.patch(`/bid/withdraw-bid/${bidId}`);
+            return res.data;
+        },
+    });
+};
+
 // =========================== SELLER
 
-// all my-bids
+// all my-bids : seller + buyer
 export const useGetMyBids = ({
     status = 'all',
     page = 1,
@@ -57,6 +79,21 @@ export const useGetVehicleBids = (page = 1, limit = 10, id) => {
 };
 
 // =========================== BUYER
+
+// get bid detail
+export const useGetMyBidDetailBuyer = (id, page = 1, limit = 10) => {
+    return useQuery({
+        queryKey: ['myBidDetailBuyer', id, page, limit],
+        queryFn: async () => {
+            const res = await API.get(`/bid/my-bid-detail-buyer/${id}`, {
+                params: { page, limit },
+            });
+            return res.data;
+        },
+        enabled: !!id,
+        placeholderData: (previousData) => previousData,
+    });
+};
 
 // top bidders
 export const useGetTopBidders = (limit) => {

@@ -755,8 +755,304 @@ export const getAllAuctions = async (req, res) => {
     }
 };
 
-// get live auc stats
+// get auction by id
+export const getAuctionDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const buyerId = req.user.id;
 
+        const vehicle = await Vehicle.aggregate([
+            { $match: { _id: new mongoose.Types.ObjectId(id) } },
+            {
+                $lookup: {
+                    from: 'sellers',
+                    localField: 'sellerId',
+                    foreignField: '_id',
+                    as: 'sellerInfo'
+                }
+            },
+            { $unwind: { path: '$sellerInfo', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$vehicleId', '$$vId'] } } },
+                        { $match: { status: { $nin: ['withdrawn'] } } },
+                        { $sort: { amount: -1 } },
+                        { $limit: 4 },
+                        { $project: { amount: 1, createdAt: 1 } }
+                    ],
+                    as: 'recentBids'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$vehicleId', '$$vId'] } } },
+                        { $match: { status: { $nin: ['withdrawn'] } } },
+                        { $count: 'count' }
+                    ],
+                    as: 'bidCountArr'
+                }
+            },
+            {
+                // NAYA
+                $lookup: {
+                    from: 'bids',
+                    let: { vId: '$_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$vehicleId', '$$vId'] },
+                                        { $eq: ['$bidderId', new mongoose.Types.ObjectId(buyerId)] },
+                                        { $eq: ['$status', 'active'] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: 'myActiveBid'
+                }
+            },
+            {
+                $project: {
+                    listingId: 1, make: 1, model: 1, year: 1, trim: 1, vin: 1,
+                    vehicleType: 1, bodyType: 1, mileage: 1, transmission: 1,
+                    fuelType: 1, drivetrain: 1, exteriorColor: 1, interiorColor: 1,
+                    vehicleDescription: 1, emirate: 1, city: 1, titleStatus: 1,
+                    accidentHistory: 1, images: 1,
+                    priceType: 1, startingBidPrice: 1, buyNowPrice: 1, reservePrice: 1,
+                    currentBid: 1, auctionStatus: 1, auctionStartDateTime: 1,
+                    auctionEndDateTime: 1, views: 1,
+                    canceledAt: 1, statusAtCancellation: 1, cancellationReason: 1,
+                    'sellerInfo.businessName': 1,
+                    'sellerInfo.fullName': 1,
+                    'sellerInfo.businessDescription': 1,
+                    'sellerInfo.createdAt': 1,
+                    recentBids: 1,
+                    totalBids: { $ifNull: [{ $arrayElemAt: ['$bidCountArr.count', 0] }, 0] },
+                    isCurrentHighestBidder: { $gt: [{ $size: '$myActiveBid' }, 0] }, // NAYA
+                    myBidId: { $arrayElemAt: ['$myActiveBid._id', 0] } // NAYA
+                }
+            }
+        ]);
+
+        if (!vehicle.length) {
+            return res.status(404).json({ success: false, message: 'Vehicle not found' });
+        }
+
+        return res.status(200).json({ success: true, vehicle: vehicle[0] });
+
+    } catch (err) {
+        console.error('getAuctionDetail error:', err);
+        return res.status(500).json({ success: false, message: 'Server Error Occured' });
+    }
+};
+
+// get lost auctions + lost auct summary
+const getBuyerLostSummary = async (buyerId) => {
+    const stats = await Bid.aggregate([
+        { $match: { bidderId: new mongoose.Types.ObjectId(buyerId), bidderType: 'Buyer' } },
+        { $sort: { amount: -1 } },
+        { $group: { _id: '$vehicleId', bidDoc: { $first: '$$ROOT' } } },
+        { $replaceRoot: { newRoot: '$bidDoc' } },
+        {
+            $lookup: { from: 'vehicles', localField: 'vehicleId', foreignField: '_id', as: 'vehicle' }
+        },
+        { $unwind: '$vehicle' },
+        {
+            $group: {
+                _id: null,
+                totalConcludedVehicles: {
+                    $sum: {
+                        $cond: [
+                            { $in: ['$vehicle.auctionStatus', ['sold', 'unsold', 'reserve-not-met']] },
+                            1, 0
+                        ]
+                    }
+                },
+                totalWonVehicles: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+                totalLostVehicles: {
+                    $sum: {
+                        $cond: [
+                            {
+                                $and: [
+                                    { $ne: ['$status', 'won'] },
+                                    { $ne: ['$status', 'withdrawn'] },
+                                    { $in: ['$vehicle.auctionStatus', ['sold', 'unsold', 'reserve-not-met']] }
+                                ]
+                            }, 1, 0
+                        ]
+                    }
+                },
+                totalOutbidVehicles: {
+                    $sum: {
+                        $cond: [
+                            { $and: [{ $eq: ['$status', 'outbid'] }, { $eq: ['$vehicle.auctionStatus', 'sold'] }] },
+                            1, 0
+                        ]
+                    }
+                }
+            }
+        }
+    ]);
+
+    // totalBidsPlaced/totalAmountBid — RAW bid-records pe (deduped-vehicles pe nahi), "kitni-baar-bid-lagayi" ka literal count
+    const rawStats = await Bid.aggregate([
+        { $match: { bidderId: new mongoose.Types.ObjectId(buyerId), bidderType: 'Buyer' } },
+        { $group: { _id: null, totalBidsPlaced: { $sum: 1 }, totalAmountBid: { $sum: '$amount' } } }
+    ]);
+
+    const s = stats[0] || { totalConcludedVehicles: 0, totalWonVehicles: 0, totalLostVehicles: 0, totalOutbidVehicles: 0 };
+    const r = rawStats[0] || { totalBidsPlaced: 0, totalAmountBid: 0 };
+    const winRate = s.totalConcludedVehicles > 0
+        ? Math.round((s.totalWonVehicles / s.totalConcludedVehicles) * 100)
+        : 0;
+
+    return {
+        totalLost: s.totalLostVehicles,
+        outbid: s.totalOutbidVehicles,
+        winRate,
+        totalBidsPlaced: r.totalBidsPlaced,
+        totalAmountBid: r.totalAmountBid
+    };
+};
+
+export const getLostAuctions = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const { tab = 'all', page = 1, limit = 10 } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        // tab-wise scope: "outbid" = strict-subset, "all" = broader
+        let bidStatusFilter, vehicleStatusFilter;
+        if (tab === 'outbid') {
+            bidStatusFilter = ['outbid'];
+            vehicleStatusFilter = ['sold'];
+        } else if (tab === 'reserve-not-met') {
+            bidStatusFilter = { $nin: ['won', 'withdrawn'] };
+            vehicleStatusFilter = ['reserve-not-met'];
+        } else { // 'all'
+            bidStatusFilter = { $nin: ['won', 'withdrawn'] };
+            vehicleStatusFilter = ['sold', 'unsold', 'reserve-not-met'];
+        }
+
+        const matchStage = {
+            bidderId: new mongoose.Types.ObjectId(id),
+            bidderType: 'Buyer',
+            status: Array.isArray(bidStatusFilter) ? { $in: bidStatusFilter } : bidStatusFilter
+        };
+
+        const basePipeline = [
+            { $match: matchStage },
+            { $sort: { amount: -1 } },
+            // per-vehicle sirf-ek (highest) bid rakho — duplicate-rows-fix
+            { $group: { _id: '$vehicleId', bidDoc: { $first: '$$ROOT' } } },
+            { $replaceRoot: { newRoot: '$bidDoc' } },
+            {
+                $lookup: {
+                    from: 'vehicles',
+                    localField: 'vehicleId',
+                    foreignField: '_id',
+                    as: 'vehicle'
+                }
+            },
+            { $unwind: '$vehicle' },
+            { $match: { 'vehicle.auctionStatus': { $in: vehicleStatusFilter } } },
+            {
+                $lookup: {
+                    from: 'sellers',
+                    localField: 'vehicle.sellerId',
+                    foreignField: '_id',
+                    as: 'seller'
+                }
+            },
+            { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
+            // sold-case ke liye actual-winning-bid alag se nikaalo
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vId: '$vehicleId' },
+                    pipeline: [
+                        { $match: { $expr: { $and: [{ $eq: ['$vehicleId', '$$vId'] }, { $eq: ['$status', 'won'] }] } } }
+                    ],
+                    as: 'winningBidDoc'
+                }
+            },
+            { $unwind: { path: '$winningBidDoc', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    vehicleId: 1,
+                    listingId: '$vehicle.listingId',
+                    make: '$vehicle.make',
+                    model: '$vehicle.model',
+                    year: '$vehicle.year',
+                    images: '$vehicle.images',
+                    emirate: '$vehicle.emirate',
+                    mileage: '$vehicle.mileage',
+                    transmission: '$vehicle.transmission',
+                    fuelType: '$vehicle.fuelType',
+                    emirate: '$vehicle.emirate',
+                    city: '$vehicle.city',
+                    auctionStatus: '$vehicle.auctionStatus',
+                    auctionEndDateTime: '$vehicle.auctionEndDateTime',
+                    sellerBusinessName: '$seller.businessName',
+                    yourBid: '$amount',
+                    // winningBid: sold->actual-winner-amount, unsold->null, reserve-not-met->currentBid
+                    winningBid: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ['$vehicle.auctionStatus', 'sold'] }, then: '$winningBidDoc.amount' },
+                                { case: { $eq: ['$vehicle.auctionStatus', 'reserve-not-met'] }, then: '$vehicle.currentBid' }
+                            ],
+                            default: null
+                        }
+                    },
+                    resultLabel: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ['$vehicle.auctionStatus', 'sold'] }, then: 'Outbid' },
+                                { case: { $eq: ['$vehicle.auctionStatus', 'unsold'] }, then: 'Auction Unsold' },
+                                { case: { $eq: ['$vehicle.auctionStatus', 'reserve-not-met'] }, then: 'Reserve Not Met' }
+                            ],
+                            default: 'N/A'
+                        }
+                    }
+                }
+            },
+            { $sort: { auctionEndDateTime: -1 } }
+        ];
+
+        const [rows, countResult] = await Promise.all([
+            Bid.aggregate([...basePipeline, { $skip: skip }, { $limit: limitNum }]),
+            Bid.aggregate([...basePipeline, { $count: 'total' }])
+        ]);
+
+        const totalCount = countResult[0]?.total || 0;
+        const summary = await getBuyerLostSummary(id);
+
+        return res.status(200).json({
+            success: true,
+            lostAuctions: rows,
+            pagination: { totalCount, currentPage: pageNum, totalPages: Math.ceil(totalCount / limitNum) },
+            summary
+        });
+
+    } catch (err) {
+        console.log("Get buyer lost auctions err :", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
 
 // get upcoming auction date
 export const getupcomingAuctionDates = async (req, res) => {

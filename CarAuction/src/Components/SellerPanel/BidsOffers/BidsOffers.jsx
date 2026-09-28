@@ -230,6 +230,7 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                                 <td className='px-3 py-3 text-sm text-gray-600'>
                                                     {bid.bidId}
                                                 </td>
+
                                                 {/* Vehicle / Auction */}
                                                 <td className='px-3 py-3'>
                                                     <div className='flex items-center gap-3'>
@@ -289,13 +290,14 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                                 <td className='pl-10 px-3 py-3'>
                                                     <div className=''>
                                                         <span
-                                                            className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold ${bid.status === 'active'
-                                                                ? 'bg-green-100 text-green-600'
-                                                                : bid.status === 'outbid'
-                                                                    ? 'bg-red-100 text-red-600'
-                                                                    : bid.status === 'won'
-                                                                        ? 'bg-green-100 text-green-600'
-                                                                        : 'bg-gray-100 text-gray-500'
+                                                            className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold 
+                                                                ${bid.status === 'active'
+                                                                    ? 'bg-green-100 text-green-600'
+                                                                    : bid.status === 'outbid'
+                                                                        ? 'bg-red-100 text-red-600'
+                                                                        : bid.status === 'won'
+                                                                            ? 'bg-green-100 text-green-600'
+                                                                            : 'bg-gray-100 text-gray-500'
                                                                 }`}
                                                         >
                                                             {bid.status === 'active' ? 'Highest Bid' : bid.status === 'outbid' ? 'Outbid' : bid.status === 'won' ? 'Won' : bid.status}
@@ -304,7 +306,7 @@ function BidsOffers({ setCurrentPage, setSelectedBidsOfferId }) {
                                                 </td>
 
                                                 {/* Auction Ends */}
-                                                <td className='px-3 py-3  pl-10'>
+                                                <td className='px-3 py-3 pl-10'>
                                                     <div className=''>
                                                         <p
                                                             className={`text-sm font-semibold ${getAuctionStatusStyle(
