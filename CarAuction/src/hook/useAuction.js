@@ -131,7 +131,7 @@ export const useGetBuyerAuctionDetail = (id) => {
 export const useGetUpcomingAuctionDates = () => {
     return useQuery({
         queryKey: ['upcomingDates'],
-        queryFn: async() => {
+        queryFn: async () => {
             const res = await API.get('/auction/get-upcoming-auction-dates');
             return res.data;
         }
@@ -149,5 +149,189 @@ export const useGetLostAuctions = ({ tab = 'all', page = 1, limit = 10 } = {}) =
             return res.data;
         },
         placeholderData: keepPreviousData,
+    });
+};
+
+// ============================================= USER
+
+// get live auctions - home
+export const useGetHomeLiveAuctions = () => {
+    return useQuery({
+        queryKey: ['homeLiveAuctions'],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-live-auctions');
+            return res.data;
+        },
+        staleTime: 1 * 60 * 1000 // 1 min
+    });
+};
+
+// get solded vehicle - home
+export const useGetHomeSoldAuctions = () => {
+    return useQuery({
+        queryKey: ['homeSoldAuctions'],
+
+        queryFn: async () => {
+            const res = await API.get('/auction/get-solded-auctions');
+            return res.data;
+        },
+        staleTime: 1 * 60 * 1000
+    });
+};
+
+// get all auctions
+// export const useGetPublicAuctions = ({
+//     status = 'live', page = 1, limit = 10, search = '', sort = 'ending_soon',
+//     startFrom = '', startTo = '', category, make, emirate, minPrice, maxPrice, fuelType, endFrom, endTo
+// } = {}) => {
+//     return useQuery({
+//         queryKey: ['publicAuctions', status, page, limit, search, sort, startFrom, startTo, category, make, emirate, minPrice, maxPrice, fuelType, endFrom, endTo],
+
+//         queryFn: async () => {
+//             const params = new URLSearchParams({ status, page, limit, sort });
+
+//             if (search.trim()) params.append('search', search.trim());
+//             if (startFrom) params.append('startFrom', startFrom);
+//             if (startTo) params.append('startTo', startTo);
+//             if (category) params.append('category', category);
+//             if (make) params.append('make', make);
+//             if (emirate) params.append('emirate', emirate);
+//             if (minPrice) params.append('minPrice', minPrice);
+//             if (maxPrice) params.append('maxPrice', maxPrice);
+//             if (fuelType) params.append('fuelType', fuelType);
+//             if (endFrom) params.append('endFrom', endFrom);
+//             if (endTo) params.append('endTo', endTo);
+
+//             const res = await API.get(`/auction/get-auction-list?${params.toString()}`);
+//             return res.data;
+//         },
+//         placeholderData: keepPreviousData,
+//         staleTime: 30_000,
+//     });
+// };
+
+export const useGetPublicAuctions = ({
+    status = 'live', page = 1, limit = 10,
+    search = '', sort='',
+
+    startFrom = '', startTo = '', endFrom = '', endTo = '',
+
+    // Vehicle filters
+    category,
+    make,
+    model,
+    yearFrom,
+    yearTo,
+    maxMileage,
+    emirate,
+
+    // Price filters
+    minPrice,
+    maxPrice,
+
+    // Other filters
+    transmission,
+    fuelType,
+    drivetrain,
+    color,
+    condition
+} = {}) => {
+
+    return useQuery({
+        queryKey: [
+            'publicAuctions',
+            status,
+            page,
+            limit,
+            search,
+            sort,
+            startFrom,
+            startTo,
+            endFrom,
+            endTo,
+            category,
+            make,
+            model,
+            yearFrom,
+            yearTo,
+            maxMileage,
+            emirate,
+            minPrice,
+            maxPrice,
+            transmission,
+            fuelType,
+            drivetrain,
+            color,
+            condition
+        ],
+
+        queryFn: async () => {
+
+            const params = new URLSearchParams({ status, page, limit });
+
+            if (search.trim()) { params.append('search', search.trim());}
+            if(sort) params.append('sort', sort);
+
+            if (startFrom) params.append('startFrom', startFrom);
+            if (startTo) params.append('startTo', startTo);
+
+            if (endFrom) params.append('endFrom', endFrom);
+            if (endTo) params.append('endTo', endTo);
+
+            if (category) params.append('category', category);
+            if (make) params.append('make', make);
+            if (model) params.append('model', model);
+
+            if (yearFrom) params.append('yearFrom', yearFrom);
+            if (yearTo) params.append('yearTo', yearTo);
+
+            if (maxMileage) params.append('maxMileage', maxMileage);
+
+            if (emirate) params.append('emirate', emirate);
+
+            if (minPrice) params.append('minPrice', minPrice);
+            if (maxPrice) params.append('maxPrice', maxPrice);
+
+            if (transmission) params.append('transmission', transmission);
+            if (fuelType) params.append('fuelType', fuelType);
+            if (drivetrain) params.append('drivetrain', drivetrain);
+            if (color) params.append('color', color);
+            if (condition) params.append('condition', condition);
+
+            const res = await API.get(
+                `/auction/get-auction-list?${params.toString()}`
+            );
+
+            return res.data;
+        },
+
+        placeholderData: keepPreviousData,
+        staleTime: 30_000,
+    });
+};
+
+// get auction detail
+export const usePublicAuctionDetail = (id) => {
+    return useQuery({
+        queryKey: ['publicAuctions', id],
+
+        queryFn: async () => {
+            const res = await API.get(`/auction/get-public-auction-detail/${id}`);
+            return res.data;
+        },
+
+        enabled: !!id,
+    });
+};
+
+// get upcoming auction dates
+export const useGetUpcomingAuctionDatesUserSide = () => {
+    return useQuery({
+        queryKey: ['upcomingDates'],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-upcoming-auction-dates');
+            return res.data;
+        },
+        staleTime: 1 * 60 * 1000,
     });
 };

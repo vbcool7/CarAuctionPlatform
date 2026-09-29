@@ -482,28 +482,23 @@ function AddNewVehicle({ setCurrentPage }) {
 
         decodeVin(vin, {
             onSuccess: (res) => {
-
-                const decodedMake = res?.data?.make || res?.make || "";
-                const decodedModel = res?.data?.model || res?.model || "";
-
-                const normalizedMake = decodedMake
-                    .toLowerCase()
-                    .trim()
+                const d = res?.data ?? res;
+                if (!d?.decoded) {
+                    toast.info("VIN could not be decoded. Please select make and enter model manually.");
+                    return; // prev make/model touch mat karo
+                }
+                const normalizedMake = (d.make || "")
+                    .toLowerCase().trim()
                     .replace(/mercedes[-\s]?benz/, "mercedes")
                     .replace(/land[-\s]?rover/, "land_rover");
-
-                const matchedMake = makeOptions.find(
-                    (make) => make.value === normalizedMake
-                );
+                const matchedMake = makeOptions.find((m) => m.value === normalizedMake);
 
                 setFormData((prev) => ({
                     ...prev,
                     make: matchedMake ? matchedMake.value : "other",
-                    model: decodedModel || prev.model,
+                    model: d.model || prev.model,
                 }));
-                if (!matchedMake) {
-                    toast.info("VIN decoded, but make is not in the list. Please select Other or choose manually.");
-                }
+                if (!matchedMake) toast.info("VIN decoded, but make is not in the list. Please select manually.");
             },
             onError: () => {
                 toast.error("VIN could not be decoded. Please select make and enter model manually.");
@@ -555,6 +550,7 @@ function AddNewVehicle({ setCurrentPage }) {
 
     return (
         <div className='pb-6'>
+
             {/* header */}
             <div className='w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0'>
                 <div className='flex flex-col'>
@@ -792,7 +788,7 @@ function AddNewVehicle({ setCurrentPage }) {
                                             { label: "Automatic", value: "automatic" },
                                             { label: "Manual", value: "manual" },
                                             { label: "CVT", value: "cvt" },
-                                            { label: "Semi-Automatic", value: "semi-automatic" },
+                                            { label: "Semi-Automatic", value: "semi_automatic" },
                                         ]}
                                     />
 

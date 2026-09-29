@@ -77,7 +77,7 @@ function BuyerNavbar({ onToggleSideBar, setCurrentPage }) {
 
                     {/* Watchlist */}
                     <button
-                        onClick={() => setCurrentPage('Watchlist')}
+                        onClick={() => setCurrentPage('watchlist')}
                         className='relative p-1 text-slate-300 hover:text-white transition-colors'
                     >
                         <Heart size={20} />

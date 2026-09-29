@@ -1,15 +1,12 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom'
-import { Share2, Heart, MapPin, Hash, Fingerprint, Cog, Flag, Fuel, Download, TrendingUp, MessageSquare, Send } from 'lucide-react';
-import { vehicles } from './Data';
-import { liveBids } from './Data';
+import { Share2, Heart, MapPin, Hash, Fingerprint, Cog, Flag, Fuel, Download, Send } from 'lucide-react';
 import Breadcrumbs from './Breadcrumbs';
 import LiveBidsPanel from './SharedComponents/LiveBidsPanel';
 import AuctionFeaturesBar from './SharedComponents/AuctionFeatureBar';
 import HomeLiveAuctions from './HomeLiveAuctions';
 import LiveAuctionGallery from './LiveAuctionGallery';
-import AuctionCountdown from './AuctionCountdown';
 
 import OverviewTab from './OverviewTab';
 import VehiclInfoTab from './VehicleInfoTab';
@@ -20,6 +17,10 @@ import BiddingHistoryTab from './BiddingHistoryTab';
 import DocumentsTab from './DocumentsTab';
 import ShippingPaymentsTab from './ShippingPaymentsTab';
 import AuctionBottomFeaturesBar from './SharedComponents/AuctionBottomFeaturesBar';
+import { formatDateTime, formatLabel, formatPrice } from '../utils/formatters';
+import { UseCountdown } from './SharedComponents/UseCountdown';
+
+import { usePublicAuctionDetail } from '../hook/useAuction';
 
 const bidderAvatars = [
     { initials: "JM", color: "bg-blue-500" },
@@ -34,28 +35,99 @@ const initialMessages = [
     { user: "AutoBid Assistant", text: "The engine is in excellent condition." }
 ];
 
+const InfoRow = ({ label, value }) => (
+    <div className="flex justify-between">
+        <span className="text-slate-500">{label}</span>
+        <span className="font-medium text-slate-900">{value}</span>
+    </div>
+);
+
+// count-down
+const AuctionTimeLeft = ({ auctionEndDateTime }) => {
+    const timeLeft = UseCountdown(auctionEndDateTime);
+
+    return (
+        <div className={`py-3 grid ${timeLeft.days > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-2`}>
+            {timeLeft.days > 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 text-center">
+                    <p className="text-sm font-bold text-[#0B1E3D]">
+                        {String(timeLeft.days).padStart(2, '0')}
+                    </p>
+                    <span className="text-[8px] text-slate-800 uppercase tracking-widest">
+                        DAYS
+                    </span>
+                </div>
+            )}
+
+            <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 text-center">
+                <p className="text-sm font-bold text-[#0B1E3D]">
+                    {String(timeLeft.hours).padStart(2, '0')}
+                </p>
+                <span className="text-[8px] text-slate-800 uppercase tracking-widest">
+                    HRS
+                </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 text-center">
+                <p className="text-sm font-bold text-[#0B1E3D]">
+                    {String(timeLeft.mins).padStart(2, '0')}
+                </p>
+                <span className="text-[8px] text-slate-800 uppercase tracking-widest">
+                    MINS
+                </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 text-center">
+                <p className="text-sm font-bold text-[#D97706]">
+                    {String(timeLeft.secs).padStart(2, '0')}
+                </p>
+                <span className="text-[8px] text-slate-800 uppercase tracking-widest">
+                    SECS
+                </span>
+            </div>
+        </div>
+    );
+};
+
 function LiveAuctionsDetail() {
 
     const { id } = useParams();
 
-    const vehicle = vehicles.find((v) => v.id === parseInt(id));
-
     const [messages, setMessages] = useState(initialMessages);
     const [newMessage, setNewMessage] = useState("");
+
+    const { data, isLoading, isError } = usePublicAuctionDetail(id);
+
+    const vehicle = data?.data;
+
+    if (isLoading) return <p className="p-10 text-center">Loading live auctions....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load live auctions</p>;
+    if (!vehicle) return <div className="p-10 text-center">Vehicle not found!</div>;
+
+    const progress =
+        vehicle?.priceType === 'reserve_price' && vehicle.reservePrice
+            ? Math.min(
+                ((vehicle.currentBid || vehicle.startingBidPrice || 0) / vehicle.reservePrice) * 100,
+                100
+            )
+            : 0;
 
     const breadcrumbItems = [
         { label: 'Home', path: '/' },
         { label: 'Live Auctions', path: '/live-auctions' },
-        { label: vehicle?.name || 'Vehicle Detail' }
+        {
+            label: vehicle
+                ? `${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`
+                : 'Vehicle Detail'
+        }
     ];
 
     const metaItems = [
-        { icon: <MapPin size={16} />, label: vehicle.location },
-        { icon: <Hash size={16} />, label: `Lot # ${vehicle.id}` },
-        { icon: <Fingerprint size={16} />, label: `VIN: ${vehicle.vin}` },
-        { icon: <Cog size={16} />, label: `${vehicle.engineSize} ${vehicle.engine}` },
-        { icon: <Flag size={16} />, label: vehicle.driveType },
-        { icon: <Fuel size={16} />, label: vehicle.fuelType }
+        { icon: <MapPin size={16} />, label: formatLabel(vehicle.emirate) },
+        { icon: <Hash size={16} />, label: vehicle.listingId },
+        { icon: <Cog size={16} />, label: `${formatLabel(vehicle.engineSize)} ${vehicle.mileage}` },
+        { icon: <Flag size={16} />, label: formatLabel(vehicle.drivetrain) },
+        { icon: <Fuel size={16} />, label: formatLabel(vehicle.fuelType) }
     ];
 
     const liveAuctionTabs = [
@@ -96,50 +168,32 @@ function LiveAuctionsDetail() {
         },
     ];
 
-    const formatValue = (val) => {
-        if (val === null || val === undefined) return "NA";
-        if (val instanceof Date) return val.toLocaleString();
-        return String(val);
-    };
-
     const infoItems = [
-        { label: "Auction Type", value: formatValue(vehicle.auctionType) },
-        { label: "Start Time", value: formatValue(vehicle.startTime) },
-        { label: "End Time", value: formatValue(vehicle.endTime) },
-        { label: "Lot Number", value: formatValue(vehicle.id) },
-        { label: "Seller", value: formatValue(vehicle.seller) },
-        { label: "Location", value: formatValue(vehicle.location) },
-        { label: "Reserve Price", value: formatValue(vehicle.reservePrice) },
-        { label: "Buy Now Price", value: formatValue(vehicle.buyNowPrice) },
-        { label: "Vehicle Condition", value: formatValue(vehicle.condition) },
-        { label: "Title Status", value: formatValue(vehicle.status) },
+        { label: "Auction Type", value: formatLabel(vehicle.auctionType) },
+        { label: "Start Time", value: formatDateTime(vehicle.auctionStartDateTime) },
+        { label: "End Time", value: formatDateTime(vehicle.auctionEndDateTime) },
+        { label: "Listing ID", value: vehicle.listingId },
+        { label: "Seller", value: formatLabel(vehicle?.sellerInfo?.name) },
+        { label: "Location", value: formatLabel(vehicle.emirate) },
+
+        ...(vehicle.priceType === "fixed_price"
+            ? [
+                {
+                    label: "Buy Now Price",
+                    value: formatPrice(vehicle.buyNowPrice)
+                }
+            ]
+            : []),
+
+        { label: "Vehicle Condition", value: formatLabel(vehicle.overallCondition) },
+        { label: "Auction Status", value: formatLabel(vehicle.auctionStatus) },
     ];
-
-    const InfoRow = ({ label, value }) => (
-        <div className="flex justify-between">
-            <span className="text-slate-500">{label}</span>
-            <span className="font-medium text-slate-900">{value}</span>
-        </div>
-    );
-
-    const currentBid = Number(vehicle.currentBid) || 0;
-    const reservePrice = Number(vehicle.reservePrice) || 0;
-    const buyNowPrice = Number(vehicle.buyNowPrice) || 0;
-    const totalBids = vehicle.totalBids || 0;
-    const biddersOnline = vehicle.biddersOnline || 0;
-    const views = vehicle.views || 0;
-
-    const progress = buyNowPrice > 0 ? Math.min(((currentBid / buyNowPrice) * 100), 100) : 0;
-
-    if (!vehicle) {
-        return <div className="p-10 text-center">Vehicle not found!</div>;
-    }
 
     return (
         <section className='w-full'>
 
             {/* ========= breadcrumb ========= */}
-            <div className='max-w-6xl mx-auto px-4 sm:px-5 lg:px-6 '>
+            <div className='max-w-6xl mx-auto px-4 sm:px-5 lg:px-6 pt-4'>
                 <Breadcrumbs items={breadcrumbItems} />
             </div>
 
@@ -151,7 +205,7 @@ function LiveAuctionsDetail() {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className='flex gap-3 items-center'>
                             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                {vehicle.name}
+                                {`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
                             </h1>
 
                             <div className="flex gap-2 mt-3">
@@ -168,6 +222,7 @@ function LiveAuctionsDetail() {
                             <button className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all">
                                 <Share2 size={18} /> Share
                             </button>
+
                             <button className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">
                                 <Heart size={18} /> Add to Watchlist
                             </button>
@@ -184,21 +239,31 @@ function LiveAuctionsDetail() {
                     </div>
                 </div>
 
-                {/* ======== top- content grid ======== */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-6">
-
-                    {/* Gallery — col 1 */}
+                {/* ======== top-content grid ======== */}
+                <div
+                    className={`grid grid-cols-1 gap-5 mt-6 ${vehicle.priceType === 'fixed_price'
+                        ? 'lg:grid-cols-9'
+                        : 'lg:grid-cols-12'
+                        }`}
+                >
+                    {/* Gallery */}
                     <div className="lg:col-span-5 flex flex-col">
-                        <LiveAuctionGallery images={vehicle.images} status={vehicle.status} />
+                        <LiveAuctionGallery
+                            images={vehicle.images?.map(img => img.url) || []}
+                            status={vehicle.auctionStatus}
+                        />
                     </div>
 
-                    {/* Bidding Controls — col 2 */}
+                    {/* Bidding / Buy Now Controls */}
                     <div className="lg:col-span-4 flex flex-col">
                         <div className="bg-[#0B1E3D] text-white p-4 rounded-2xl shadow-xl">
 
                             {/* Header */}
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-xs font-medium text-slate-300">Auction Ends In</span>
+                            <div className="flex justify-between items-center my-3">
+                                <span className="text-sm font-medium text-slate-300">
+                                    Auction Ends In
+                                </span>
+
                                 <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#D97706] bg-[#D97706]/10 px-2 py-0.5 rounded">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#D97706] animate-pulse"></span>
                                     LIVE
@@ -206,86 +271,122 @@ function LiveAuctionsDetail() {
                             </div>
 
                             {/* Countdown */}
-                            <div>
-                                <AuctionCountdown endTime={vehicle.endTime} />
-                                <div className="grid grid-cols-3 text-center mt-1">
-                                    <span className="text-[9px] text-slate-400 uppercase tracking-widest">HRS</span>
-                                    <span className="text-[9px] text-slate-400 uppercase tracking-widest">MINS</span>
-                                    <span className="text-[9px] text-slate-400 uppercase tracking-widest">SECS</span>
-                                </div>
-                            </div>
+                            <AuctionTimeLeft
+                                auctionEndDateTime={vehicle.auctionEndDateTime}
+                            />
 
-                            {/* Divider + Bid Info */}
+                            {/* Price / Bid Info */}
                             <div className="space-y-2.5 mt-4 border-t border-slate-600 pt-4">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <p className="text-slate-400 text-[9px] uppercase tracking-wide">Current Highest Bid</p>
-                                        <p className="text-lg font-bold mt-0.5 text-[#D97706]">{vehicle.bid}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-400 text-[9px] uppercase tracking-wide">Total Bids</p>
-                                        <p className="text-lg font-bold mt-0.5">{vehicle.totalBids}</p>
-                                    </div>
-                                </div>
+                                        <p className="text-slate-400 text-[9px] uppercase tracking-wide">
+                                            {vehicle.priceType === 'fixed_price'
+                                                ? 'Buy Now Price'
+                                                : vehicle.currentBid != null
+                                                    ? 'Current Highest Bid'
+                                                    : 'Starting Bid'}
+                                        </p>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <p className="text-slate-400 text-[9px] uppercase tracking-wide">Maximum Bid Limit</p>
-                                        <p className="text-xs font-semibold mt-0.5">{vehicle.maxBidLimit || "AED 300,000"}</p>
+                                        <p className="text-lg font-bold mt-0.5 text-[#D97706]">
+                                            {vehicle.priceType === 'fixed_price'
+                                                ? formatPrice(vehicle.buyNowPrice)
+                                                : vehicle.currentBid != null
+                                                    ? formatPrice(vehicle.currentBid)
+                                                    : vehicle.startingBidPrice != null
+                                                        ? formatPrice(vehicle.startingBidPrice)
+                                                        : 'N/A'}
+                                        </p>
                                     </div>
-                                    <div>
-                                        <p className="text-slate-400 text-[9px] uppercase tracking-wide">Minimum Next Bid</p>
-                                        <p className="text-xs font-semibold mt-0.5">{vehicle.minNextBid || "AED 5,000"}</p>
-                                    </div>
+
+                                    {vehicle.priceType !== 'fixed_price' && (
+                                        <div>
+                                            <p className="text-slate-400 text-[9px] uppercase tracking-wide">
+                                                Total Bids
+                                            </p>
+
+                                            <p className="text-lg font-bold mt-0.5">
+                                                {vehicle.totalBids ?? 0}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+
+                            {vehicle.priceType === 'fixed_price' && (
+                                <div className="mt-4 p-3 rounded-lg bg-[#142d55] border border-slate-700">
+                                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                                        Direct Purchase
+                                    </p>
+
+                                    <p className="text-sm font-semibold text-white mt-1">
+                                        Skip the auction and purchase this vehicle instantly.
+                                    </p>
+
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                        No bidding required
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Input & Buttons */}
-                            <div className="mt-4 space-y-2">
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        placeholder="Enter your bid amount"
-                                        className="w-full bg-[#142d55] border border-slate-600 rounded-lg py-2.5 px-3 text-sm text-white placeholder-slate-400 outline-none focus:border-[#D97706]"
-                                    />
-                                    <span className="absolute right-3 top-2.5 text-xs font-bold text-[#D97706]">AED</span>
-                                </div>
+                            <div className="mt-4 space-y-6">
+                                {vehicle.priceType === 'reserve_price' ? (
+                                    <>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-2.5 text-xs font-bold text-[#D97706]">
+                                                AED
+                                            </span>
 
-                                <button className="w-full bg-[#D97706] hover:bg-[#b86405] text-white text-sm font-bold py-2.5 rounded-lg transition-all">
-                                    Place Bid Now
-                                </button>
-
-                                <button className="w-full border border-slate-600 hover:border-[#D97706] hover:text-[#D97706] text-white text-sm font-medium py-2 rounded-lg transition-all">
-                                    Buy Now AED 420,000
-                                </button>
-                            </div>
-
-                            {/* Bidders Online */}
-                            <div className="mt-3 flex items-center gap-2 pt-3 border-t border-slate-700">
-                                <div className="flex -space-x-1.5">
-                                    {bidderAvatars.map((b, i) => (
-                                        <div
-                                            key={i}
-                                            className={`w-6 h-6 rounded-full ${b.color} flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-[#0B1E3D]`}
-                                        >
-                                            {b.initials}
+                                            <input
+                                                type="number"
+                                                placeholder="Enter your bid amount"
+                                                className="w-full bg-[#142d55] border border-slate-600 rounded-lg py-2.5 pl-12 pr-3 text-sm text-white placeholder-slate-400 outline-none focus:border-[#D97706]"
+                                            />
                                         </div>
-                                    ))}
-                                    <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-[#0B1E3D]">
-                                        +6
-                                    </div>
-                                </div>
-                                <span className="text-[10px] text-slate-400">{vehicle.biddersOnline || 12} Bidders Online</span>
+
+                                        <button className="w-full bg-[#D97706] hover:bg-[#b86405] text-white text-sm font-bold py-2.5 rounded-lg transition-all">
+                                            Place Bid Now
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button className="w-full bg-[#D97706] hover:bg-[#b86405] text-white text-sm font-bold py-2.5 rounded-lg transition-all">
+                                        Buy Now {formatPrice(vehicle.buyNowPrice)}
+                                    </button>
+                                )}
                             </div>
 
+                            {/* Bidders — Reserve Price Only */}
+                            {vehicle.priceType === 'reserve_price' && (
+                                <div className="mt-3 flex items-center gap-2 pt-3 border-t border-slate-700">
+                                    <div className="flex -space-x-1.5">
+                                        {bidderAvatars.map((b, i) => (
+                                            <div
+                                                key={i}
+                                                className={`w-6 h-6 rounded-full ${b.color} flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-[#0B1E3D]`}
+                                            >
+                                                {b.initials}
+                                            </div>
+                                        ))}
+
+                                        <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-[#0B1E3D]">
+                                            +6
+                                        </div>
+                                    </div>
+
+                                    <span className="text-[10px] text-slate-400">
+                                        {vehicle.biddersOnline || 12} Bidders Online
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Bids Activity — col 3 */}
-                    <div className="lg:col-span-3">
-                        <LiveBidsPanel vehicleId={vehicle.id} />
-                    </div>
-
+                    {/* Bids Activity — Reserve Price Only */}
+                    {vehicle.priceType === 'reserve_price' && (
+                        <div className="lg:col-span-3">
+                            <LiveBidsPanel bids={vehicle.recentBids || []} />
+                        </div>
+                    )}
                 </div>
 
                 {/* ======== feature bar ======== */}
@@ -313,44 +414,101 @@ function LiveAuctionsDetail() {
                         <h3 className="font-bold text-slate-900 mb-6">Auction Progress</h3>
 
                         <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <p className="text-slate-500 text-sm">Current Bid</p>
-                                <p className="text-2xl font-extrabold text-blue-600">
-                                    AED {currentBid.toLocaleString()}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-slate-500 text-sm">Reserve Price</p>
-                                <p className="font-bold text-slate-900">
-                                    AED {reservePrice.toLocaleString()}
-                                </p>
-                            </div>
+
+                            {vehicle.priceType === 'fixed_price' ? (
+                                <>
+                                    <div>
+                                        <p className="text-slate-500 text-sm">Buy Now Price</p>
+                                        <p className="text-2xl font-extrabold text-[#D97706]">
+                                            {formatPrice(vehicle.buyNowPrice)}
+                                        </p>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <p className="text-slate-500 text-sm">Purchase Type</p>
+                                        <p className="font-bold text-slate-900">
+                                            Fixed Price
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <p className="text-slate-500 text-sm">
+                                            {vehicle.currentBid != null
+                                                ? 'Current Bid'
+                                                : 'Starting Bid'}
+                                        </p>
+
+                                        <p className="text-2xl font-extrabold text-[#D97706]">
+                                            {formatPrice(
+                                                vehicle.currentBid != null
+                                                    ? vehicle.currentBid
+                                                    : vehicle.startingBidPrice
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <p className="text-slate-500 text-sm">
+                                            Reserve Price
+                                        </p>
+
+                                        <p className="font-bold text-slate-900">
+                                            {formatPrice(vehicle.reservePrice)}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+
                         </div>
 
                         {/* Progress Bar */}
-                        <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
-                            <div
-                                className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${progress}%` }}
-                            ></div>
-                        </div>
-                        <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-8">
-                            <span>AED {reservePrice.toLocaleString()} Reserve</span>
-                            <span>AED {buyNowPrice.toLocaleString()} Buy Now</span>
-                        </div>
+                        {vehicle.priceType === 'reserve_price' && (
+                            <>
+                                {/* Progress Bar */}
+                                <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
+                                    <div
+                                        className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+
+                                <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-8">
+                                    <span>
+                                        {formatPrice(vehicle.currentBid || vehicle.startingBidPrice)} Current
+                                    </span>
+
+                                    <span>
+                                        {formatPrice(vehicle.reservePrice)} Reserve
+                                    </span>
+                                </div>
+                            </>
+                        )}
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4 py-6 border-y border-slate-100 mb-6">
-                            {[
-                                { label: "Total Bids", value: totalBids },
-                                { label: "Bidders Online", value: biddersOnline },
-                                { label: "Views", value: views }
-                            ].map((stat, i) => (
-                                <div key={i} className="text-center">
-                                    <p className="text-lg font-bold text-slate-900">{stat.value.toLocaleString()}</p>
-                                    <p className="text-[10px] text-slate-400 uppercase font-bold">{stat.label}</p>
+                        <div className="grid grid-cols-2 gap-4 py-6 border-y border-slate-100 mb-6">
+
+                            {vehicle.priceType === 'reserve_price' && (
+                                <div className="text-center">
+                                    <p className="text-lg font-bold text-slate-900">
+                                        {(vehicle.totalBids ?? 0).toLocaleString()}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold">
+                                        Total Bids
+                                    </p>
                                 </div>
-                            ))}
+                            )}
+
+                            <div className="text-center">
+                                <p className="text-lg font-bold text-slate-900">
+                                    {(vehicle.views ?? 0).toLocaleString()}
+                                </p>
+                                <p className="text-[10px] text-slate-400 uppercase font-bold">
+                                    Views
+                                </p>
+                            </div>
+
                         </div>
 
                         <p className="font-bold text-[#0F172A] mb-4">Bid Trend</p>
@@ -363,10 +521,8 @@ function LiveAuctionsDetail() {
                     </div>
 
                     {/* live chat */}
-                    <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col h-100">
+                    {/* <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col h-100">
                         <h3 className="font-bold text-slate-900 mb-4">Auction Chat</h3>
-
-                        {/* Chat History Area */}
                         <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className="text-sm">
@@ -375,8 +531,6 @@ function LiveAuctionsDetail() {
                                 </div>
                             ))}
                         </div>
-
-                        {/* Input Area */}
                         <div className="relative">
                             <input
                                 className="w-full p-3 pr-14 border border-slate-200 bg-slate-50 rounded-xl text-sm  focus:outline-none focus:bg-white focus:border-[#D97706]/50 focus:ring-4 focus:ring-[#D97706]/10 transition-all duration-300"
@@ -389,7 +543,7 @@ function LiveAuctionsDetail() {
                                 <Send size={18} />
                             </button>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* ======== tabs ======== */}

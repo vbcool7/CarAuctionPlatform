@@ -2,15 +2,72 @@
 import React from 'react';
 import { Radio, TrendingDown, Clock, Trophy, XCircle, MessageSquare, Tag, CreditCard, ShieldCheck } from 'lucide-react';
 
-export const categories = [
-    { name: 'Sedan', image: 'https://images.hindustantimes.com/auto/auto-images/mg/rc6/exterior_mg-rc6_front-left-side_600x400.jpg?imwidth=640' },
-    { name: 'SUV', image: 'https://stimg.cardekho.com/images/carexteriorimages/630x420/Tata/Sierra/12271/1765181428462/front-left-side-47.jpg?impolicy=resize&imwidth=360' },
-    { name: 'Truck', image: 'https://5.imimg.com/data5/SELLER/Default/2024/8/444303282/EO/TR/EQ/3199782/car-carrier-trailer-500x500.jpg' },
-    { name: 'Van', image: 'https://img.magnific.com/free-photo/blue-delivery-van-wet-highway-with-motion-blur-shipping-motion_169016-69815.jpg?semt=ais_hybrid&w=740&q=80' },
-    { name: 'Luxury', image: 'https://cdn.pixabay.com/photo/2017/03/27/14/56/auto-2179220_1280.jpg' },
-    { name: 'Electric', image: 'https://asset.autocarindia.com/static/models/colors/20260528_112849_33cf9aa0.jpg?w=640&q=75' },
-    { name: 'Sports', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQU4GG02EPc9WgEaj0VbPEyheMQ8TFfPAUNWQ&s' },
-    { name: 'Motorcycle', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQtL2PxqYbsojD04UtZPA_OoZczdsA8daQbgA&s' },
+export const CATEGORIES = [
+    {
+        label: 'Sedan',
+        value: 'sedan',
+        image: 'https://images.pexels.com/photos/14776722/pexels-photo-14776722.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'SUV',
+        value: 'suv',
+        image: 'https://images.pexels.com/photos/14850138/pexels-photo-14850138.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Hatchback',
+        value: 'hatchback',
+        image: 'https://images.pexels.com/photos/17078821/pexels-photo-17078821.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Coupe',
+        value: 'coupe',
+        image: 'https://images.pexels.com/photos/2365572/pexels-photo-2365572.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Convertible',
+        value: 'convertible',
+        image: 'https://images.pexels.com/photos/193991/pexels-photo-193991.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Wagon',
+        value: 'wagon',
+        image: 'https://images.pexels.com/photos/32724493/pexels-photo-32724493.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Pickup Truck',
+        value: 'pickup_truck',
+        image: 'https://images.pexels.com/photos/14624381/pexels-photo-14624381.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Van',
+        value: 'van',
+        image: 'https://images.pexels.com/photos/32987361/pexels-photo-32987361.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Minivan',
+        value: 'minivan',
+        image: 'https://images.pexels.com/photos/12960352/pexels-photo-12960352.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Sports Car',
+        value: 'sports_car',
+        image: 'https://images.pexels.com/photos/38003831/pexels-photo-38003831.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Luxury Car',
+        value: 'luxury_car',
+        image: 'https://images.pexels.com/photos/19240616/pexels-photo-19240616.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Electric Vehicle',
+        value: 'electric_vehicle',
+        image: 'https://images.pexels.com/photos/33415957/pexels-photo-33415957.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
+    {
+        label: 'Motorcycle',
+        value: 'motorcycle',
+        image: 'https://images.pexels.com/photos/32076462/pexels-photo-32076462.jpeg?auto=compress&cs=tinysrgb&w=400',
+    },
 ];
 
 export const buyerProfile = {

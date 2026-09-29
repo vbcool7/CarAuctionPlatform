@@ -9,6 +9,8 @@ import { useGetTopBidders } from '../../../hook/useBid';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { useGetAllAuctions, useGetDistinctMakes, useGetDistinctModel } from '../../../hook/useAuction';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
+import { useToggleWatchlist } from '../../../hook/useWatchlist';
+import { toast } from 'react-toastify';
 
 const stats = [
     {
@@ -99,11 +101,11 @@ export const AuctionCountdown = ({ item }) => {
         return (
             <>
                 <div className='flex items-center gap-1'>
-                <Clock size={10} className='text-white' />
-                <p className="font-bold text-white text-[10px]">
-                    {timeLeft.days > 0 && `${timeLeft.days}d `}
-                    {timeLeft.hours}h {timeLeft.mins}m {timeLeft.secs}s
-                </p>
+                    <Clock size={10} className='text-white' />
+                    <p className="font-bold text-white text-[10px]">
+                        {timeLeft.days > 0 && `${timeLeft.days}d `}
+                        {timeLeft.hours}h {timeLeft.mins}m {timeLeft.secs}s
+                    </p>
                 </div>
             </>
         );
@@ -144,6 +146,7 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
     const { data: modelData } = useGetDistinctModel(filters.allMakes);
     const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ tab: 'live', page, limit: 10, search, ...params });
     const { data: topBiddersData } = useGetTopBidders(bidderLimit);
+    const { mutate: toggleWatchlist, isPending } = useToggleWatchlist();
 
     const auctions = allAuctions?.data || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
@@ -189,6 +192,21 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
             options: ['price_low_high', 'price_high_low', 'ending_soon', 'newest',],
         },
     ];
+
+    // watchlist handler
+    const handleWatchlistClick = (e, item) => {
+        e.stopPropagation();
+        toggleWatchlist(item._id, {
+            onSuccess: (data) => {
+                toast.success(data?.message || 'Watchlist updated successfully');
+            },
+            onError: (error) => {
+                toast.error(
+                    error?.response?.data?.message || 'Failed to update watchlist'
+                );
+            },
+        });
+    }
 
     if (isLoading) return <p className="p-10 text-center">Loading auctions....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load auctions list</p>;
@@ -323,7 +341,7 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
                     {/* Cards */}
                     <div
                         className={`grid gap-6 
-                            ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1' }`}>
+                            ${view === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                         {auctions?.length > 0 ? (
                             auctions.map((item, index) => (
                                 <div
@@ -332,8 +350,8 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
                                                 ${view === 'list' ? 'flex-row' : 'flex-col'}`}>
                                     <div
                                         className={`relative ${view === 'list'
-                                                ? 'w-70 h-full shrink-0'
-                                                : 'w-full h-48'
+                                            ? 'w-70 h-full shrink-0'
+                                            : 'w-full h-48'
                                             }`}
                                     >
                                         <img
@@ -360,10 +378,20 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
                                                 {`${item.year || ''} ${formatLabel(item.make)} ${formatLabel(item.model)}`}
                                             </h3>
 
-                                            <Heart
-                                                size={18}
-                                                className="text-slate-400 hover:text-red-500 cursor-pointer"
-                                            />
+                                            <button
+                                                onClick={(e) => handleWatchlistClick(e, item)}
+                                                disabled={isPending}
+                                                className={`p-1.5 rounded-full transition-all
+                                                    ${item.isWatchlisted
+                                                        ? 'text-red-500 bg-red-50'
+                                                        : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+                                                    }`}
+                                            >
+                                                <Heart
+                                                    size={18}
+                                                    fill={item.isWatchlisted ? 'currentColor' : 'none'}
+                                                />
+                                            </button>
                                         </div>
 
                                         <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-4">
@@ -427,8 +455,8 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
                                         {/* Footer Action */}
                                         <div
                                             className={`flex flex-col ${view === 'list'
-                                                    ? 'items-start md:max-w-62 w-full'
-                                                    : 'w-full'
+                                                ? 'items-start md:max-w-62 w-full'
+                                                : 'w-full'
                                                 }`}
                                         >
                                             <button

@@ -59,6 +59,22 @@ function LiveAuctionGallery({ images = [], video = null, status = null }) {
                         </div>
                     )}
 
+                    {status === "upcoming" && (
+                        <div className="absolute top-3 left-3 z-10 bg-[#2563EB] text-white text-[10px] font-semibold px-2.5 py-1 rounded-full">
+                            UPCOMING
+                        </div>
+                    )}
+
+                    {["sold", "unsold", "reserve-not-met"].includes(status) && (
+                        <div className="absolute top-3 left-3 z-10 bg-slate-700 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full">
+                            {status === "sold"
+                                ? "SOLD"
+                                : status === "unsold"
+                                    ? "NOT SOLD"
+                                    : "RESERVE NOT MET"}
+                        </div>
+                    )}
+
                     {activeMedia?.type === "video" || showVideo ? (
                         <video
                             src={activeMedia.src}
@@ -68,7 +84,7 @@ function LiveAuctionGallery({ images = [], video = null, status = null }) {
                     ) : (
                         <div
                             ref={imageRef}
-                            className="w-full h-full cursor-zoom-in relative overflow-hidden"
+                            className="w-full h-85 cursor-zoom-in relative overflow-hidden"
                             onClick={() => setIsZoomed((z) => !z)}
                             onMouseMove={handleMouseMove}
                             onMouseLeave={() => setIsZoomed(false)}
@@ -132,8 +148,8 @@ function LiveAuctionGallery({ images = [], video = null, status = null }) {
                                 key={media.id}
                                 onClick={() => handleThumbnailClick(index)}
                                 className={`relative shrink-0 w-20 h-14 md:w-24 md:h-17 rounded-lg overflow-hidden border-2 transition-all ${activeIndex === index
-                                        ? "border-[#D97706] scale-105"
-                                        : "border-[#334155] hover:border-[#D97706]/60"
+                                    ? "border-[#D97706] scale-105"
+                                    : "border-[#334155] hover:border-[#D97706]/60"
                                     }`}
                             >
                                 {media.type === "video" ? (

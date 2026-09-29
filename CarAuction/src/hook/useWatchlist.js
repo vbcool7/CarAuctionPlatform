@@ -44,6 +44,8 @@ export const useToggleWatchlist = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['watchlist'] });
+            queryClient.invalidateQueries({ queryKey: ['allAuctions'] });
+            queryClient.invalidateQueries({ queryKey: ['auctionDetail'] });
         },
     });
 };

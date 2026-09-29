@@ -9,6 +9,8 @@ import { formatLabel } from '../../../utils/formatters';
 import { AuctionCountdown } from '../BuyerLiveAuctions/BuyerLiveAuctions';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import FilterDropdown from '../BuyerSharedComponents/FilterDropdown';
+import { useToggleWatchlist } from '../../../hook/useWatchlist';
+import { toast } from 'react-toastify';
 
 // ===== Single Dropdown =====
 function CustomDropdown({ label, options, placeholder }) {
@@ -101,6 +103,7 @@ function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId, setPrevio
     const params = mapFiltersToParams(filters);
     const dateFilter = activeTab === 'all' ? '' : activeTab;
     const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ tab: 'upcoming', dateFilter, page, limit: 10, ...params });
+    const { mutate: toggleWatchlist, isPending } = useToggleWatchlist();
 
     const auctions = allAuctions?.data || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
@@ -119,6 +122,21 @@ function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId, setPrevio
         { name: 'this_week', label: 'This Week', count: 0 },
         { name: 'next_week', label: 'Next Week', count: 0 },
     ];
+
+    // watchlist handler
+    const handleWatchlistClick = (e, item) => {
+        e.stopPropagation();
+        toggleWatchlist(item._id, {
+            onSuccess: (data) => {
+                toast.success(data?.message || 'Watchlist updated successfully');
+            },
+            onError: (error) => {
+                toast.error(
+                    error?.response?.data?.message || 'Failed to update watchlist'
+                );
+            },
+        });
+    }
 
     if (isLoading) return <p className="p-10 text-center">Loading auctions....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load auctions list</p>;
@@ -244,11 +262,21 @@ function BuyerUpcomingAuctions({ setCurrentPage, setSelectedVehicleId, setPrevio
 
                                             {/* Heart */}
                                             <button
-                                                className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-full text-slate-500 hover:text-red-500 hover:bg-white transition-all duration-200 shadow-sm"
+                                                onClick={(e) => handleWatchlistClick(e, item)}
+                                                disabled={isPending}
+                                                className={`absolute top-3 right-3 w-9 h-9 flex items-center justify-center backdrop-blur-sm rounded-full transition-all duration-200 shadow-sm
+                                                    ${item.isWatchlisted
+                                                        ? 'bg-red-500 text-white'
+                                                        : 'bg-white/90 text-slate-500 hover:text-red-500 hover:bg-white'
+                                                    }`}
                                             >
-                                                <Heart size={17} />
+                                                <Heart
+                                                    size={17}
+                                                    fill={item.isWatchlisted ? 'currentColor' : 'none'}
+                                                    strokeWidth={2.5}
+                                                />
                                             </button>
-
+                                            
                                             {/* Listing ID */}
                                             <div className="absolute bottom-3 left-3">
                                                 <span className="inline-flex bg-black/65 backdrop-blur-sm text-white px-2.5 py-1 rounded-md text-[10px] font-semibold tracking-wide">

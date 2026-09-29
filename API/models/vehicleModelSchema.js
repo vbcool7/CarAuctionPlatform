@@ -263,7 +263,11 @@ const vehicleSchema = new mongoose.Schema(
         canceledAt: {
             type: Date,
             default: null
-        }
+        },
+        soldOn: {
+            type: Date,
+            default: null
+        },
     },
     { timestamps: true }
 );

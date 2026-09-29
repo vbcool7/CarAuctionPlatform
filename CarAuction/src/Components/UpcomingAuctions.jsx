@@ -1,13 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiSearch, HiViewGrid, HiViewList, HiOutlineRefresh } from 'react-icons/hi';
-import { HiCamera, HiOutlineCog, HiOutlineTruck, HiOutlineBeaker, HiOutlineViewGrid, HiLocationMarker, HiClock, HiOutlineBell, HiOutlineTag, HiChevronRight, HiOutlineHeart } from "react-icons/hi";
+import { HiCamera, HiOutlineCog, HiOutlineTruck, HiOutlineBeaker, HiOutlineViewGrid, HiOutlineHeart, HiViewGrid, HiViewList } from "react-icons/hi";
 import { IoCalendarNumberOutline, IoCarSportOutline, IoPeopleOutline, IoTimeOutline } from 'react-icons/io5';
-import { vehicles } from "./Data";
 import AuctionSideFilter from './SharedComponents/AuctionSideFilter';
 import UpcomingAuctionCalender from './UpcomingAuctionCalender';
 import AuctionBottomFeaturesBar from './SharedComponents/AuctionBottomFeaturesBar';
+import SearchBar from './SharedComponents/SearchBar';
+import FilterDropdown from './SharedComponents/FilterDropdown';
+import { UseCountdown } from './SharedComponents/UseCountdown';
+import { formatLabel, formatPrice } from '../utils/formatters';
+import { getPaginationRange } from './utils/getPaginationRange';
+
+import { useGetPublicAuctions } from '../hook/useAuction';
 
 const stats = [
   { label: 'Upcoming Auctions', value: '32', icon: <IoCalendarNumberOutline className="text-blue-600" />, bgColor: 'bg-blue-50' },
@@ -16,40 +21,113 @@ const stats = [
   { label: 'Auctions Today', value: '28', icon: <IoTimeOutline className="text-orange-600" />, bgColor: 'bg-orange-50' },
 ];
 
+const tabs = [
+  { key: 'all', label: 'All Upcoming' },
+  { key: 'today', label: 'Today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
+  { key: 'week', label: 'This Week' },
+  { key: 'next', label: 'Next Week' },
+];
+
+// tabs filter helper
+const getTabRange = (tab) => {
+  const day = (n) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + n);
+    return d.toISOString();
+  };
+  switch (tab) {
+    case 'today': return { startFrom: day(0), startTo: day(1) };
+    case 'tomorrow': return { startFrom: day(1), startTo: day(2) };
+    case 'week': return { startFrom: day(0), startTo: day(7) };
+    case 'next': return { startFrom: day(7), startTo: day(14) };
+    default: return {};
+  }
+};
+
+const filterConfig = [
+  {
+    label: 'Sort By',
+    key: 'sortBy',
+    options: [
+      { label: 'Starting Soonest', value: 'starting_soon' },
+      { label: 'Newest Listed', value: 'newest' },
+      { label: 'Price: Low to High', value: 'price_low' },
+      { label: 'Price: High to Low', value: 'price_high' },
+    ],
+  },
+];
+
+const mapFiltersToParams = (filters, search) => {
+  const params = {};
+  if (filters.sortBy) params.sort = filters.sortBy;
+  if (search) params.search = search;
+  return params;
+};
+
+const AuctionStartsIn = ({ auctionStartDateTime }) => {
+  const timeLeft = UseCountdown(auctionStartDateTime);
+  return (
+    <p className="flex items-center gap-1 text-[13px] font-bold text-blue-600 mt-0.5">
+      {timeLeft.days > 0
+        ? `${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.mins}m ${timeLeft.secs}s`
+        : `${timeLeft.hours}h ${timeLeft.mins}m ${timeLeft.secs}s`}
+    </p>
+  );
+};
+
+// sidebar filter
+const dayRange = (dateStr) => {
+  if (!dateStr) return {};
+  const from = new Date(dateStr); from.setHours(0, 0, 0, 0);
+  const to = new Date(from); to.setDate(to.getDate() + 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+};
+
 function UpcomingAuctions() {
 
   const navigate = useNavigate();
 
-  const [view, setView] = useState('list');
-  const [visibleCount, setVisibleCount] = useState(5);
+  const [sidebarFilters, setSidebarFilters] = useState({});
   const [activeTab, setActiveTab] = useState('all');
+  const [view, setView] = useState('grid');
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filters, setFilters] = useState({ sortBy: 'starting_soon' });
 
-  const upcomingVehicles = vehicles.filter((v) => v.status === "upcoming");
+  const params = mapFiltersToParams(filters, debouncedSearch);
 
-  const tabs = [
-    { key: 'all', label: 'All Upcoming' },
-    { key: 'today', label: 'Today' },
-    { key: 'tomorrow', label: 'Tomorrow' },
-    { key: 'week', label: 'This Week' },
-    { key: 'next', label: 'Next Week' },
-  ];
-
-  const filteredVehicles = upcomingVehicles.filter((v) => {
-    if (activeTab === 'all') return true;
-
-    const start = new Date(v.startTime);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-    const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-    const nextWeekEnd = new Date(today); nextWeekEnd.setDate(today.getDate() + 14);
-
-    if (activeTab === 'today') return start >= today && start < tomorrow;
-    if (activeTab === 'tomorrow') return start >= tomorrow && start < new Date(tomorrow.getTime() + 86400000);
-    if (activeTab === 'week') return start >= today && start < weekEnd;
-    if (activeTab === 'next') return start >= weekEnd && start < nextWeekEnd;
-    return true;
+  const { data, isLoading, isError } = useGetPublicAuctions({
+    status: 'upcoming', page, limit: 10, ...params, ...getTabRange(activeTab),
+    category: sidebarFilters.vehicleType,
+    make: sidebarFilters.make,
+    fuelType: sidebarFilters.fuelType,
+    emirate: sidebarFilters.emirate,
+    minPrice: sidebarFilters.minPrice,
+    maxPrice: sidebarFilters.maxPrice,
   });
+
+  const upcomingVehicles = data?.data ?? [];
+  const totalPages = data?.pagination?.totalPages || 1;
+
+  // debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters, debouncedSearch, activeTab, sidebarFilters]);
+
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  if (isLoading) return <p className="p-10 text-center">Loading upcoming auctions....</p>;
+  if (isError) return <p className="p-10 text-center text-red-500">Failed to load upcoming auctions</p>;
 
   return (
     <section className='w-full'>
@@ -62,15 +140,20 @@ function UpcomingAuctions() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat, index) => (
-            <div key={index} className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-4 shadow-sm">
-              <div className={`p-3 ${stat.bgColor} rounded-xl text-xl`}>
+            <div
+              key={index}
+              className="group bg-white border-2 border-slate-200 p-5 rounded-2xl flex items-center gap-4 shadow-md hover:shadow-xl hover:border-slate-300 transition-all duration-300"
+            >
+              <div className={`p-3.5 ${stat.bgColor} rounded-xl text-xl transition-transform duration-300 group-hover:scale-110`}>
                 {stat.icon}
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                <p className="text-2xl font-black text-slate-900 tracking-tight">
+                  {stat.value}
+                </p>
+                <p className="text-[11px] uppercase tracking-wider text-slate-600 font-bold mt-0.5">
                   {stat.label}
                 </p>
               </div>
@@ -79,9 +162,9 @@ function UpcomingAuctions() {
         </div>
 
         {/* Two-column layout */}
-        <div className="flex flex-col md:flex-row gap-6 mt-6">
+        <div className="flex flex-col md:flex-row gap-6 mt-15">
 
-          {/* Left: main content */}
+          {/* =========================== Left =========================== */}
           <div className="w-full md:w-[70%] space-y-4">
 
             {/* Tabs */}
@@ -104,20 +187,27 @@ function UpcomingAuctions() {
 
             {/* Search + Sort + View */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center mt-4">
+
               <div className="relative w-full md:grow">
-                <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
-                <input
-                  type="text"
-                  placeholder="Search by make, model or lot number..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D97706]/20"
+                <SearchBar
+                  placeholder="Search by make, model, year or listing ID..."
+                  value={search}
+                  onChange={(value) => setSearch(value)}
                 />
               </div>
+
               <div className="flex items-center gap-2 w-full md:w-auto">
-                <select className="w-full md:w-48 px-3 py-2.5 border border-slate-200 rounded-lg text-slate-700 bg-white focus:outline-none">
-                  <option>Sort By: Soonest First</option>
-                  <option>Sort By: Starting Bid (Low)</option>
-                  <option>Sort By: Starting Bid (High)</option>
-                </select>
+                {filterConfig.map(({ label, key, options }) => (
+                  <div key={key} className="w-full sm:w-auto">
+                    <FilterDropdown
+                      label={label}
+                      options={options}
+                      value={filters[key]}
+                      onChange={(value) => updateFilter(key, value)}
+                    />
+                  </div>
+                ))}
+
                 <div className="flex border border-slate-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setView('grid')}
@@ -137,22 +227,41 @@ function UpcomingAuctions() {
 
             {/* list */}
             <div className="space-y-4 mt-2">
-              {filteredVehicles.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 text-sm">
-                  No upcoming auctions found for this period.
+              {upcomingVehicles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 px-6 border border-slate-200 rounded-2xl bg-white">
+                  <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                    <HiOutlineTruck className="text-[#D97706]" size={28} />
+                  </div>
+
+                  <h3 className="text-base font-bold text-[#0F172A]">
+                    No Upcoming Auctions Found
+                  </h3>
+
+                  <p className="text-sm text-slate-500 text-center mt-1">
+                    There are currently no upcoming auctions available.
+                  </p>
                 </div>
               ) : (
-                filteredVehicles.slice(0, visibleCount).map((vehicle) => (
-                  <div className="flex flex-col md:flex-row gap-4 p-3 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:border-slate-300">
+                upcomingVehicles.map((vehicle, index) => (
+                  <div
+                    key={vehicle._id || index}
+                    className="flex flex-col md:flex-row gap-4 p-3 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:border-slate-300">
 
-                    {/* Image Section */}
-                    <div className="relative w-full md:w-60 md:self-stretch min-h-50 rounded-xl overflow-hidden shrink-0 group">
-                      <img src={vehicle.image} alt={vehicle.name} className="w-full h-full object-cover" />
-                      <div className="absolute top-2 left-2 bg-[#D97706]/95 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full" /> Featured
+                    <div className="relative w-full sm:w-72 h-55 rounded-xl overflow-hidden shrink-0 group">
+                      <img
+                        src={vehicle.image}
+                        alt={`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+
+                      {/* Upcoming Badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#2563EB] text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
+                        Upcoming
                       </div>
-                      <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur-md text-white text-[9px] px-2 py-1 rounded-lg">
-                        {vehicle.images.length} Photos
+
+                      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10">
+                        <HiCamera size={14} /> {vehicle.imageCount ?? 0} Photos
                       </div>
                     </div>
 
@@ -161,19 +270,18 @@ function UpcomingAuctions() {
                       <div>
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-[#D97706] text-[9px] font-extrabold uppercase tracking-widest">Upcoming Auction</span>
-                          <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">Lot # {vehicle.id}</span>
+                          <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{vehicle.listingId || 'NA'}</span>
                         </div>
 
-                        <h3 className="text-lg font-bold text-[#0F172A] leading-tight truncate">{vehicle.name}</h3>
-                        <p className="text-[11px] text-slate-500 font-medium">VIN: {vehicle.vin}</p>
+                        <h3 className="text-lg font-bold text-[#0F172A] leading-tight truncate">{`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}</h3>
 
                         {/* Compact Specs */}
                         <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 flex-wrap">
                           {[
-                            { icon: HiOutlineCog, val: vehicle.engine },
-                            { icon: HiOutlineTruck, val: vehicle.bodyStyle },
-                            { icon: HiOutlineBeaker, val: vehicle.fuelType },
-                            { icon: HiOutlineViewGrid, val: vehicle.driveType }
+                            { icon: HiOutlineCog, val: formatLabel(vehicle.transmission) },
+                            { icon: HiOutlineTruck, val: formatLabel(vehicle.bodyType) },
+                            { icon: HiOutlineBeaker, val: formatLabel(vehicle.fuelType) },
+                            { icon: HiOutlineViewGrid, val: formatLabel(vehicle.drivetrain) }
                           ].map((spec, i) => (
                             <div key={i} className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-100">
                               <spec.icon className="text-[#D97706]" size={12} /> {spec.val}
@@ -184,31 +292,52 @@ function UpcomingAuctions() {
 
                       {/* Footer */}
                       <div className="mt-3 pt-3 border-t border-slate-100">
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-3">
-                          <p className="text-[9px] text-slate-400 uppercase font-semibold">Start: <span className="text-slate-800">{vehicle.startTime ? new Date(vehicle.startTime).toLocaleDateString('en-AE') : '—'}</span></p>
-                          <p className="text-[9px] text-slate-400 uppercase font-semibold">Loc: <span className="text-slate-800">{vehicle.location}</span></p>
-                          <p className="text-[9px] text-slate-400 uppercase font-semibold">Duration: <span className="text-slate-800">{vehicle.estDuration || '—'}</span></p>
-                          <p className="text-[9px] text-slate-400 uppercase font-semibold">Bids: <span className="text-slate-800">{vehicle.totalBids ?? 0}</span></p>
-                        </div>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-2 mb-3">
 
-                        <div className="flex items-center border border-slate-100 rounded-xl bg-slate-50/50">
-                          <div className="flex-1 py-2 px-3">
-                            <p className="text-[9px] text-slate-400 uppercase font-bold">Starting Bid</p>
-                            <p className="text-sm font-bold text-[#0F172A]">{vehicle.startingBid || '—'}</p>
+                          {/* Location */}
+                          <div>
+                            <p className="text-[9px] text-slate-400 uppercase font-semibold">
+                              Location
+                            </p>
+                            <p className="text-[11px] text-slate-800 font-semibold mt-0.5">
+                              {formatLabel(vehicle.emirate)}
+                            </p>
                           </div>
-                          <div className="w-px h-8 bg-slate-200" />
-                          <div className="flex-1 py-2 px-3 text-right">
-                            <p className="text-[9px] text-slate-400 uppercase font-bold">Est. Value</p>
-                            <p className="text-sm font-bold text-[#0F172A]">{vehicle.estValue || '—'}</p>
+
+                          {/* Price */}
+                          <div className="">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                              {vehicle.priceType === 'fixed_price'
+                                ? 'Buy Now Price'
+                                : 'Starting Bid'}
+                            </p>
+
+                            <p className="font-bold text-[#0F172A] text-md mt-0.5">
+                              {formatPrice(
+                                vehicle.priceType === 'fixed_price'
+                                  ? vehicle.buyNowPrice
+                                  : vehicle.startingBidPrice
+                              )}
+                            </p>
+                          </div>
+
+                          {/* Start In */}
+                          <div>
+                            <p className="text-[9px] text-slate-400 uppercase font-semibold">
+                              StartIn:
+                            </p>
+                            <AuctionStartsIn auctionStartDateTime={vehicle.auctionStartDateTime}
+                            />
                           </div>
                         </div>
 
                         <div className="flex gap-2 mt-3">
                           <button
-                            onClick={() => navigate(`/upcoming-auctions-detail/${vehicle.id}`)}
+                            onClick={() => navigate(`/upcoming-auctions-detail/${vehicle._id}`)}
                             className="bg-[#0B1E3D] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[#1e3a6a] active:scale-95 shadow-md hover:shadow-lg">
                             View Details
                           </button>
+
                           <button className="p-2.5 border border-slate-200 rounded-xl text-slate-400 hover:text-[#D97706] hover:border-[#D97706] transition-colors">
                             <HiOutlineHeart size={20} />
                           </button>
@@ -219,20 +348,77 @@ function UpcomingAuctions() {
                 ))
               )}
 
-              {visibleCount < filteredVehicles.length && (
-                <button
-                  onClick={() => setVisibleCount((prev) => prev + 5)}
-                  className="w-60 mx-auto flex items-center justify-center gap-2 border border-[#D97706] text-[#D97706] py-2.5 rounded-lg text-sm font-semibold hover:bg-[#D97706]/5 transition cursor-pointer"
-                >
-                  <HiOutlineRefresh size={16} /> Load More Auctions
-                </button>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                  {/* Page Info */}
+                  <p className="hidden sm:block text-xs text-slate-500">
+                    Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                    <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                  </p>
+
+                  {/* Pagination */}
+                  <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                    {/* Previous */}
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p - 1)}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Previous
+                    </button>
+
+                    {/* Page Numbers */}
+                    {getPaginationRange(page, totalPages).map((num, idx) =>
+                      num === "..." ? (
+                        <span
+                          key={`dot-${idx}`}
+                          className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                        >
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          key={num}
+                          onClick={() => setPage(num)}
+                          className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                              ${page === num
+                              ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                            }`}
+                        >
+                          {num}
+                        </button>
+                      )
+                    )}
+
+                    {/* Next */}
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page === totalPages}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next
+                    </button>
+
+                  </div>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Right: filter sidebar */}
+          {/* =========================== Right =========================== */}
           <div className="w-full md:w-[30%] space-y-4">
-            <AuctionSideFilter variant="upcoming" />
+
+            {/* auction filter */}
+            <AuctionSideFilter variant="upcoming" onApply={setSidebarFilters} />
+
+            {/* upcoming auction calender */}
             <UpcomingAuctionCalender />
 
             {/* ── Why Join ── */}
@@ -245,7 +431,9 @@ function UpcomingAuctions() {
                   'Set reminders and never miss an auction',
                   'Free to register and participate',
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[12px] text-slate-600">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-[12px] text-slate-600">
                     <span className="text-[#D97706] mt-0.5">✓</span>
                     {item}
                   </li>

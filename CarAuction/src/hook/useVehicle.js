@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from "react-toastify";
 import API from '../api/axiosInstance';
 
+// =========================== SELLER SIDE
+
 export const useDecodeVin = () => {
     return useMutation({
         mutationKey: ['decodeVin'],
@@ -72,5 +74,19 @@ export const useVehicleDetail = (id) => {
             return res.data;
         },
         enabled: !!id,
+    });
+};
+
+// =========================== USER SIDE
+
+// get categories
+export const useGetCategoryCounts = () => {
+    return useQuery({
+        queryKey: ['categoryCounts'],
+        queryFn: async () => {
+            const res = await API.get('/vehicle/category-counts');
+            return res.data;
+        },
+        staleTime: 1000 * 60 * 5,
     });
 };

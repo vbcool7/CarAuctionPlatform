@@ -7,6 +7,8 @@ import { formatLabel, formatPrice } from '../../../utils/formatters';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 
 import { useGetAllAuctions, useGetDistinctMakes, useGetDistinctModel } from '../../../hook/useAuction';
+import { useToggleWatchlist } from '../../../hook/useWatchlist';
+import { toast } from 'react-toastify';
 
 const getStatusStyles = (status) => {
     switch (status) {
@@ -100,6 +102,7 @@ function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousP
     const { data: makesData } = useGetDistinctMakes();
     const { data: modelData } = useGetDistinctModel(filters.allMakes);
     const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ page, limit: 10, tab: activeTab, ...params });
+    const { mutate: toggleWatchlist, isPending } = useToggleWatchlist();
 
     const auctions = allAuctions?.data || [];
     const totalPages = allAuctions?.pagination?.totalPages || 1;
@@ -153,6 +156,21 @@ function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousP
     const updateFilter = (key, value) => {
         setFilters((prev) => ({ ...prev, [key]: value }));
     };
+
+    // watchlist handler
+    const handleWatchlistClick = (e, item) => {
+        e.stopPropagation();
+        toggleWatchlist(item._id, {
+            onSuccess: (data) => {
+                toast.success(data?.message || 'Watchlist updated successfully');
+            },
+            onError: (error) => {
+                toast.error(
+                    error?.response?.data?.message || 'Failed to update watchlist'
+                );
+            },
+        });
+    }
 
     if (isLoading) return <p className="p-10 text-center">Loading auctions....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load auctions list</p>;
@@ -297,8 +315,20 @@ function BuyerBrowseAuction({ setCurrentPage, setSelectedVehicleId, setPreviousP
                                         </span>
 
                                         {/* Heart Icon */}
-                                        <button className="absolute top-3 right-3 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:text-red-500 hover:bg-white transition-all">
-                                            <Heart size={18} />
+                                        <button
+                                            onClick={(e) => handleWatchlistClick(e, item)}
+                                            disabled={isPending}
+                                            className={`absolute top-3 right-3 p-2 rounded-full shadow-md transition-all
+                                                ${item.isWatchlisted
+                                                    ? 'bg-red-500 text-white'
+                                                    : 'bg-white/90 text-slate-600 hover:bg-white hover:text-red-500'
+                                                }`}
+                                        >
+                                            <Heart
+                                                size={16}
+                                                fill={item.isWatchlisted ? 'currentColor' : 'none'}
+                                                strokeWidth={2.5}
+                                            />
                                         </button>
                                     </div>
 

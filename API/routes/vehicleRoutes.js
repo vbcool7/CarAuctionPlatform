@@ -4,6 +4,7 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/imageStorage.js';
 import {
     decodeVin, addVehicle, getMyVehicles, getVehicleStats, getVehicleById,
+    getCategoryCounts, 
 } from '../controllers/vehicleController.js';
 
 const router = express.Router();
@@ -20,5 +21,8 @@ router.post('/add-vehicle',
 router.get('/get-my-vehicles', authMiddleware(['seller']), getMyVehicles);
 router.get('/get-vehicle-stats', authMiddleware(['seller']), getVehicleStats);
 router.get('/get-vehicle-detail/:id', authMiddleware(['seller']), getVehicleById);
+
+// =========================== PUBLIC (user side)
+router.get('/category-counts', getCategoryCounts);
 
 export default router;

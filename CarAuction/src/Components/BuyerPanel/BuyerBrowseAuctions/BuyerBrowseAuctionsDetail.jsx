@@ -11,6 +11,7 @@ import InspectionTab from '../../InspectionTab';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWithdrawBid } from '../../../hook/useBid';
 import { toast } from 'react-toastify';
+import { useToggleWatchlist } from '../../../hook/useWatchlist';
 
 const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -240,7 +241,7 @@ function AuctionStatusCard({ vehicle }) {
     );
 }
 
-function QuickActionsCard({ vehicle, onPlaceBidClick, onBuyNow, onWithdrawClick }) {
+function QuickActionsCard({ vehicle, onPlaceBidClick, onBuyNow, onWithdrawClick, onWatchlistClick }) {
     const isLive = vehicle.auctionStatus === 'live';
     const isFixedPrice = vehicle.priceType === 'fixed_price';
 
@@ -286,9 +287,19 @@ function QuickActionsCard({ vehicle, onPlaceBidClick, onBuyNow, onWithdrawClick 
                 )}
 
                 {/* Watchlist */}
-                <button className="h-10 border border-amber-500/60 text-[#0B1E3D] bg-amber-50/20 hover:bg-amber-50 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 group">
-                    <Heart className="w-4 h-4 text-amber-600 group-hover:scale-110 transition-transform" />
-                    Watchlist
+                <button
+                    onClick={() => onWatchlistClick(vehicle._id)}
+                    className={`h-10 border text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 group
+                        ${vehicle.isWatchlisted
+                            ? 'border-red-400 text-red-600 bg-red-50'
+                            : 'border-amber-500/60 text-[#0B1E3D] bg-amber-50/20 hover:bg-amber-50'
+                        }`}
+                >
+                    <Heart
+                        className="w-4 h-4"
+                        fill={vehicle.isWatchlisted ? 'currentColor' : 'none'}
+                    />
+                    {vehicle.isWatchlisted ? 'Watchlisted' : 'Watchlist'}
                 </button>
 
                 {/* Share */}
@@ -424,12 +435,14 @@ function BuyerBrowseAuctionsDetail({ setCurrentPage, selectedVehicleId, previous
 
     const { data: auctionDetail, isLoading, isError } = useGetBuyerAuctionDetail(selectedVehicleId);
     const { mutate: withdrawBid } = useWithdrawBid();
+    const { mutate: toggleWatchlist, isPending } = useToggleWatchlist();
 
     const queryClient = useQueryClient();
     const vehicle = auctionDetail?.vehicle;
 
     useBidSocket(selectedVehicleId);
 
+    // bid withdraw
     const handleWithdraw = (bidId) => {
         withdrawBid(bidId, {
             onSuccess: () => {
@@ -437,6 +450,20 @@ function BuyerBrowseAuctionsDetail({ setCurrentPage, selectedVehicleId, previous
                 queryClient.invalidateQueries({ queryKey: ['auctionDetail', selectedVehicleId] })
             },
             onError: (err) => toast.error(err.response?.data?.message || 'Withdraw failed')
+        });
+    };
+
+    // watchlist handler
+    const handleWatchlistClick = (id) => {
+        toggleWatchlist(id, {
+            onSuccess: (data) => {
+                toast.success(data?.message || 'Watchlist updated successfully');
+            },
+            onError: (error) => {
+                toast.error(
+                    error?.response?.data?.message || 'Failed to update watchlist'
+                );
+            },
         });
     };
 
@@ -542,6 +569,7 @@ function BuyerBrowseAuctionsDetail({ setCurrentPage, selectedVehicleId, previous
                         {/* btns */}
                         <QuickActionsCard
                             vehicle={vehicle}
+                            onWatchlistClick={handleWatchlistClick}
                             onPlaceBidClick={() => openBidModal(vehicle._id, 'browse-auctions-detail')}
                             // onBuyNow={handleBuyNow}
                             onWithdrawClick={handleWithdraw}

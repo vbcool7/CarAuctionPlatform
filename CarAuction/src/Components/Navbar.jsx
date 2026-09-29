@@ -1,13 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { IoHeartOutline, IoMenu, IoClose, IoPersonOutline } from 'react-icons/io5';
-import { IoChevronDown } from "react-icons/io5";
-import useAuthStore from '../store/useAuthStore';
+import { IoHeartOutline, IoMenu, IoClose, IoPersonOutline, IoChevronDown } from 'react-icons/io5';
 import { Car, ChevronDown, Gavel, Heart, LayoutDashboard, LogOut, User } from 'lucide-react';
+
+import useAuthStore from '../store/useAuthStore';
 
 function Navbar() {
 
+    const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
     const { user, logout } = useAuthStore();
@@ -33,6 +34,18 @@ function Navbar() {
         { to: "/contact", name: "Contact" },
     ];
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsAuctionOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     return (
         <nav className="sticky top-0 z-50 bg-[#0F172A] border-b border-[#334155] py-5">
             <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-6 flex items-center justify-between">
@@ -50,12 +63,16 @@ function Navbar() {
                     <NavLink to="/" className={navLinkClass}>Home</NavLink>
 
                     {/* auction */}
-                    <div className="relative">
+                    <div className="relative" ref={dropdownRef}>
                         <button
                             onClick={() => setIsAuctionOpen(!isAuctionOpen)}
-                            className="flex items-center gap-1 text-[#94A3B8] hover:text-white transition-colors"
+                            className="flex items-center gap-1 text-[#94A3B8] hover:text-white transition-colors cursor-pointer"
                         >
-                            Auctions <IoChevronDown size={16} />
+                            Auctions
+                            <IoChevronDown
+                                size={16}
+                                className={`transition-transform duration-300 ${isAuctionOpen ? 'rotate-180' : 'rotate-0'}`}
+                            />
                         </button>
 
                         {isAuctionOpen && (

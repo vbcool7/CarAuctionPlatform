@@ -2,9 +2,7 @@ import {
     Gavel,
     Timer,
     MapPin,
-    User,
     Car,
-    Building2,
     Activity,
     CircleDollarSign,
     Eye,
@@ -15,6 +13,7 @@ import {
     FileText,
 } from "lucide-react";
 
+
 const formatValue = (value) => {
     if (value === null || value === undefined || value === "") {
         return "—";
@@ -22,6 +21,7 @@ const formatValue = (value) => {
 
     return value;
 };
+
 
 const formatLabel = (value) => {
     if (!value) return "—";
@@ -32,7 +32,22 @@ const formatLabel = (value) => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const StatCard = ({ icon: Icon, label, value, highlight = false }) => (
+
+const formatPrice = (value) => {
+    if (value === null || value === undefined) {
+        return "—";
+    }
+
+    return `AED ${value.toLocaleString()}`;
+};
+
+
+const StatCard = ({
+    icon: Icon,
+    label,
+    value,
+    highlight = false
+}) => (
     <div
         className={`rounded-2xl border p-4 transition-all ${
             highlight
@@ -52,33 +67,35 @@ const StatCard = ({ icon: Icon, label, value, highlight = false }) => (
 
         <p
             className={`font-semibold text-base ${
-                highlight ? "text-[#D97706]" : "text-slate-900"
+                highlight
+                    ? "text-[#D97706]"
+                    : "text-slate-900"
             }`}
         >
-            {value || "—"}
+            {formatValue(value)}
         </p>
     </div>
 );
 
+
 function OverviewTab({ vehicle }) {
+
     const currentBid =
         vehicle?.currentBid != null
-            ? `AED ${vehicle.currentBid.toLocaleString()}`
+            ? formatPrice(vehicle.currentBid)
             : "No bids yet";
+
 
     const price =
         vehicle?.priceType === "fixed_price"
-            ? vehicle?.buyNowPrice != null
-                ? `AED ${vehicle.buyNowPrice.toLocaleString()}`
-                : "—"
-            : vehicle?.startingBidPrice != null
-                ? `AED ${vehicle.startingBidPrice.toLocaleString()}`
-                : "—";
+            ? formatPrice(vehicle?.buyNowPrice)
+            : formatPrice(vehicle?.startingBidPrice);
+
 
     return (
         <div className="space-y-7">
 
-            {/* Vehicle Information */}
+            {/* ================= VEHICLE INFORMATION ================= */}
             <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-4">
                     Vehicle Information
@@ -159,7 +176,8 @@ function OverviewTab({ vehicle }) {
                 </div>
             </div>
 
-            {/* Location & History */}
+
+            {/* ================= LOCATION & HISTORY ================= */}
             <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-4">
                     Location & History
@@ -192,12 +210,6 @@ function OverviewTab({ vehicle }) {
                     />
 
                     <StatCard
-                        icon={Hash}
-                        label="VIN"
-                        value={vehicle?.vin}
-                    />
-
-                    <StatCard
                         icon={FileText}
                         label="Title Status"
                         value={formatLabel(vehicle?.titleStatus)}
@@ -212,7 +224,8 @@ function OverviewTab({ vehicle }) {
                 </div>
             </div>
 
-            {/* Pricing & Auction */}
+
+            {/* ================= PRICING & AUCTION ================= */}
             <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-4">
                     Pricing & Auction
@@ -232,27 +245,30 @@ function OverviewTab({ vehicle }) {
                         value={formatLabel(vehicle?.auctionType)}
                     />
 
-                    <StatCard
-                        icon={CircleDollarSign}
-                        label={
-                            vehicle?.priceType === "fixed_price"
-                                ? "Buy Now Price"
-                                : "Starting Bid"
-                        }
-                        value={price}
-                        highlight
-                    />
+                    {/* Fixed Price */}
+                    {vehicle?.priceType === "fixed_price" && (
+                        <StatCard
+                            icon={CircleDollarSign}
+                            label="Buy Now Price"
+                            value={formatPrice(vehicle?.buyNowPrice)}
+                            highlight
+                        />
+                    )}
 
+                    {/* Reserve Price */}
                     {vehicle?.priceType === "reserve_price" && (
                         <>
                             <StatCard
                                 icon={CircleDollarSign}
+                                label="Starting Bid"
+                                value={formatPrice(vehicle?.startingBidPrice)}
+                                highlight
+                            />
+
+                            <StatCard
+                                icon={CircleDollarSign}
                                 label="Reserve Price"
-                                value={
-                                    vehicle?.reservePrice != null
-                                        ? `AED ${vehicle.reservePrice.toLocaleString()}`
-                                        : "—"
-                                }
+                                value={formatPrice(vehicle?.reservePrice)}
                                 highlight
                             />
 
@@ -260,6 +276,12 @@ function OverviewTab({ vehicle }) {
                                 icon={Gavel}
                                 label="Current Bid"
                                 value={currentBid}
+                            />
+
+                            <StatCard
+                                icon={Gavel}
+                                label="Total Bids"
+                                value={vehicle?.totalBids ?? 0}
                             />
                         </>
                     )}
@@ -275,7 +297,7 @@ function OverviewTab({ vehicle }) {
                         label="Auction Duration"
                         value={
                             vehicle?.auctionDuration
-                                ? `${vehicle.auctionDuration} days`
+                                ? formatLabel(vehicle.auctionDuration)
                                 : "—"
                         }
                     />
@@ -289,7 +311,8 @@ function OverviewTab({ vehicle }) {
                 </div>
             </div>
 
-            {/* Appearance */}
+
+            {/* ================= APPEARANCE ================= */}
             <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-4">
                     Appearance
@@ -312,7 +335,8 @@ function OverviewTab({ vehicle }) {
                 </div>
             </div>
 
-            {/* Description */}
+
+            {/* ================= DESCRIPTION ================= */}
             {vehicle?.vehicleDescription && (
                 <div>
                     <h3 className="text-sm font-bold text-slate-900 mb-3">
@@ -330,5 +354,6 @@ function OverviewTab({ vehicle }) {
         </div>
     );
 }
+
 
 export default OverviewTab;

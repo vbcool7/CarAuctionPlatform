@@ -31,7 +31,6 @@ import BuyerPanelPage from './Pages/BuyerPanelPage';
 import SellerPanelPage from './Pages/SellerPanelPage';
 import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
-import Temp from './Components/Temp';
 
 function App() {
   return (
@@ -61,7 +60,7 @@ function App() {
           <Route path='/vehicle-detail/:id' element={<VehicleDetail />} />
 
           <Route path='/live-auctions' element={<LiveAuctions />} />
-          <Route path='/live-auctions-detail/:id' element={<LiveAuctionsDetail />} />
+          <Route path='/live-auction-detail/:id' element={<LiveAuctionsDetail />} />
 
           <Route path='/upcoming-auctions' element={<UpcomingAuctions />} />
           <Route path='/upcoming-auctions-detail/:id' element={<UpcomingAuctionsDetail />} />

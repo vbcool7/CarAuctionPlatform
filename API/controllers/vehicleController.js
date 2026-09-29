@@ -340,12 +340,39 @@ export const getVehicleById = async (req, res) => {
             message: "Here is vehicle detail",
             data: vehicle
         });
-        
+
     } catch (err) {
         console.error("Get Vehicle By ID Error:", err);
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred"
+        });
+    }
+};
+
+// =========================== USER SIDE
+
+// get category counts
+export const getCategoryCounts = async (req, res) => {
+    try {
+        const counts = await Vehicle.aggregate([
+            { $match: { adminStatus: 'approved', auctionStatus: { $in: ['live', 'upcoming'] } } },
+            { $group: { _id: '$vehicleType', count: { $sum: 1 } } }
+        ]);
+
+        const result = {};
+        counts.forEach(c => { result[c._id] = c.count; });
+
+        return res.status(200).json({
+            success: true,
+            counts: result
+        });
+
+    } catch (err) {
+        console.error('getCategoryCounts error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
         });
     }
 };

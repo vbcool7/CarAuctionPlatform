@@ -1,4 +1,3 @@
-
 const RowData = ({ label, value }) => (
   <div className="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0">
     <span className="text-slate-500 text-sm">{label}</span>
@@ -9,29 +8,35 @@ const RowData = ({ label, value }) => (
   </div>
 );
 
+const formatLabel = (value) => {
+  if (!value) return null;
+
+  return value
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 function VehicleInfoTab({ vehicle }) {
   const {
     make,
     model,
     year,
+    trim,
     mileage,
-    engine,
-    engineSize,
-    cylinders,
     vehicleType,
+    bodyType,
     fuelType,
     transmission,
-    color,
-    bodyStyle,
-    doors,
-    seats,
-    driveType,
-    vin,
+    drivetrain,
+    exteriorColor,
+    interiorColor,
   } = vehicle;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8">
 
+      {/* Basic Details */}
       <div>
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-3 font-medium">
           Basic Details
@@ -40,41 +45,61 @@ function VehicleInfoTab({ vehicle }) {
         <RowData label="Make" value={make} />
         <RowData label="Model" value={model} />
         <RowData label="Year" value={year} />
-        <RowData label="Body Style" value={bodyStyle} />
-        <RowData label="Color" value={color} />
-        <RowData label="Doors" value={doors} />
-        <RowData label="Seats" value={seats} />
-        <RowData label="Vehicle Type" value={vehicleType} />
+        <RowData label="Trim" value={trim} />
+
+        <RowData
+          label="Vehicle Type"
+          value={formatLabel(vehicleType)}
+        />
+
+        <RowData
+          label="Body Type"
+          value={formatLabel(bodyType)}
+        />
+
+        <RowData
+          label="Exterior Color"
+          value={formatLabel(exteriorColor)}
+        />
+
+        <RowData
+          label="Interior Color"
+          value={formatLabel(interiorColor)}
+        />
       </div>
 
+      {/* Technical */}
       <div className="mt-6 sm:mt-0">
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-3 font-medium">
           Technical
         </p>
 
-        <RowData label="Engine" value={engine} />
-        <RowData label="Engine Size" value={engineSize} />
-        <RowData label="Fuel Type" value={fuelType} />
-        <RowData label="Cylinder" value={cylinders} />
-        <RowData label="Transmission" value={transmission} />
-        <RowData label="Drive Type" value={driveType} />
         <RowData
-          label="Mileage"
-          value={mileage ? `${mileage.toLocaleString("en-IN")} km` : null}
+          label="Fuel Type"
+          value={formatLabel(fuelType)}
         />
 
         <RowData
-          label="VIN"
+          label="Transmission"
+          value={formatLabel(transmission)}
+        />
+
+        <RowData
+          label="Drive Type"
+          value={formatLabel(drivetrain)}
+        />
+
+        <RowData
+          label="Mileage"
           value={
-            vin ? (
-              <span className="font-mono text-xs tracking-widest">
-                {vin}
-              </span>
-            ) : null
+            mileage != null
+              ? `${mileage.toLocaleString("en-IN")} km`
+              : null
           }
         />
       </div>
 
+      {/* Empty third column intentionally removed */}
     </div>
   );
 }

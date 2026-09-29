@@ -263,8 +263,8 @@ function MyAuctions({ setCurrentPage, setSelectedAuctionId }) {
 
     const { days, hours, mins, secs } = UseCountDown(upcomingVehicle?.auctionStartDateTime);
 
-    if (isLoading) return <p className="p-10 text-center">Loading auction details....</p>;
-    if (isError) return <p className="p-10 text-center text-red-500">Failed to load auction details</p>;
+    if (isLoading) return <p className="p-10 text-center">Loading auctions....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load auctions</p>;
 
     return (
         <div className='pb-6 space-y-6'>

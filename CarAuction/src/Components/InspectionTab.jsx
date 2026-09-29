@@ -4,14 +4,10 @@ import {
     CircleCheck,
     CircleAlert,
     Cog,
-    DoorOpen,
-    KeyRound,
     Palette,
     ShieldCheck,
-    Snowflake,
     Sparkles,
     StickyNote,
-    Wind,
 } from "lucide-react";
 
 const formatLabel = (value) => {
@@ -159,85 +155,58 @@ function InspectionTab({ vehicle }) {
                 </div>
             </div>
 
-            {/* Vehicle Inspection */}
+            {/* Vehicle History */}
             <div>
                 <div className="flex items-center gap-2 mb-4">
-                    <Car
+                    <ShieldCheck
                         size={18}
                         className="text-[#D97706]"
                     />
 
                     <h3 className="text-sm font-bold text-slate-900">
-                        Vehicle Inspection
+                        Vehicle History
                     </h3>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 rounded-xl border border-slate-200 px-4">
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 rounded-xl border border-slate-200 px-4">
                     <div>
                         <InfoItem
-                            label="Number of Doors"
-                            value={vehicle?.doors}
+                            label="Accident History"
+                            value={vehicle?.accidentHistory}
                         />
 
                         <InfoItem
-                            label="Number of Seats"
-                            value={vehicle?.seats}
+                            label="Title Status"
+                            value={vehicle?.titleStatus}
                         />
 
                         <InfoItem
-                            label="Engine Size"
-                            value={vehicle?.engineSize}
-                        />
-
-                        <InfoItem
-                            label="Cylinders"
-                            value={vehicle?.cylinders}
-                        />
-
-                        <InfoItem
-                            label="Key Type"
-                            value={vehicle?.keyType}
-                        />
-
-                        <InfoItem
-                            label="Number of Keys"
-                            value={vehicle?.numberOfKeys}
-                        />
-                    </div>
-
-                    <div>
-                        <InfoItem
-                            label="Tire Condition"
-                            value={vehicle?.tiresCondition}
-                        />
-
-                        <InfoItem
-                            label="Tire Brand"
-                            value={vehicle?.tireBrand}
-                        />
-
-                        <InfoItem
-                            label="Tire Size"
-                            value={vehicle?.tireSize}
-                        />
-
-                        <InfoItem
-                            label="Glass Condition"
-                            value={vehicle?.glassCondition}
+                            label="Repainted"
+                            value={vehicle?.repainted}
                         />
 
                         <InfoItem
                             label="Paint Type"
                             value={vehicle?.paintType}
                         />
-
-                        <InfoItem
-                            label="Seat Material"
-                            value={vehicle?.seatMaterial}
-                        />
                     </div>
 
+                    <div>
+                        <InfoItem
+                            label="Glass Condition"
+                            value={vehicle?.glassCondition}
+                        />
+
+                        <InfoItem
+                            label="Smoke Odor"
+                            value={vehicle?.smokeOdor}
+                        />
+
+                        <InfoItem
+                            label="Pet Friendly"
+                            value={vehicle?.petFriendly}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -255,21 +224,6 @@ function InspectionTab({ vehicle }) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                    <InfoItem
-                        label="Repainted"
-                        value={vehicle?.repainted}
-                    />
-
-                    <InfoItem
-                        label="Smoke Odor"
-                        value={vehicle?.smokeOdor}
-                    />
-
-                    <InfoItem
-                        label="Pet Friendly"
-                        value={vehicle?.petFriendly}
-                    />
 
                     <InfoItem
                         label="Sunroof"

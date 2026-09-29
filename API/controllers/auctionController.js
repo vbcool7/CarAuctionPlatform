@@ -80,6 +80,8 @@ export const runAuctionEndUpdate = async () => {
 
         } else {
             vehicle.auctionStatus = 'sold';
+            vehicle.soldOn = new Date();
+
             winningBid.status = 'won';
             await winningBid.save();
 
@@ -664,6 +666,19 @@ export const getAllAuctions = async (req, res) => {
                     as: 'bidsArr'
                 }
             },
+
+            // ---- watchlist look up
+            {
+                $lookup: {
+                    from: 'watchlists',
+                    let: { vId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$userId', new mongoose.Types.ObjectId(req.user.id)] } } },
+                        { $match: { $expr: { $in: ['$$vId', '$items.vehicleId'] } } }
+                    ],
+                    as: 'watchlistMatch'
+                }
+            },
             {
                 $addFields: { totalBids: { $size: '$bidsArr' } }
             },
@@ -728,6 +743,7 @@ export const getAllAuctions = async (req, res) => {
                             'sellerInfo.businessName': 1,
                             'sellerInfo.fullName': 1,
                             'sellerInfo.businessDescription': 1,
+                            isWatchlisted: { $gt: [{ $size: '$watchlistMatch' }, 0] }
                         }
                     }
                 ],
@@ -820,6 +836,17 @@ export const getAuctionDetail = async (req, res) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'watchlists',
+                    let: { vId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$userId', new mongoose.Types.ObjectId(buyerId)] } } },
+                        { $match: { $expr: { $in: ['$$vId', '$items.vehicleId'] } } }
+                    ],
+                    as: 'watchlistMatch'
+                }
+            },
+            {
                 $project: {
                     listingId: 1, make: 1, model: 1, year: 1, trim: 1, vin: 1,
                     vehicleType: 1, bodyType: 1, mileage: 1, transmission: 1,
@@ -836,8 +863,9 @@ export const getAuctionDetail = async (req, res) => {
                     'sellerInfo.createdAt': 1,
                     recentBids: 1,
                     totalBids: { $ifNull: [{ $arrayElemAt: ['$bidCountArr.count', 0] }, 0] },
-                    isCurrentHighestBidder: { $gt: [{ $size: '$myActiveBid' }, 0] }, // NAYA
-                    myBidId: { $arrayElemAt: ['$myActiveBid._id', 0] } // NAYA
+                    isCurrentHighestBidder: { $gt: [{ $size: '$myActiveBid' }, 0] },
+                    myBidId: { $arrayElemAt: ['$myActiveBid._id', 0] },
+                    isWatchlisted: { $gt: [{ $size: '$watchlistMatch' }, 0] }
                 }
             }
         ]);
@@ -1102,6 +1130,486 @@ export const getupcomingAuctionDates = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// ================================= USER SIDE
+
+const maskName = (name = '') => {
+    if (
+        !name ||
+        name === 'undefined' ||
+        name === 'null' ||
+        name.trim() === ''
+    ) {
+        return 'User';
+    }
+
+    return name
+        .trim()
+        .split(/\s+/)
+        .map(word => word[0] + '***')
+        .join(' ');
+};
+
+// get live auctions
+export const getHomeLiveAuctions = async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 8, 12);
+
+        const data = await Vehicle.aggregate([
+            { $match: { adminStatus: 'approved', auctionStatus: 'live' } },
+            { $sort: { auctionEndDateTime: 1 } },
+            { $limit: limit },
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vid: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$vehicleId', '$$vid'] }, status: { $ne: 'withdrawn' } } },
+                        { $count: 'c' },
+                    ],
+                    as: 'bc',
+                }
+            },
+            {
+                $project: {
+                    make: 1, model: 1, year: 1, trim: 1, priceType: 1, transmission: 1, fuelType: 1, bodyType: 1,
+                    auctionEndDateTime: 1, buyNowPrice: 1, startingBidPrice: 1,
+                    currentBid: 1,
+                    image: { $arrayElemAt: ['$images.url', 0] },
+                    totalBids: { $ifNull: [{ $arrayElemAt: ['$bc.c', 0] }, 0] },
+                }
+            },
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: "Live auctions fetched successfully",
+            data
+        });
+
+    } catch (err) {
+        console.log("getHomeLiveAuctions Error :", err)
+        res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
+
+// get sold auctions
+export const getHomeSoldedVehicles = async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 8, 12);
+
+        const rows = await Vehicle.aggregate([
+            {
+                $match: {
+                    adminStatus: 'approved',
+                    auctionStatus: 'sold'
+                }
+            },
+
+            {
+                $sort: {
+                    auctionEndDateTime: -1
+                }
+            },
+
+            {
+                $limit: limit
+            },
+
+            // Get winning bid
+            {
+                $lookup: {
+                    from: 'bids',
+                    let: { vid: '$_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: ['$vehicleId', '$$vid']
+                                },
+                                status: 'won'
+                            }
+                        },
+                        {
+                            $sort: {
+                                amount: -1
+                            }
+                        },
+                        {
+                            $limit: 1
+                        }
+                    ],
+                    as: 'win'
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$win',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+
+            // Buyer lookup
+            {
+                $lookup: {
+                    from: 'users',
+                    let: {
+                        bidderId: '$win.bidderId',
+                        bidderType: '$win.bidderType'
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$_id', '$$bidderId'] },
+                                        { $eq: ['$$bidderType', 'Buyer'] }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                fullName: {
+                                    $trim: {
+                                        input: {
+                                            $concat: [
+                                                { $ifNull: ['$firstName', ''] },
+                                                ' ',
+                                                { $ifNull: ['$lastName', ''] }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    as: 'buyerWinner'
+                }
+            },
+
+            // Seller lookup
+            {
+                $lookup: {
+                    from: 'sellers',
+                    let: {
+                        bidderId: '$win.bidderId',
+                        bidderType: '$win.bidderType'
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$_id', '$$bidderId'] },
+                                        { $eq: ['$$bidderType', 'Seller'] }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                fullName: 1
+                            }
+                        }
+                    ],
+                    as: 'sellerWinner'
+                }
+            },
+
+            {
+                $project: {
+                    _id: 1, make: 1, model: 1, year: 1, soldOn: 1,
+                    image: { $arrayElemAt: ['$images.url', 0] },
+                    soldPrice: { $ifNull: ['$win.amount', '$currentBid'] },
+                    winnerName: {
+                        $ifNull: [
+                            { $arrayElemAt: ['$buyerWinner.fullName', 0] },
+                            { $arrayElemAt: ['$sellerWinner.fullName', 0] }
+                        ]
+                    }
+                }
+            }
+        ]);
+
+        const data = rows.map(({ winnerName, ...vehicle }) => ({
+            ...vehicle,
+            winner: maskName(winnerName)
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Sold auctions fetched successfully",
+            data
+        });
+
+    } catch (err) {
+        console.log("getHomeSoldedVehicles Error:", err);
+
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// get all auctions 
+
+const ENDED = ['sold', 'unsold', 'reserve-not-met'];
+const csv = (v) => (v ? String(v).split(',').map(s => s.trim()).filter(Boolean) : []);
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const looseRegex = (v) => new RegExp(`^${esc(v).replace(/[-_\s]+/g, '[-_\\s]')}$`, 'i');
+
+export const getPublicAuctions = async (req, res) => {
+    try {
+        const q = req.query;
+        const page = Math.max(parseInt(q.page) || 1, 1);
+        const limit = Math.min(parseInt(q.limit) || 10, 24);
+
+        // status: live | upcoming | sold | ended (comma allowed)
+        let statuses = csv(q.status).flatMap(s => s === 'ended' ? ENDED : [s]);
+        statuses = statuses.filter(s => ['live', 'upcoming', ...ENDED].includes(s));
+        if (!statuses.length) statuses = ['live', 'upcoming', ...ENDED];
+
+        const match = { adminStatus: 'approved', auctionStatus: { $in: statuses } };
+
+        const category = csv(q.category);
+        if (category.length) match.vehicleType = { $in: category };
+
+        const makes = csv(q.make);
+        if (makes.length) match.make = { $in: makes.map(looseRegex) };
+
+        const models = csv(q.model);
+        if (models.length) match.model = { $in: models.map(looseRegex) };
+
+        if (q.yearFrom || q.yearTo) {
+            match.year = {};
+            if (q.yearFrom) match.year.$gte = Number(q.yearFrom);
+            if (q.yearTo) match.year.$lte = Number(q.yearTo);
+        }
+
+        if (q.maxMileage) match.mileage = { $lte: Number(q.maxMileage) };
+
+        const emirates = csv(q.emirate);
+        if (emirates.length) match.emirate = { $in: emirates };
+
+        const enumFilters = {
+            transmission: 'transmission',
+            fuelType: 'fuelType',
+            drivetrain: 'drivetrain',
+            color: 'exteriorColor',
+            condition: 'overallCondition'
+        };
+
+        for (const [param, field] of Object.entries(enumFilters)) {
+            const vals = csv(q[param]);
+            if (vals.length) match[field] = { $in: vals };
+        }
+
+        const looseSearch = (v) => new RegExp(esc(v).replace(/[-_\s]+/g, '[-_\\s]'), 'i');
+        if (q.search) {
+            const r = looseSearch(String(q.search).trim());
+            match.$or = [{ make: r }, { model: r }, { trim: r }];
+        }
+
+        const from = q.startFrom ? new Date(q.startFrom) : null;
+        const to = q.startTo ? new Date(q.startTo) : null;
+        if ((from && !isNaN(from)) || (to && !isNaN(to))) {
+            match.auctionStartDateTime = {};
+            if (from && !isNaN(from)) match.auctionStartDateTime.$gte = from;
+            if (to && !isNaN(to)) match.auctionStartDateTime.$lt = to;
+        }
+
+        // ended page - side filter
+        if (q.endFrom || q.endTo) {
+            match.auctionEndDateTime = {};
+            if (q.endFrom) match.auctionEndDateTime.$gte = new Date(q.endFrom);
+            if (q.endTo) match.auctionEndDateTime.$lt = new Date(q.endTo);
+        }
+
+        const onlyLive = statuses.length === 1 && statuses[0] === 'live';
+        const onlyUpcoming = statuses.length === 1 && statuses[0] === 'upcoming';
+
+        const sortMap = {
+            ending_soon: { auctionEndDateTime: 1 },
+            starting_soon: { auctionStartDateTime: 1 },
+            newest: { createdAt: -1 },
+            price_low: { displayPrice: 1 },
+            price_high: { displayPrice: -1 },
+            recently_ended: { auctionEndDateTime: -1 },
+        };
+
+        const defaultSort = onlyLive ? sortMap.ending_soon
+            : onlyUpcoming ? { auctionStartDateTime: 1 }
+                : { auctionEndDateTime: -1 };
+
+        const sort = { ...(sortMap[q.sort] || defaultSort), _id: 1 };
+
+        const [result] = await Vehicle.aggregate([
+            { $match: match },
+            {
+                $addFields: {
+                    displayPrice: { $cond: [{ $eq: ['$priceType', 'fixed_price'] }, '$buyNowPrice', { $ifNull: ['$currentBid', '$startingBidPrice'] }] },
+                }
+            },
+            ...(q.minPrice || q.maxPrice ? [{
+                $match: {
+                    displayPrice: {
+                        ...(q.minPrice && { $gte: Number(q.minPrice) }),
+                        ...(q.maxPrice && { $lte: Number(q.maxPrice) }),
+                    },
+                }
+            }] : []),
+            { $sort: sort },
+            {
+                $facet: {
+                    data: [
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                        {
+                            $lookup: {
+                                from: 'bids',
+                                let: { vid: '$_id' },
+                                pipeline: [
+                                    { $match: { $expr: { $eq: ['$vehicleId', '$$vid'] }, status: { $ne: 'withdrawn' } } },
+                                    { $count: 'c' },
+                                ],
+                                as: 'bc',
+                            }
+                        },
+                        {
+                            $project: {
+                                make: 1, model: 1, year: 1, trim: 1, vehicleType: 1, bodyType: 1, listingId: 1, featuredListing: 1,
+                                drivetrain: 1, views: 1,
+                                imageCount: { $size: { $ifNull: ['$images', []] } },
+                                transmission: 1, fuelType: 1, mileage: 1, engineSize: 1, emirate: 1, city: 1,
+                                priceType: 1, startingBidPrice: 1, buyNowPrice: 1, currentBid: 1,
+                                auctionStatus: 1, auctionStartDateTime: 1, auctionEndDateTime: 1, soldOn: 1,
+                                image: { $arrayElemAt: ['$images.url', 0] },
+                                images: { $map: { input: { $slice: ['$images', 5] }, as: 'i', in: '$$i.url' } },
+                                soldPrice: { $cond: [{ $eq: ['$priceType', 'fixed_price'] }, '$buyNowPrice', '$currentBid'] },
+                                totalBids: { $ifNull: [{ $arrayElemAt: ['$bc.c', 0] }, 0] },
+                            }
+                        },
+                    ],
+                    total: [{ $count: 'c' }],
+                }
+            },
+        ]);
+
+        const total = result.total[0]?.c || 0;
+
+        res.status(200).json({
+            success: true,
+            data: result.data,
+            pagination: {
+                page,
+                limit,
+                total, totalPages: Math.ceil(total / limit)
+            },
+        });
+
+    } catch (err) {
+        console.log("getPublicAuctions Error :", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// get auction detail
+export const getPublicAuctionDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+        const v = await Vehicle.findOne({ _id: id, adminStatus: 'approved', auctionStatus: { $ne: 'draft' } }).lean();
+        if (!v) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+        const [seller, bids, totalBids] = await Promise.all([
+            Seller.findById(v.sellerId).select('businessName fullName createdAt').lean(), // Seller model import + fields confirm karo
+            Bid.find({ vehicleId: v._id, status: { $ne: 'withdrawn' } }).sort({ amount: -1 }).limit(4).select('amount createdAt').lean(),
+            Bid.countDocuments({ vehicleId: v._id, status: { $ne: 'withdrawn' } }),
+        ]);
+
+        // private fields hatao
+        for (const k of ['sellerId', 'documents', 'vin', 'reviewedBy', 'reviewedAt', 'rejectionReason', 'canceledByUserId', 'canceledBy', 'reservePrice',]) delete v[k];
+        v.images = (v.images || []).map(i => ({ url: i.url }));
+
+        res.status(200).json({
+            success: true,
+            data: {
+                ...v,
+                sellerInfo: seller ? { name: seller.businessName || seller.fullName, memberSince: seller.createdAt } : null,
+                recentBids: bids.map((b, i) => ({ label: `Bidder #${bids.length - i}`, amount: b.amount, createdAt: b.createdAt })),
+                totalBids,
+            },
+        });
+    } catch (err) {
+        console.log('getPublicAuctionDetail Error :', err);
+        res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
+
+// get upcoming auction dates
+export const getUpcomingAuctionDates = async (req, res) => {
+    try {
+        const now = new Date();
+
+        const data = await Vehicle.aggregate([
+            {
+                $match: {
+                    adminStatus: 'approved',
+                    auctionStatus: 'upcoming',
+                    auctionStartDateTime: { $gte: now }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: '%Y-%m-%d',
+                            date: '$auctionStartDateTime',
+                            timezone: 'Asia/Dubai'
+                        }
+                    },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    date: '$_id',
+                    count: 1
+                }
+            },
+            {
+                $sort: { date: 1 }
+            }
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: 'Upcoming auction dates fetched successfully',
+            data
+        });
+
+    } catch (err) {
+        console.log('getUpcomingAuctionDates Error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
         });
     }
 };
