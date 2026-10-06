@@ -215,7 +215,7 @@ export const addVehicle = async (req, res) => {
     };
 };
 
-// =========================== SELLER SIDE
+// ================================================= SELLER SIDE
 
 // stats - vehicles
 export const getVehicleStats = async (req, res) => {
@@ -350,13 +350,28 @@ export const getVehicleById = async (req, res) => {
     }
 };
 
-// =========================== USER SIDE
+// ================================================= USER SIDE
+
+const PUBLIC_STATUSES = ['upcoming', 'live', 'sold', 'unsold', 'reserve-not-met']; // draft and canceled are not in public
+
+const csv = (v) => (v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : []);
+const num = (v) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : null);
+
+const ENUM_PARAMS = {
+    category: 'vehicleType',
+    status: 'auctionStatus',
+    transmission: 'transmission',
+    fuelType: 'fuelType',
+    drivetrain: 'drivetrain',
+    exteriorColor: 'exteriorColor',
+    condition: 'overallCondition',
+};
 
 // get category counts
 export const getCategoryCounts = async (req, res) => {
     try {
         const counts = await Vehicle.aggregate([
-            { $match: { adminStatus: 'approved', auctionStatus: { $in: ['live', 'upcoming'] } } },
+            { $match: { adminStatus: 'approved', auctionStatus: { $in: PUBLIC_STATUSES } } },
             { $group: { _id: '$vehicleType', count: { $sum: 1 } } }
         ]);
 
@@ -373,6 +388,139 @@ export const getCategoryCounts = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Server Error Occured'
+        });
+    }
+};
+
+// get public vehicle - for vehicle list/filter
+export const getPublicVehicles = async (req, res) => {
+    try {
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 20);
+
+        const filter = { adminStatus: 'approved', auctionStatus: { $in: PUBLIC_STATUSES } };
+
+        for (const [param, field] of Object.entries(ENUM_PARAMS)) {
+            const values = csv(req.query[param]);
+            if (!values.length) continue;
+
+            const allowed = field === 'auctionStatus' ? PUBLIC_STATUSES : Vehicle.schema.path(field).enumValues;
+            const invalid = values.filter((v) => !allowed.includes(v));
+
+            if (invalid.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid ${param}: ${invalid.join(', ')}`
+                });
+            }
+            filter[field] = { $in: values };
+        }
+
+        const makes = csv(req.query.make);
+        const models = csv(req.query.model);
+        if (makes.length) filter.make = { $in: makes };
+        if (models.length) filter.model = { $in: models };
+
+        const range = (field, min, max) => {
+            const r = {};
+            if (min !== null) r.$gte = min;
+            if (max !== null) r.$lte = max;
+            if (Object.keys(r).length) filter[field] = r;
+        };
+        range('year', num(req.query.yearMin), num(req.query.yearMax));
+        range('mileage', num(req.query.mileageMin), num(req.query.mileageMax));
+
+        const [vehicles, total] = await Promise.all([
+            Vehicle.find(filter)
+                .collation({ locale: 'en', strength: 2 })
+                .select('listingId vehicleType fuelType engineSize make model year mileage images currentBid startingBidPrice buyNowPrice priceType auctionType auctionStatus auctionStartDateTime auctionEndDateTime emirate')
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean(),
+            Vehicle.countDocuments(filter).collation({ locale: 'en', strength: 2 }),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: "Vehicles data successfully fetched",
+            data: vehicles,
+            total, page,
+            pages: Math.ceil(total / limit)
+        });
+
+    } catch (err) {
+        console.log("getPublicVehicles error :", err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
+
+// get filter option - vehicle list
+export const getFilterOptions = async (req, res) => {
+    try {
+        const base = { adminStatus: 'approved', auctionStatus: { $in: PUBLIC_STATUSES } };
+
+        const [makes, ranges] = await Promise.all([
+            Vehicle.aggregate([
+                { $match: base },
+                { $group: { _id: '$make', models: { $addToSet: '$model' } } },
+                { $sort: { _id: 1 } },
+            ]),
+
+            Vehicle.aggregate([
+                { $match: base },
+                { $group: { _id: null, yearMin: { $min: '$year' }, yearMax: { $max: '$year' }, mileageMax: { $max: '$mileage' } } },
+            ]),
+        ]);
+
+        return res.json({
+            success: true,
+            message: "Apply filter options",
+            makes: makes.map((m) => ({ make: m._id, models: m.models.sort() })),
+            ranges: ranges[0] || null,
+        });
+
+    } catch (err) {
+        console.log("getFilterOptions error :", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// get public stats - home (after search bar)
+export const getPublicStats = async (req, res) => {
+    try {
+        const rows = await Vehicle.aggregate([
+            { $match: { adminStatus: 'approved', auctionStatus: { $in: PUBLIC_STATUSES } } },
+            { $group: { _id: '$auctionStatus', count: { $sum: 1 } } },
+        ]);
+
+        const by = Object.fromEntries(rows.map((r) => [r._id, r.count]));
+        const live = by.live || 0;
+        const upcoming = by.upcoming || 0;
+        const ended = (by.sold || 0) + (by.unsold || 0) + (by['reserve-not-met'] || 0);
+
+        return res.status(200).json({
+            success: true,
+            message: "Here is data",
+            stats: {
+                live,
+                upcoming,
+                ended,
+                total: live + upcoming + ended
+            },
+        });
+
+    } catch (err) {
+        console.log("getPublicStats error : ", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

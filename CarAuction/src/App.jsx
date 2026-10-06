@@ -7,7 +7,6 @@ import "react-toastify/dist/ReactToastify.css";
 import ScrollToTop from './Components/ScrollToTop';
 import HomePage from './Pages/HomePage';
 import VehicleListingPage from './Pages/VehicleListingPage';
-import VehicleDetail from './Components/VehicleDetail';
 import LiveAuctions from './Components/LiveAuctions';
 import LiveAuctionsDetail from './Components/LiveAuctionsDetail';
 import UpcomingAuctions from './Components/UpcomingAuctions';
@@ -57,16 +56,15 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path='/' element={<HomePage />} />
           <Route path='/vehicle-list' element={<VehicleListingPage />} />
-          <Route path='/vehicle-detail/:id' element={<VehicleDetail />} />
 
           <Route path='/live-auctions' element={<LiveAuctions />} />
           <Route path='/live-auction-detail/:id' element={<LiveAuctionsDetail />} />
 
           <Route path='/upcoming-auctions' element={<UpcomingAuctions />} />
-          <Route path='/upcoming-auctions-detail/:id' element={<UpcomingAuctionsDetail />} />
+          <Route path='/upcoming-auction-detail/:id' element={<UpcomingAuctionsDetail />} />
 
           <Route path='/ended-auctions' element={<EndedAuctions />} />
-          <Route path='/ended-auctions-detail/:id' element={<EndedAuctionsDetail />} />
+          <Route path='/ended-auction-detail/:id' element={<EndedAuctionsDetail />} />
 
           <Route path='/how-it-work' element={<HowItWorks />} />
           <Route path='/about-us' element={<AboutUs />} />
@@ -81,6 +79,7 @@ function App() {
 
           <Route path='/reupload-buyer-docs/:buyer_id/:token/:group' element={<ReUploadBuyerDocs />} />
           <Route path='/reupload-seller-docs/:seller_id/:token/:document' element={<ReUploadSellerDocs />} />
+          
         </Route>
 
         {/* ============ auth ============= */}

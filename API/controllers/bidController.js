@@ -13,6 +13,8 @@ import { emitToVehicle } from '../sockets/socketEmitter.js';
 export const placeBid = async (req, res) => {
     try {
         const { vehicleId, amount } = req.body;
+        const amt = Number(amount);
+
         const bidderId = req.user.id;
         let bidderType;
 
@@ -27,14 +29,14 @@ export const placeBid = async (req, res) => {
             });
         }
 
-        if (!vehicleId || !amount) {
+        if (!mongoose.isValidObjectId(vehicleId) || !Number.isFinite(amt) || amt <= 0) {
             return res.status(400).json({
                 success: false,
-                message: 'vehicleId and amount are required'
+                message: 'Valid vehicleId and amount are required'
             });
         }
 
-        const vehicle = await Vehicle.findById(vehicleId);
+        const vehicle = await Vehicle.findOne({ _id: vehicleId, adminStatus: 'approved' });
 
         if (!vehicle) {
             return res.status(404).json({
@@ -65,11 +67,18 @@ export const placeBid = async (req, res) => {
             });
         }
 
-        const minimumAllowed = vehicle.currentBid ?? vehicle.startingBidPrice;
-        if (amount <= minimumAllowed) {
+        if (!vehicle.auctionEndDateTime || vehicle.auctionEndDateTime <= new Date()) {
             return res.status(400).json({
                 success: false,
-                message: `Bid must be higher than ${minimumAllowed}`
+                message: 'This auction has ended'
+            });
+        }
+
+        const minimumAllowed = vehicle.currentBid ?? vehicle.startingBidPrice;
+        if (amt <= minimumAllowed) {
+            return res.status(400).json({
+                success: false,
+                message: `Bid must be higher than AED ${minimumAllowed.toLocaleString()}`
             });
         }
 
@@ -87,11 +96,11 @@ export const placeBid = async (req, res) => {
             bidderId: bidderId,
             bidderType,
             bidId: await getNextBidId(),
-            amount,
+            amount: amt,
             status: 'active'
         });
 
-        vehicle.currentBid = amount;
+        vehicle.currentBid = amt;
 
         // Anti-sniping check / extension check
         const MAX_EXTENSIONS = 5;
@@ -108,12 +117,16 @@ export const placeBid = async (req, res) => {
         await vehicle.save();
 
         // ---- NAYA: real-time-broadcast (bidding) ----
-        emitToVehicle(vehicleId, 'bidUpdate', {
-            vehicleId,
-            currentBid: vehicle.currentBid,
-            auctionEndDateTime: vehicle.auctionEndDateTime,
-            extensionCount: vehicle.extensionCount,
-        });
+        try {
+            emitToVehicle(vehicleId, 'bidUpdate', {
+                vehicleId,
+                currentBid: vehicle.currentBid,
+                auctionEndDateTime: vehicle.auctionEndDateTime,
+                extensionCount: vehicle.extensionCount,
+            });
+        } catch (e) {
+            console.error('[socket] bidUpdate emit failed:', e.message);
+        }
 
         // ---- NOTIFICATION TRIGGERS ----
         if (isFirstBid) {
@@ -123,11 +136,11 @@ export const placeBid = async (req, res) => {
                 type: 'new_bid_received',
                 vehicleId: vehicle._id,
                 title: 'New Bid Received',
-                message: `${vehicle.listingId} received a new bid of AED ${amount}.`,
+                message: `${vehicle.listingId} received a new bid of AED ${amt}.`,
             });
         }
 
-        const reserveJustMet = !wasReserveMetBefore && amount >= vehicle.reservePrice;
+        const reserveJustMet = !wasReserveMetBefore && amt >= vehicle.reservePrice;
         if (reserveJustMet) {
             await createNotification({
                 recipientId: vehicle.sellerId,
@@ -447,7 +460,7 @@ export const withdrawBid = async (req, res) => {
         } catch (socketErr) {
             console.error('[socket] bidUpdate-emit-failed:', socketErr.message);
         }
-       
+
         return res.status(200).json({
             success: true,
             message: 'Bid withdrawn successfully'
@@ -671,5 +684,57 @@ export const getTopBidders = async (req, res) => {
             success: false,
             message: "Server Error Occurred"
         });
+    }
+};
+
+// ============================== USER 
+
+// get particular public auction bids
+export const getPublicAuctionBids = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found'
+            })
+        };
+
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 20);
+
+        const vehicle = await Vehicle.findOne({ _id: id, adminStatus: 'approved', auctionStatus: { $ne: 'draft' } }).select('_id').lean();
+        if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+        const base = { vehicleId: vehicle._id, status: { $ne: 'withdrawn' } };
+
+        const [firstBids, bids, total] = await Promise.all([
+            Bid.aggregate([
+                { $match: base },
+                { $group: { _id: '$bidderId', first: { $min: '$createdAt' } } },
+                { $sort: { first: 1, _id: 1 } },
+            ]),
+            Bid.find(base).sort({ amount: -1, createdAt: -1, _id: 1 })
+                .skip((page - 1) * limit).limit(limit)
+                .select('amount createdAt bidderId').lean(),
+            Bid.countDocuments(base),
+        ]);
+
+        const numMap = new Map(firstBids.map((b, i) => [String(b._id), i + 1]));
+
+        res.status(200).json({
+            success: true,
+            data: bids.map(b => ({
+                _id: b._id,
+                label: `Bidder #${numMap.get(String(b.bidderId))}`,
+                amount: b.amount,
+                createdAt: b.createdAt,
+            })),
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        });
+    } catch (err) {
+        console.log('getPublicAuctionBids Error :', err);
+        res.status(500).json({ success: false, message: 'Server Error Occured' });
     }
 };

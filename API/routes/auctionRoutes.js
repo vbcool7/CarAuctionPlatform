@@ -1,6 +1,7 @@
 
 import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
+import { optionalAuth } from '../middlewares/optionalAucth.js';
 import requirePermission from '../middlewares/requirePermission.js';
 
 import {
@@ -15,7 +16,6 @@ const router = express.Router();
 // ============================================= SELLER
 router.get('/get-my-auctions', authMiddleware(['seller']), getMyAuctions);
 router.get('/my-auction-detail/:id', authMiddleware(['seller']), getMyAuctionById);
-
 
 // ============================================= SELLER + ADMIN + MANAGER
 router.patch('/cancel-auction/:id', authMiddleware(['seller', 'admin', 'auctionManager']), requirePermission('manageAuctions'), cancelAuction);
@@ -32,7 +32,7 @@ router.get('/get-lost-auctions-buyer', authMiddleware(['buyer']), getLostAuction
 router.get('/get-live-auctions', getHomeLiveAuctions);
 router.get('/get-solded-auctions', getHomeSoldedVehicles);
 router.get('/get-auction-list', getPublicAuctions);
-router.get('/get-public-auction-detail/:id', getPublicAuctionDetail);
+router.get('/get-public-auction-detail/:id', optionalAuth, getPublicAuctionDetail);
 router.get('/get-upcoming-auction-dates', getUpcomingAuctionDates);
 
 export default router;

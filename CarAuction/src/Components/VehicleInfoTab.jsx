@@ -34,7 +34,7 @@ function VehicleInfoTab({ vehicle }) {
   } = vehicle;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
 
       {/* Basic Details */}
       <div>
@@ -71,7 +71,7 @@ function VehicleInfoTab({ vehicle }) {
       {/* Technical */}
       <div className="mt-6 sm:mt-0">
         <p className="text-slate-500 text-xs uppercase tracking-wider mb-3 font-medium">
-          Technical
+          Technical Details
         </p>
 
         <RowData
@@ -99,7 +99,6 @@ function VehicleInfoTab({ vehicle }) {
         />
       </div>
 
-      {/* Empty third column intentionally removed */}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Seller from '../models/sellerModelSchema.js';
 const authMiddleware = (roles = []) => {
     return async (req, res, next) => {
         const authHeader = req.headers.authorization;
+        
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return res.status(401).json({ success: false, message: "Unauthorized" });
         }

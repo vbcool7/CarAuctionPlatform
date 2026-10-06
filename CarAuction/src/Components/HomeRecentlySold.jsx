@@ -70,7 +70,7 @@ function HomeRecentlySold() {
                         {soldAuctions.map((vehicle, index) => (
                             <SwiperSlide key={index}>
                                 <div
-                                    onClick={() => navigate(`/ended-auctions-detail/${vehicle._id}`)}
+                                    onClick={() => navigate(`/ended-auction-detail/${vehicle._id}`)}
                                     className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col justify-between cursor-pointer">
 
                                     {/* Image & SOLD Badge */}

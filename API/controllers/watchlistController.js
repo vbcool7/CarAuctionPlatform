@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import Watchlist from "../models/watchlistModelSchema.js";
 import Vehicle from "../models/vehicleModelSchema.js";
 
+const PUBLIC_STATUSES = ['upcoming', 'live', 'sold', 'unsold', 'reserve-not-met'];
+
 // Add / Remove vehicle from watchlist
 export const toggleWatchlist = async (req, res) => {
     try {
@@ -18,7 +20,7 @@ export const toggleWatchlist = async (req, res) => {
             });
         }
 
-        const vehicle = await Vehicle.findById(vehicleId).select('sellerId auctionStatus');
+       const vehicle = await Vehicle.findById(vehicleId).select('sellerId auctionStatus adminStatus');
 
         if (!vehicle) {
             return res.status(404).json({
@@ -27,7 +29,8 @@ export const toggleWatchlist = async (req, res) => {
             });
         }
 
-        if (vehicle.auctionStatus === 'draft') {
+        // draft wala check hata do, aur existing check ke BAAD, ADD se pehle ye lagao:
+        if (vehicle.adminStatus !== 'approved' || !PUBLIC_STATUSES.includes(vehicle.auctionStatus)) {
             return res.status(400).json({
                 success: false,
                 message: "This vehicle is not available for watchlisting"
@@ -243,6 +246,32 @@ export const clearWatchlist = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// get my watchlist vehicle ids - for heart state on public pages
+export const getMyWatchlistIds = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const userType = req.user.role === 'seller' ? 'Seller' : 'Buyer';
+
+        const doc = await Watchlist.findOne({ userId, userType })
+            .select('items.vehicleId')
+            .lean();
+
+        const ids = (doc?.items || []).map((i) => String(i.vehicleId));
+
+        return res.status(200).json({
+            success: true,
+            ids
+        });
+
+    } catch (err) {
+        console.error('getMyWatchlistIds error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured',
         });
     }
 };

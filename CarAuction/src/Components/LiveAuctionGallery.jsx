@@ -50,7 +50,7 @@ function LiveAuctionGallery({ images = [], video = null, status = null }) {
             <div className="flex flex-col gap-3 h-full">
 
                 {/* Main Viewer — flex-1 instead of aspect ratio */}
-                <div className="relative w-full flex-1 min-h-80 rounded-xl overflow-hidden bg-[#0F172A] group">
+                <div className="relative w-full  flex-1 rounded-xl overflow-hidden bg-[#0F172A] group">
 
                     {status === "live" && (
                         <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-[#DC2626] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
@@ -84,7 +84,7 @@ function LiveAuctionGallery({ images = [], video = null, status = null }) {
                     ) : (
                         <div
                             ref={imageRef}
-                            className="w-full h-85 cursor-zoom-in relative overflow-hidden"
+                            className="w-full h-full cursor-zoom-in relative overflow-hidden"
                             onClick={() => setIsZoomed((z) => !z)}
                             onMouseMove={handleMouseMove}
                             onMouseLeave={() => setIsZoomed(false)}

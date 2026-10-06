@@ -1,8 +1,15 @@
 
 import React from 'react';
-import HeroImg from '../assets/Images/HeroImg.jpg'
+import { useNavigate } from 'react-router-dom';
+import HeroImg from '../assets/Images/HeroImg.jpg';
+
+import useAuthStore from '../store/useAuthStore';
 
 function Hero() {
+
+  const navigate = useNavigate();
+  const { user, token } = useAuthStore();
+
   return (
     <section className="relative w-full h-150 overflow-hidden">
 
@@ -29,13 +36,27 @@ function Hero() {
 
         {/* Buttons */}
         <div className="flex flex-wrap gap-4">
-          <button className="group relative bg-[#D97706] text-white px-6 md:px-10 py-3 md:py-4 rounded-full font-semibold transition-all hover:shadow-[0_0_20px_rgba(217,119,6,0.5)] active:scale-95">
+          <button
+            onClick={() => navigate('/vehicle-list')}
+            className="group relative bg-[#D97706] text-white px-6 md:px-10 py-3 md:py-4 rounded-full font-semibold transition-all hover:shadow-[0_0_20px_rgba(217,119,6,0.5)] active:scale-95 cursor-pointer">
             Browse Auctions
           </button>
 
-          <button className="border border-white/30 bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-3 md:py-4 rounded-full font-semibold hover:bg-white hover:text-[#0F172A] transition-all duration-300 active:scale-95">
-            Sell Your Car
-          </button>
+          {(!token || user?.role === "seller") && (
+            <button
+              onClick={() => {
+                if (!token) {
+                  navigate("/seller-registration");
+                  return;
+                }
+
+                navigate("/seller-dashboard");
+              }}
+              className="border border-white/30 bg-white/10 backdrop-blur-md text-white px-6 md:px-10 py-3 md:py-4 rounded-full font-semibold hover:bg-white hover:text-[#0F172A] transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Sell Your Car
+            </button>
+          )}
         </div>
       </div>
     </section>

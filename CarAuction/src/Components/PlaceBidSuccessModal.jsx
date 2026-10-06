@@ -1,22 +1,14 @@
 
-import { CheckCircle2, Bell, Copy } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { useEffect } from 'react';
-import { UseCountDown } from './UseCountDown';
+import { CheckCircle2, Copy } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
-function BidPlacedModal({ vehicle, newBid, previousBid, previousPage, setCurrentPage, onClose }) {
+import { formatLabel } from '../utils/formatters';
+import { UseCountdown } from './SharedComponents/UseCountdown';
 
-    const { days, hours, mins } = UseCountDown(vehicle.auctionEndDateTime);
+function PlaceBidSuccessModal({ vehicle, newBid, previousBid, onClose }) {
 
-    const handleViewAuctionDetails = () => {
-        if (setCurrentPage && previousPage) setCurrentPage(previousPage);
-        if (onClose) onClose();
-    };
-
-    const handleViewMyBids = () => {
-        if (setCurrentPage) setCurrentPage('bids');
-        if (onClose) onClose();
-    };
+    const { days, hours, mins } = UseCountdown(vehicle.auctionEndDateTime);
 
     useEffect(() => {
         const end = Date.now() + 1500;
@@ -41,6 +33,7 @@ function BidPlacedModal({ vehicle, newBid, previousBid, previousPage, setCurrent
                 </button>
 
                 <div className="h-full max-h-[90vh] overflow-y-auto">
+
                     {/* Header */}
                     <div className="px-6 pt-7 pb-5 text-center border-b border-slate-100">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 ring-8 ring-green-50/70">
@@ -132,12 +125,12 @@ function BidPlacedModal({ vehicle, newBid, previousBid, previousPage, setCurrent
                                 </p>
 
                                 <p className="mt-1 text-sm font-semibold text-[#0B1E3D]">
-                                    {vehicle.year} {vehicle.make} {vehicle.model}
+                                    {vehicle.year} {formatLabel(vehicle.make)} {formatLabel(vehicle.model)}
                                 </p>
 
                                 <div className="mt-1.5 flex items-center gap-1.5">
                                     <p className="text-xs text-slate-400">
-                                        VIN: {vehicle.vin}
+                                        Listing ID: {vehicle.listingId}
                                     </p>
 
                                     <button
@@ -167,19 +160,12 @@ function BidPlacedModal({ vehicle, newBid, previousBid, previousPage, setCurrent
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-3 px-6 py-5">
+                    <div className="px-6 py-5">
                         <button
-                            onClick={handleViewAuctionDetails}
-                            className="flex-1 rounded-lg border border-[#0B1E3D] bg-white px-4 py-2.5 text-sm font-semibold text-[#0B1E3D] transition hover:bg-[#0B1E3D] hover:text-white"
+                            onClick={onClose}
+                            className="w-full rounded-lg bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#B45F05]"
                         >
-                            View Auction Details
-                        </button>
-
-                        <button
-                            onClick={handleViewMyBids}
-                            className="flex-1 rounded-lg bg-[#D97706] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#B45F05]"
-                        >
-                            View My Bids
+                            Continue Bidding
                         </button>
                     </div>
 
@@ -189,4 +175,4 @@ function BidPlacedModal({ vehicle, newBid, previousBid, previousPage, setCurrent
     );
 }
 
-export default BidPlacedModal;
+export default PlaceBidSuccessModal;

@@ -68,9 +68,8 @@ function HomeCategory() {
                     >
                         {CATEGORIES.map((category, index) => (
                             <SwiperSlide key={index}>
-
                                 <div
-                                    onClick={() => handleCategoryClick(category.name)}
+                                    onClick={() => handleCategoryClick(category.value)}
                                     className='flex flex-col items-center p-3 border border-gray-100 rounded-2xl hover:shadow-xl transition-all cursor-pointer group bg-gray-50/50'>
                                     <div className='w-full h-28 md:h-32 overflow-hidden rounded-xl mb-3'>
                                         <img

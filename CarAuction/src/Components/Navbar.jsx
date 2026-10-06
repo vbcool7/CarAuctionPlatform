@@ -5,13 +5,18 @@ import { IoHeartOutline, IoMenu, IoClose, IoPersonOutline, IoChevronDown } from 
 import { Car, ChevronDown, Gavel, Heart, LayoutDashboard, LogOut, User } from 'lucide-react';
 
 import useAuthStore from '../store/useAuthStore';
+import { useGetWatchlistIds } from '../hook/useWatchlist';
 
 function Navbar() {
 
-    const dropdownRef = useRef(null);
+    const auctionDropdownRef = useRef(null);
+    const profileDropdownRef = useRef(null);
     const navigate = useNavigate();
 
-    const { user, logout } = useAuthStore();
+    const { user, token, logout } = useAuthStore();
+    const { data: watchlistIds } = useGetWatchlistIds();
+
+    const watchlistCount = watchlistIds?.size ?? 0;
 
     const [isOpen, setIsOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -36,15 +41,43 @@ function Navbar() {
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            if (
+                auctionDropdownRef.current &&
+                !auctionDropdownRef.current.contains(event.target)
+            ) {
                 setIsAuctionOpen(false);
             }
+
+            if (
+                profileDropdownRef.current &&
+                !profileDropdownRef.current.contains(event.target)
+            ) {
+                setIsProfileOpen(false);
+            }
         };
+
         document.addEventListener('mousedown', handleClickOutside);
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
+
+    // navigate to dashboard
+    const goToDashboard = (page) => {
+        const base = user?.role === 'seller' ? '/seller-dashboard' : '/buyer-dashboard';
+        navigate(`${base}?page=${page}`);
+        setIsProfileOpen(false);
+    };
+
+    const handleWatchlistClick = () => {
+        if (!token) {
+            toast('Please login to view your watchlist');
+            navigate('/login');
+            return;
+        }
+        goToDashboard('watchlist');
+    };
 
     return (
         <nav className="sticky top-0 z-50 bg-[#0F172A] border-b border-[#334155] py-5">
@@ -63,7 +96,7 @@ function Navbar() {
                     <NavLink to="/" className={navLinkClass}>Home</NavLink>
 
                     {/* auction */}
-                    <div className="relative" ref={dropdownRef}>
+                    <div className="relative" ref={auctionDropdownRef}>
                         <button
                             onClick={() => setIsAuctionOpen(!isAuctionOpen)}
                             className="flex items-center gap-1 text-[#94A3B8] hover:text-white transition-colors cursor-pointer"
@@ -107,12 +140,21 @@ function Navbar() {
                 {/* Right Side Actions (Heart + Auth Buttons) */}
                 <div className="flex items-center gap-3">
 
-                    <button className='text-white text-xl hover:text-amber-400  transition-colors'>
+                    <button
+                        onClick={handleWatchlistClick}
+                        aria-label="Open watchlist"
+                        className="relative text-white text-xl hover:text-amber-400 transition-colors"
+                    >
                         <IoHeartOutline />
+                        {token && watchlistCount > 0 && (
+                            <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-[#D97706] text-[10px] font-bold leading-none text-white flex items-center justify-center">
+                                {watchlistCount > 99 ? '99+' : watchlistCount}
+                            </span>
+                        )}
                     </button>
 
                     {user ? (
-                        <div className="relative">
+                        <div className="relative" ref={profileDropdownRef}>
                             {/* Profile Button */}
                             <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -191,23 +233,15 @@ function Navbar() {
                                             </button>
 
                                             <button
-                                                // onClick={() => {
-                                                //     navigate('/my-bids');
-                                                //     setIsProfileOpen(false);
-                                                // }}
-                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
-                                            >
+                                                onClick={() => goToDashboard('bids')}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors">
                                                 <Gavel size={17} />
                                                 My Bids
                                             </button>
 
                                             <button
-                                                // onClick={() => {
-                                                //     navigate('/watchlist');
-                                                //     setIsProfileOpen(false);
-                                                // }}
-                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
-                                            >
+                                               onClick={() => goToDashboard('watchlist')}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors">
                                                 <Heart size={17} />
                                                 Watchlist
                                             </button>
@@ -231,10 +265,7 @@ function Navbar() {
                                             </button>
 
                                             <button
-                                                // onClick={() => {
-                                                //     navigate('/my-vehicles');
-                                                //     setIsProfileOpen(false);
-                                                // }}
+                                                onClick={() => goToDashboard('my-vehicles')}
                                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
                                             >
                                                 <Car size={17} />
@@ -242,10 +273,7 @@ function Navbar() {
                                             </button>
 
                                             <button
-                                                // onClick={() => {
-                                                //     navigate('/my-auctions');
-                                                //     setIsProfileOpen(false);
-                                                // }}
+                                                onClick={() => goToDashboard('my-auctions')}
                                                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 hover:text-white transition-colors"
                                             >
                                                 <Gavel size={17} />

@@ -14,6 +14,9 @@ import { getPaginationRange } from './utils/getPaginationRange';
 import { useGetPublicAuctions } from '../hook/useAuction';
 import { formatLabel, formatPrice } from '../utils/formatters';
 import { UseCountdown } from './SharedComponents/UseCountdown';
+import useAuthStore from '../store/useAuthStore';
+import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
+import { toast } from 'react-toastify';
 
 
 const stats = [
@@ -76,17 +79,10 @@ const AuctionTimeLeft = ({ auctionEndDateTime }) => {
   );
 };
 
-// sidebar filter
-const dayRange = (dateStr) => {
-  if (!dateStr) return {};
-  const from = new Date(dateStr); from.setHours(0, 0, 0, 0);
-  const to = new Date(from); to.setDate(to.getDate() + 1);
-  return { from: from.toISOString(), to: to.toISOString() };
-};
-
 function LiveAuctions() {
 
   const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
 
   const [view, setView] = useState('grid');
   const [page, setPage] = useState(1);
@@ -98,7 +94,7 @@ function LiveAuctions() {
   const params = mapFiltersToParams(filters, debouncedSearch);
 
   const { data, isLoading, isError } = useGetPublicAuctions({
-    status: 'live', page, limit: 10, ...params, 
+    status: 'live', page, limit: 10, ...params,
     category: sidebarFilters.vehicleType,
     make: sidebarFilters.make,
     fuelType: sidebarFilters.fuelType,
@@ -106,6 +102,9 @@ function LiveAuctions() {
     minPrice: sidebarFilters.minPrice,
     maxPrice: sidebarFilters.maxPrice,
   });
+
+  const { data: watchlistIds } = useGetWatchlistIds();
+  const { mutate: toggleWatchlist, isPending, variables: pendingId } = useToggleWatchlist();
 
   const liveVehicles = data?.data ?? [];
   const totalPages = data?.pagination?.totalPages || 1;
@@ -126,6 +125,28 @@ function LiveAuctions() {
 
   if (isLoading) return <p className="p-10 text-center">Loading live auctions....</p>;
   if (isError) return <p className="p-10 text-center text-red-500">Failed to load live auctions</p>;
+
+  // watchlist handler
+  const handleWatchlistClick = (e, vehicle) => {
+    e.stopPropagation();
+
+    if (!token) {
+      toast.info('Please login to add vehicles to your watchlist');
+      navigate('/login');
+      return;
+    }
+
+    toggleWatchlist(vehicle._id, {
+      onSuccess: (data) => {
+        toast.success(data?.message || 'Watchlist updated successfully');
+      },
+      onError: (error) => {
+        toast.error(
+          error?.response?.data?.message || 'Failed to update watchlist'
+        );
+      },
+    });
+  };
 
   return (
     <section className='w-full'>
@@ -231,112 +252,131 @@ function LiveAuctions() {
                   </p>
                 </div>
               ) : (
-                liveVehicles.map((vehicle, index) => (
-                  <div
-                    key={vehicle._id || index}
-                    className="flex flex-col md:flex-row gap-3 p-4 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300">
+                liveVehicles.map((vehicle, index) => {
 
-                    {/* 1. Image Section */}
-                    <div className="relative w-full sm:w-72 h-55 rounded-xl overflow-hidden shrink-0 group">
-                      <img
-                        src={vehicle.image}
-                        alt={`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                  const isWatchlisted = !!watchlistIds?.has(vehicle._id);
+                  const isToggling = isPending && pendingId === vehicle._id;
 
-                      {/* Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#D97706] backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                        </span>
-                        Live
-                      </div>
+                  return (
+                    <div
+                      key={vehicle._id || index}
+                      className="flex flex-col md:flex-row gap-3 p-4 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300">
 
-                      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10">
-                        <HiCamera size={14} /> {vehicle.imageCount ?? 0} Photos
-                      </div>
-                    </div>
+                      {/* 1. Image Section */}
+                      <div className="relative w-full sm:w-72 h-55 rounded-xl overflow-hidden shrink-0 group">
+                        <img
+                          src={vehicle.image}
+                          alt={`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
 
-                    {/* 2. Details Section */}
-                    <div className="flex flex-col justify-between grow min-w-0">
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <span className="text-[#D97706] text-[10px] font-extrabold uppercase tracking-[0.2em]">Live Auction</span>
-                          <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{vehicle.listingId || 'NA'}</span>
+                        {/* Badge */}
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#D97706] backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-lg uppercase tracking-wider">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                          </span>
+                          Live
                         </div>
 
-                        <h3 className="text-lg font-bold text-[#0F172A] leading-tight">{`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}</h3>
-
-                        {/* Quick Specs - Refined Design */}
-                        <div className="flex items-center gap-3 mt-4 text-[12px] text-slate-600">
-                          {[
-                            { icon: HiOutlineCog, val: formatLabel(vehicle.transmission) },
-                            { icon: HiOutlineTruck, val: formatLabel(vehicle.bodyType) },
-                            { icon: HiOutlineBeaker, val: formatLabel(vehicle.fuelType) },
-                            { icon: HiOutlineViewGrid, val: formatLabel(vehicle.drivetrain) }
-                          ].map((spec, i) => (
-                            <div key={i} className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                              <spec.icon className="text-[#D97706]" size={14} />
-                              {spec.val}
-                            </div>
-                          ))}
+                        <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10">
+                          <HiCamera size={14} /> {vehicle.imageCount ?? 0} Photos
                         </div>
                       </div>
 
-                      {/* Footer: Metadata + Actions */}
-                      <div className="flex flex-wrap items-center justify-between pt-3 gap-6">
-                        <div className="flex gap-8">
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                              {vehicle.priceType === 'fixed_price'
-                                ? 'Buy Now Price'
-                                : (vehicle.totalBids ?? 0) > 0
-                                  ? 'Current Bid'
-                                  : 'Starting Bid'}
-                            </p>
+                      {/* 2. Details Section */}
+                      <div className="flex flex-col justify-between grow min-w-0">
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <span className="text-[#D97706] text-[10px] font-extrabold uppercase tracking-[0.2em]">Live Auction</span>
+                            <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{vehicle.listingId || 'NA'}</span>
+                          </div>
 
-                            <p className="font-bold text-[#0F172A] text-md mt-0.5">
-                              {formatPrice(
-                                vehicle.priceType === 'fixed_price'
-                                  ? vehicle.buyNowPrice
+                          <h3 className="text-lg font-bold text-[#0F172A] leading-tight">{`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}</h3>
+
+                          {/* Quick Specs - Refined Design */}
+                          <div className="flex items-center gap-3 mt-4 text-[12px] text-slate-600">
+                            {[
+                              { icon: HiOutlineCog, val: formatLabel(vehicle.transmission) },
+                              { icon: HiOutlineTruck, val: formatLabel(vehicle.bodyType) },
+                              { icon: HiOutlineBeaker, val: formatLabel(vehicle.fuelType) },
+                              { icon: HiOutlineViewGrid, val: formatLabel(vehicle.drivetrain) }
+                            ].map((spec, i) => (
+                              <div key={i} className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                                <spec.icon className="text-[#D97706]" size={14} />
+                                {spec.val}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Footer: Metadata + Actions */}
+                        <div className="flex flex-wrap items-center justify-between pt-3 gap-6">
+                          <div className="flex gap-8">
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                                {vehicle.priceType === 'fixed_price'
+                                  ? 'Buy Now Price'
                                   : (vehicle.totalBids ?? 0) > 0
-                                    ? vehicle.currentBid
-                                    : vehicle.startingBidPrice
-                              )}
-                            </p>
+                                    ? 'Current Bid'
+                                    : 'Starting Bid'}
+                              </p>
+
+                              <p className="font-bold text-[#0F172A] text-md mt-0.5">
+                                {formatPrice(
+                                  vehicle.priceType === 'fixed_price'
+                                    ? vehicle.buyNowPrice
+                                    : (vehicle.totalBids ?? 0) > 0
+                                      ? vehicle.currentBid
+                                      : vehicle.startingBidPrice
+                                )}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Location</p>
+                              <p className="flex items-center gap-1 text-[13px] font-semibold text-[#0F172A] mt-0.5">
+                                {formatLabel(vehicle.emirate)}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                                Time Left
+                              </p>
+
+                              <AuctionTimeLeft auctionEndDateTime={vehicle.auctionEndDateTime} />
+                            </div>
                           </div>
 
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Location</p>
-                            <p className="flex items-center gap-1 text-[13px] font-semibold text-[#0F172A] mt-0.5">
-                              {formatLabel(vehicle.emirate)}
-                            </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => navigate(`/live-auction-detail/${vehicle._id}`)}
+                              className="bg-[#0B1E3D] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[#1e3a6a] active:scale-95 shadow-md hover:shadow-lg">
+                              View Details
+                            </button>
+
+                            <button
+                              onClick={(e) => handleWatchlistClick(e, vehicle)}
+                              disabled={isToggling}
+                              className={`p-2 border rounded-xl transition-colors 
+                                ${isWatchlisted
+                                  ? "bg-rose-50 text-rose-500 border-rose-200 hover:bg-rose-100"
+                                  : "border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300"
+                                }`}
+                            >
+                              <HiOutlineHeart
+                                size={18}
+                                className={isWatchlisted ? "fill-current" : ""}
+                              />
+                            </button>
+
                           </div>
-
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                              Time Left
-                            </p>
-
-                            <AuctionTimeLeft auctionEndDateTime={vehicle.auctionEndDateTime} />
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => navigate(`/live-auction-detail/${vehicle._id}`)}
-                            className="bg-[#0B1E3D] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[#1e3a6a] active:scale-95 shadow-md hover:shadow-lg">
-                            View Details
-                          </button>
-                          <button className="p-2.5 border border-slate-200 rounded-xl text-slate-400 hover:text-[#D97706] hover:border-[#D97706] transition-colors">
-                            <HiOutlineHeart size={20} />
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
 
               {/* Pagination */}

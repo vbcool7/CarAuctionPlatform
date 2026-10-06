@@ -180,36 +180,6 @@ export const useGetHomeSoldAuctions = () => {
 };
 
 // get all auctions
-// export const useGetPublicAuctions = ({
-//     status = 'live', page = 1, limit = 10, search = '', sort = 'ending_soon',
-//     startFrom = '', startTo = '', category, make, emirate, minPrice, maxPrice, fuelType, endFrom, endTo
-// } = {}) => {
-//     return useQuery({
-//         queryKey: ['publicAuctions', status, page, limit, search, sort, startFrom, startTo, category, make, emirate, minPrice, maxPrice, fuelType, endFrom, endTo],
-
-//         queryFn: async () => {
-//             const params = new URLSearchParams({ status, page, limit, sort });
-
-//             if (search.trim()) params.append('search', search.trim());
-//             if (startFrom) params.append('startFrom', startFrom);
-//             if (startTo) params.append('startTo', startTo);
-//             if (category) params.append('category', category);
-//             if (make) params.append('make', make);
-//             if (emirate) params.append('emirate', emirate);
-//             if (minPrice) params.append('minPrice', minPrice);
-//             if (maxPrice) params.append('maxPrice', maxPrice);
-//             if (fuelType) params.append('fuelType', fuelType);
-//             if (endFrom) params.append('endFrom', endFrom);
-//             if (endTo) params.append('endTo', endTo);
-
-//             const res = await API.get(`/auction/get-auction-list?${params.toString()}`);
-//             return res.data;
-//         },
-//         placeholderData: keepPreviousData,
-//         staleTime: 30_000,
-//     });
-// };
-
 export const useGetPublicAuctions = ({
     status = 'live', page = 1, limit = 10,
     search = '', sort='',
@@ -313,7 +283,7 @@ export const useGetPublicAuctions = ({
 // get auction detail
 export const usePublicAuctionDetail = (id) => {
     return useQuery({
-        queryKey: ['publicAuctions', id],
+        queryKey: ['publicAuctionDetail', id],
 
         queryFn: async () => {
             const res = await API.get(`/auction/get-public-auction-detail/${id}`);

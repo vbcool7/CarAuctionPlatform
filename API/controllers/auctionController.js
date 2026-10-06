@@ -1529,30 +1529,110 @@ export const getPublicAuctions = async (req, res) => {
 export const getPublicAuctionDetail = async (req, res) => {
     try {
         const { id } = req.params;
-        if (!mongoose.isValidObjectId(id)) return res.status(404).json({ success: false, message: 'Vehicle not found' });
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found'
+            });
+        }
 
         const v = await Vehicle.findOne({ _id: id, adminStatus: 'approved', auctionStatus: { $ne: 'draft' } }).lean();
-        if (!v) return res.status(404).json({ success: false, message: 'Vehicle not found' });
 
-        const [seller, bids, totalBids] = await Promise.all([
-            Seller.findById(v.sellerId).select('businessName fullName createdAt').lean(), // Seller model import + fields confirm karo
-            Bid.find({ vehicleId: v._id, status: { $ne: 'withdrawn' } }).sort({ amount: -1 }).limit(4).select('amount createdAt').lean(),
+        if (!v) {
+            return res.status(404).json({
+                success: false,
+                message: 'Vehicle not found'
+            })
+        };
+
+        const [seller, bids, totalBids, bidderIds] = await Promise.all([
+            Seller.findById(v.sellerId).select('businessName fullName profileImage businessType createdAt').lean(),
+            Bid.find({
+                vehicleId: v._id,
+                status: { $ne: 'withdrawn' }
+            }).sort({ amount: -1 }).limit(4).select('amount createdAt bidderId').lean(),
+
             Bid.countDocuments({ vehicleId: v._id, status: { $ne: 'withdrawn' } }),
+            Bid.distinct('bidderId', { vehicleId: v._id, status: { $ne: 'withdrawn' } }),
         ]);
 
-        // private fields hatao
-        for (const k of ['sellerId', 'documents', 'vin', 'reviewedBy', 'reviewedAt', 'rejectionReason', 'canceledByUserId', 'canceledBy', 'reservePrice',]) delete v[k];
+        // recent bids: ended => masked name, warna stable anonymous label
+        let recentBids;
+
+        if (ENDED.includes(v.auctionStatus)) {
+            const ids = [...new Set(bids.map(b => String(b.bidderId)))];
+            const [buyers, sellers] = await Promise.all([
+                Buyer.find({ _id: { $in: ids } }).select('firstName lastName').lean(),
+                Seller.find({ _id: { $in: ids } }).select('fullName').lean(),
+            ]);
+
+            const names = new Map();
+            buyers.forEach(b => names.set(String(b._id), `${b.firstName || ''} ${b.lastName || ''}`));
+            sellers.forEach(s => names.set(String(s._id), s.fullName));
+
+            recentBids = bids.map(b => ({
+                bidder: maskName(names.get(String(b.bidderId))),
+                amount: b.amount,
+                createdAt: b.createdAt,
+            }));
+        } else {
+            const labels = new Map();
+            [...bids].reverse().forEach(b => {
+                const k = String(b.bidderId);
+                if (!labels.has(k)) labels.set(k, labels.size + 1);
+            });
+
+            recentBids = bids.map(b => ({
+                label: `Bidder #${labels.get(String(b.bidderId))}`,
+                amount: b.amount,
+                createdAt: b.createdAt,
+            }));
+        }
+
+        // check owner for bid btn to hide or not
+        const isOwner = !!req.user
+            && req.user.role === 'seller'
+            && String(v.sellerId) === String(req.user.id);
+
+        let myActiveBid = null;
+
+        if (req.user && !isOwner) {
+            const mine = await Bid.findOne({
+                vehicleId: v._id,
+                bidderId: req.user.id,
+                status: 'active'
+            }).select('amount').lean();
+            if (mine) myActiveBid = { _id: mine._id, amount: mine.amount };
+        }
+        
+        // don't show private fields
+        for (const k of [
+            'sellerId', 'vin', 'reviewedBy', 'reviewedAt', 'rejectionReason',
+            'canceledByUserId', 'canceledBy', 'reservePrice',
+            'cancellationReason', 'statusAtCancellation', 'canceledAt',
+            'autoRelist', 'vinDecoded', 'allowBiddersToSave', 'extensionCount', '__v',
+        ]) delete v[k];
         v.images = (v.images || []).map(i => ({ url: i.url }));
 
         res.status(200).json({
             success: true,
             data: {
                 ...v,
-                sellerInfo: seller ? { name: seller.businessName || seller.fullName, memberSince: seller.createdAt } : null,
-                recentBids: bids.map((b, i) => ({ label: `Bidder #${bids.length - i}`, amount: b.amount, createdAt: b.createdAt })),
-                totalBids,
+                sellerInfo: seller ? {
+                    name: seller.businessName || seller.fullName,
+                    profileImage: seller.profileImage,
+                    businessType: seller.businessType,
+                    memberSince: seller.createdAt
+                } : null,
+
+                recentBids,
+                totalBids, bidderCount: bidderIds.length,
+                isOwner,
+                myActiveBid,
             },
         });
+
     } catch (err) {
         console.log('getPublicAuctionDetail Error :', err);
         res.status(500).json({

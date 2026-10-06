@@ -377,7 +377,7 @@ function EndedAuctions() {
                                                     </div>
 
                                                     <button
-                                                        onClick={() => navigate(`/ended-auctions-detail/${vehicle._id}`)}
+                                                        onClick={() => navigate(`/ended-auction-detail/${vehicle._id}`)}
                                                         className="bg-[#0B1E3D] text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-1 hover:bg-[#1e3a6a] transition-all"
                                                     >
                                                         View Details <ChevronRight size={16} />

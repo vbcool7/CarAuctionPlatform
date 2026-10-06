@@ -90,3 +90,38 @@ export const useGetCategoryCounts = () => {
         staleTime: 1000 * 60 * 5,
     });
 };
+
+// get public vehicles
+export const useGetPublicVehicles = (params) => {
+    return useQuery({
+        queryKey: ['publicVehicles', params],
+        queryFn: async () => {
+            const res = await API.get('/vehicle/get-public-vehicles', { params });
+            return res.data;
+        },
+        placeholderData: keepPreviousData,
+    });
+};
+
+// get filter options 
+export const useGetFilterOptions = () => {
+    return useQuery({
+        queryKey: ['vehicleFilterOptions'],
+        queryFn: async () => {
+            const res = await API.get('/vehicle/get-filter-options');
+            return res.data;
+        },
+        staleTime: 10 * 60 * 1000,
+    });
+};
+
+// get public stats
+export const useGetPublicStats = () => {
+    return useQuery({
+        queryKey: ['publicStats'],
+        queryFn: async () => {
+            const res = await API.get('/vehicle/get-public-stats');
+            return res.data;
+        },
+    });
+};

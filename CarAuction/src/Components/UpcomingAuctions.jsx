@@ -13,6 +13,9 @@ import { formatLabel, formatPrice } from '../utils/formatters';
 import { getPaginationRange } from './utils/getPaginationRange';
 
 import { useGetPublicAuctions } from '../hook/useAuction';
+import useAuthStore from '../store/useAuthStore';
+import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
+import { toast } from 'react-toastify';
 
 const stats = [
   { label: 'Upcoming Auctions', value: '32', icon: <IoCalendarNumberOutline className="text-blue-600" />, bgColor: 'bg-blue-50' },
@@ -88,6 +91,7 @@ const dayRange = (dateStr) => {
 function UpcomingAuctions() {
 
   const navigate = useNavigate();
+  const token = useAuthStore((state) => state.token);
 
   const [sidebarFilters, setSidebarFilters] = useState({});
   const [activeTab, setActiveTab] = useState('all');
@@ -109,6 +113,9 @@ function UpcomingAuctions() {
     maxPrice: sidebarFilters.maxPrice,
   });
 
+  const { data: watchlistIds } = useGetWatchlistIds();
+  const { mutate: toggleWatchlist, isPending, variables: pendingId } = useToggleWatchlist();
+
   const upcomingVehicles = data?.data ?? [];
   const totalPages = data?.pagination?.totalPages || 1;
 
@@ -128,6 +135,28 @@ function UpcomingAuctions() {
 
   if (isLoading) return <p className="p-10 text-center">Loading upcoming auctions....</p>;
   if (isError) return <p className="p-10 text-center text-red-500">Failed to load upcoming auctions</p>;
+
+  // watchlist handler
+  const handleWatchlistClick = (e, vehicle) => {
+    e.stopPropagation();
+
+    if (!token) {
+      toast.info('Please login to add vehicles to your watchlist');
+      navigate('/login');
+      return;
+    }
+
+    toggleWatchlist(vehicle._id, {
+      onSuccess: (data) => {
+        toast.success(data?.message || 'Watchlist updated successfully');
+      },
+      onError: (error) => {
+        toast.error(
+          error?.response?.data?.message || 'Failed to update watchlist'
+        );
+      },
+    });
+  };
 
   return (
     <section className='w-full'>
@@ -242,110 +271,128 @@ function UpcomingAuctions() {
                   </p>
                 </div>
               ) : (
-                upcomingVehicles.map((vehicle, index) => (
-                  <div
-                    key={vehicle._id || index}
-                    className="flex flex-col md:flex-row gap-4 p-3 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:border-slate-300">
+                upcomingVehicles.map((vehicle, index) => {
 
-                    <div className="relative w-full sm:w-72 h-55 rounded-xl overflow-hidden shrink-0 group">
-                      <img
-                        src={vehicle.image}
-                        alt={`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                  const isWatchlisted = !!watchlistIds?.has(vehicle._id);
+                  const isToggling = isPending && pendingId === vehicle._id;
 
-                      {/* Upcoming Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#2563EB] text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
-                        Upcoming
-                      </div>
+                  return (
+                    <div
+                      key={vehicle._id || index}
+                      className="flex flex-col md:flex-row gap-4 p-3 border border-slate-200 rounded-2xl bg-white w-full transition-all duration-300 hover:shadow-xl hover:border-slate-300">
 
-                      <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10">
-                        <HiCamera size={14} /> {vehicle.imageCount ?? 0} Photos
-                      </div>
-                    </div>
+                      <div className="relative w-full sm:w-72 h-55 rounded-xl overflow-hidden shrink-0 group">
+                        <img
+                          src={vehicle.image}
+                          alt={`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
 
-                    {/* Details Section */}
-                    <div className="flex flex-col justify-between grow min-w-0">
-                      <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[#D97706] text-[9px] font-extrabold uppercase tracking-widest">Upcoming Auction</span>
-                          <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{vehicle.listingId || 'NA'}</span>
+                        {/* Upcoming Badge */}
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-[#2563EB] text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white"></span>
+                          Upcoming
                         </div>
 
-                        <h3 className="text-lg font-bold text-[#0F172A] leading-tight truncate">{`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}</h3>
+                        <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10">
+                          <HiCamera size={14} /> {vehicle.imageCount ?? 0} Photos
+                        </div>
+                      </div>
 
-                        {/* Compact Specs */}
-                        <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 flex-wrap">
-                          {[
-                            { icon: HiOutlineCog, val: formatLabel(vehicle.transmission) },
-                            { icon: HiOutlineTruck, val: formatLabel(vehicle.bodyType) },
-                            { icon: HiOutlineBeaker, val: formatLabel(vehicle.fuelType) },
-                            { icon: HiOutlineViewGrid, val: formatLabel(vehicle.drivetrain) }
-                          ].map((spec, i) => (
-                            <div key={i} className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                              <spec.icon className="text-[#D97706]" size={12} /> {spec.val}
+                      {/* Details Section */}
+                      <div className="flex flex-col justify-between grow min-w-0">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[#D97706] text-[9px] font-extrabold uppercase tracking-widest">Upcoming Auction</span>
+                            <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{vehicle.listingId || 'NA'}</span>
+                          </div>
+
+                          <h3 className="text-lg font-bold text-[#0F172A] leading-tight truncate">{`${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`}</h3>
+
+                          {/* Compact Specs */}
+                          <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-600 flex-wrap">
+                            {[
+                              { icon: HiOutlineCog, val: formatLabel(vehicle.transmission) },
+                              { icon: HiOutlineTruck, val: formatLabel(vehicle.bodyType) },
+                              { icon: HiOutlineBeaker, val: formatLabel(vehicle.fuelType) },
+                              { icon: HiOutlineViewGrid, val: formatLabel(vehicle.drivetrain) }
+                            ].map((spec, i) => (
+                              <div key={i} className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                                <spec.icon className="text-[#D97706]" size={12} /> {spec.val}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <div className="grid grid-cols-3 gap-x-4 gap-y-2 mb-3">
+
+                            {/* Location */}
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-semibold">
+                                Location
+                              </p>
+                              <p className="text-[11px] text-slate-800 font-semibold mt-0.5">
+                                {formatLabel(vehicle.emirate)}
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* Footer */}
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <div className="grid grid-cols-3 gap-x-4 gap-y-2 mb-3">
+                            {/* Price */}
+                            <div className="">
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                                {vehicle.priceType === 'fixed_price'
+                                  ? 'Buy Now Price'
+                                  : 'Starting Bid'}
+                              </p>
 
-                          {/* Location */}
-                          <div>
-                            <p className="text-[9px] text-slate-400 uppercase font-semibold">
-                              Location
-                            </p>
-                            <p className="text-[11px] text-slate-800 font-semibold mt-0.5">
-                              {formatLabel(vehicle.emirate)}
-                            </p>
+                              <p className="font-bold text-[#0F172A] text-md mt-0.5">
+                                {formatPrice(
+                                  vehicle.priceType === 'fixed_price'
+                                    ? vehicle.buyNowPrice
+                                    : vehicle.startingBidPrice
+                                )}
+                              </p>
+                            </div>
+
+                            {/* Start In */}
+                            <div>
+                              <p className="text-[9px] text-slate-400 uppercase font-semibold">
+                                StartIn:
+                              </p>
+                              <AuctionStartsIn auctionStartDateTime={vehicle.auctionStartDateTime}
+                              />
+                            </div>
                           </div>
 
-                          {/* Price */}
-                          <div className="">
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-                              {vehicle.priceType === 'fixed_price'
-                                ? 'Buy Now Price'
-                                : 'Starting Bid'}
-                            </p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => navigate(`/upcoming-auction-detail/${vehicle._id}`)}
+                              className="bg-[#0B1E3D] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[#1e3a6a] active:scale-95 shadow-md hover:shadow-lg">
+                              View Details
+                            </button>
 
-                            <p className="font-bold text-[#0F172A] text-md mt-0.5">
-                              {formatPrice(
-                                vehicle.priceType === 'fixed_price'
-                                  ? vehicle.buyNowPrice
-                                  : vehicle.startingBidPrice
-                              )}
-                            </p>
+                            <button
+                              onClick={(e) => handleWatchlistClick(e, vehicle)}
+                              disabled={isToggling}
+                              className={`p-2 border rounded-xl transition-colors 
+                                ${isWatchlisted
+                                  ? "bg-rose-50 text-rose-500 border-rose-200 hover:bg-rose-100"
+                                  : "border-slate-200 text-slate-400 hover:text-rose-500 hover:border-rose-300"
+                                }`}
+                            >
+                              <HiOutlineHeart
+                                size={18}
+                                className={isWatchlisted ? "fill-current" : ""}
+                              />
+                            </button>
+
                           </div>
-
-                          {/* Start In */}
-                          <div>
-                            <p className="text-[9px] text-slate-400 uppercase font-semibold">
-                              StartIn:
-                            </p>
-                            <AuctionStartsIn auctionStartDateTime={vehicle.auctionStartDateTime}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-3">
-                          <button
-                            onClick={() => navigate(`/upcoming-auctions-detail/${vehicle._id}`)}
-                            className="bg-[#0B1E3D] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[#1e3a6a] active:scale-95 shadow-md hover:shadow-lg">
-                            View Details
-                          </button>
-
-                          <button className="p-2.5 border border-slate-200 rounded-xl text-slate-400 hover:text-[#D97706] hover:border-[#D97706] transition-colors">
-                            <HiOutlineHeart size={20} />
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               )}
 
               {/* Pagination */}

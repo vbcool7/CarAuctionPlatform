@@ -1,21 +1,35 @@
 
-import React, { useState } from 'react'
+import React from 'react';
 import VehicleList from '../Components/VehicleList';
 import VehicleListFilter from '../Components/VehicleListFilter';
-import { useSearchParams } from 'react-router-dom';
+import Breadcrumbs from '../Components/Breadcrumbs';
+
+const breadcrumbItems = [
+  { label: 'Home', path: '/' },
+  { label: 'Vehicle List' }
+];
 
 function VehicleListingPage() {
 
-    const [searchParams] = useSearchParams();
-    
-    // Read from URL: ?category=Sedan&status=live
-    const categoryFilter = searchParams.get('category');
-    const statusFilter = searchParams.get('status');
-    
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-6 flex flex-col lg:flex-row gap-6 my-6">
-      <VehicleListFilter />
-      <VehicleList category={categoryFilter} status={statusFilter}/>
+    <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-6">
+
+      {/* ========= breadcrumb ========= */}
+      <div className='pt-3'>
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+
+      {/* ========= filter / list ========= */}
+      <div className='w-full flex gap-6 mt-4'>
+
+        <div className='w-[30%]'>
+          <VehicleListFilter />
+        </div>
+
+        <div className='w-[70%]'>
+          <VehicleList />
+        </div>
+      </div>
     </div>
   );
 }

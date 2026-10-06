@@ -55,6 +55,12 @@ function EndedUnsoldGallery({ images = [], video = null, status = null }) {
             </div>
           )}
 
+          {status === "reserve-not-met" && (
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-[#D97706] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase">
+              Reserve Not Met
+            </div>
+          )}
+
           {activeMedia?.type === "video" || showVideo ? (
             <video src={activeMedia.src} controls className="w-full h-full object-cover" />
           ) : (
@@ -113,11 +119,10 @@ function EndedUnsoldGallery({ images = [], video = null, status = null }) {
               <button
                 key={media.id}
                 onClick={() => handleThumbnailClick(index)}
-                className={`relative shrink-0 w-20 h-14 md:w-24 md:h-17 rounded-lg overflow-hidden border-2 transition-all ${
-                  activeIndex === index
+                className={`relative shrink-0 w-20 h-14 md:w-24 md:h-17 rounded-lg overflow-hidden border-2 transition-all ${activeIndex === index
                     ? "border-[#D97706] scale-105"
                     : "border-[#334155] hover:border-[#D97706]/60"
-                }`}
+                  }`}
               >
                 {media.type === "video" ? (
                   <div className="w-full h-full bg-[#0F172A] flex flex-col items-center justify-center gap-1">
@@ -161,9 +166,8 @@ function EndedUnsoldGallery({ images = [], video = null, status = null }) {
               <button
                 key={media.id}
                 onClick={(e) => { e.stopPropagation(); handleThumbnailClick(index); }}
-                className={`w-14 h-10 rounded overflow-hidden border-2 transition-all ${
-                  activeIndex === index ? "border-[#D97706]" : "border-white/20"
-                }`}
+                className={`w-14 h-10 rounded overflow-hidden border-2 transition-all ${activeIndex === index ? "border-[#D97706]" : "border-white/20"
+                  }`}
               >
                 {media.type === "video" ? (
                   <div className="w-full h-full bg-[#1E293B] flex items-center justify-center">

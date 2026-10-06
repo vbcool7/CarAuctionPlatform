@@ -1,10 +1,16 @@
+import React from "react";
+import { BadgeCheck, Star } from "lucide-react";
 
-import React from 'react';
-import { IoIosStar } from "react-icons/io";
+function SellerInfo({ vehicle }) {
+    const seller = vehicle?.sellerInfo;
 
-function SellerInfo() {
+    const memberSince = seller?.memberSince
+        ? new Date(seller.memberSince).toLocaleDateString("en-GB", {
+            month: "short",
+            year: "numeric",
+        })
+        : "—";
 
-    // Sub-component for clean rows
     const InfoRow = ({ label, value }) => (
         <div className="flex justify-between items-center text-sm">
             <span className="text-slate-500">{label}</span>
@@ -16,45 +22,78 @@ function SellerInfo() {
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-6">
 
             {/* Header */}
-            <h2 className="text-xl font-bold text-slate-900">Seller Information</h2>
+            <h2 className="text-xl font-bold text-slate-900">
+                Seller Information
+            </h2>
 
-            {/* Profile Section */}
+            {/* Seller */}
             <div className="flex gap-4 items-center">
-                <img
-                    src="https://img.magnific.com/premium-vector/men-icon-trendy-avatar-character-cheerful-happy-people-flat-vector-illustration-round-frame-male-portraits-group-team-adorable-guys-isolated-white-background_275421-286.jpg?semt=ais_hybrid&w=740&q=80"
-                    alt="Seller Avatar"
-                    className="h-16 w-16 rounded-full object-cover border border-slate-100"
-                />
+                <div className="h-16 w-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-xl font-bold text-[#D97706]">
+                    {seller?.profileImage ? (
+                        <img
+                            src={seller.profileImage}
+                            alt={seller?.name || "Seller"}
+                            className="h-16 w-16 rounded-full object-cover border border-slate-200"
+                        />
+                    ) : (
+                        <div className="h-16 w-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-xl font-bold text-[#D97706]">
+                            {seller?.name?.charAt(0)?.toUpperCase() || "S"}
+                        </div>
+                    )}
+                </div>
+
                 <div className="flex flex-col gap-1">
-                    <h3 className="text-lg font-bold text-slate-900">Premium Motors LLC</h3>
-                    <span className="w-fit text-emerald-700 text-[10px] uppercase font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    <h3 className="text-lg font-bold text-slate-900">
+                        {seller?.name || "Seller"}
+                    </h3>
+
+                    <span className="w-fit flex items-center gap-1 text-emerald-700 text-[10px] uppercase font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        <BadgeCheck size={12} />
                         Verified Seller
                     </span>
                 </div>
             </div>
 
-            {/* Ratings */}
-            <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-amber-400">
-                    <span className="text-slate-900 font-bold text-lg">4.8</span>
-                    <div className="flex text-lg">
-                        {[...Array(5)].map((_, i) => <IoIosStar key={i} />)}
-                    </div>
+            {/* Rating */}
+            <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-amber-500">
+                    <Star size={15} fill="currentColor" />
+                    <span className="text-sm font-bold text-slate-900">
+                        0
+                    </span>
                 </div>
-                <p className="text-sm text-slate-500">(128 Reviews)</p>
+
+                <span className="text-xs text-slate-400">
+                    (0 Reviews)
+                </span>
             </div>
 
-            {/* Divider */}
+            {/* Seller Stats */}
             <div className="border-t border-slate-100 pt-4 space-y-3">
-                <InfoRow label="Total Vehicles Sold" value="256" />
-                <InfoRow label="Member Since" value="Jan 2020" />
-                <InfoRow label="Response Rate" value="95%" />
+                <InfoRow
+                    label="Total Vehicles Sold"
+                    value="---"
+                />
+
+                <InfoRow
+                    label="Member Since"
+                    value={memberSince}
+                />
+
+                <InfoRow
+                    label="Response Rate"
+                    value="0%"
+                />
             </div>
 
-            {/* Button */}
-            <button className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all">
+            {/* View Profile */}
+            <button
+                type="button"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-all"
+            >
                 View Seller Profile
             </button>
+
         </div>
     );
 }

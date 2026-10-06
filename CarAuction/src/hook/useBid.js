@@ -7,20 +7,34 @@ import API from '../api/axiosInstance';
 
 // place bid 
 export const usePlaceBid = () => {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async ({ vehicleId, amount }) => {
             const res = await API.post('/bid/place-bid', { vehicleId, amount });
             return res.data;
+        },
+        onSuccess: (data, { vehicleId }) => {
+            queryClient.invalidateQueries({ queryKey: ['publicAuctionDetail', vehicleId] });
+            queryClient.invalidateQueries({ queryKey: ['publicAuctionBids'] });
+            queryClient.invalidateQueries({ queryKey: ['myBids'] });
         },
     });
 };
 
 // withdraw-bid
 export const useWithdrawBid = () => {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async (bidId) => {
             const res = await API.patch(`/bid/withdraw-bid/${bidId}`);
             return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['publicAuctionDetail'] });
+            queryClient.invalidateQueries({ queryKey: ['publicAuctionBids'] });
+            queryClient.invalidateQueries({ queryKey: ['myBids'] });
         },
     });
 };
@@ -107,3 +121,14 @@ export const useGetTopBidders = (limit) => {
         placeholderData: keepPreviousData,
     });
 };
+
+// =========================== USER
+
+// get public bids for particular vehicle
+export const useGetPublicAuctionBids = (id, page = 1, limit = 10) =>
+    useQuery({
+        queryKey: ['publicAuctionBids', id, page, limit],
+        queryFn: async () => (await API.get(`/bid/get-auction-bids/${id}?page=${page}&limit=${limit}`)).data,
+        enabled: !!id,
+        placeholderData: keepPreviousData,
+    });

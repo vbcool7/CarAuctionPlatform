@@ -26,11 +26,16 @@ import ProfileSetting from '../Components/SellerPanel/ProfileSetting/ProfileSett
 import Support from '../Components/SellerPanel/Support/Support';
 import CreateTicket from '../Components/SellerPanel/Support/CreateTicket';
 import SupportDetail from '../Components/SellerPanel/Support/SupportDetail';
+import { useDeepLinkPage } from '../hook/useDeepLinkPage';
+
+const SELLER_DEEP_LINKS = ['watchlist', 'my-vehicles', 'my-auctions'];
 
 function SellerPanelPage() {
 
+  const initialPage = useDeepLinkPage(SELLER_DEEP_LINKS, 'dashboard');
+
   const navigate = useNavigate();
-  const [currentPage, setCurrentPage] = useState('support');
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

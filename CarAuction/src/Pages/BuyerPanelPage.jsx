@@ -28,9 +28,15 @@ import BuyerAuctionResultDetail from '../Components/BuyerPanel/BuyerSharedCompon
 import BuyerMyBidsDetail from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBidsDetail';
 import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuctionsDetail';
 
+import { useDeepLinkPage } from '../hook/useDeepLinkPage';
+
+const BUYER_DEEP_LINKS = ['watchlist', 'bids'];
+
 function BuyerPanelPage() {
 
-    const [currentPage, setCurrentPage] = useState("browse-auctions");
+    const initialPage = useDeepLinkPage(BUYER_DEEP_LINKS, 'dashboard');
+
+    const [currentPage, setCurrentPage] = useState(initialPage);
     const [previousPage, setPreviousPage] = useState(null);
     const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

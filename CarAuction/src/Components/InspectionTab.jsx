@@ -1,14 +1,5 @@
-import {
-    Activity,
-    Car,
-    CircleCheck,
-    CircleAlert,
-    Cog,
-    Palette,
-    ShieldCheck,
-    Sparkles,
-    StickyNote,
-} from "lucide-react";
+
+import { Activity, Car, CircleCheck, CircleAlert, Cog, Palette, ShieldCheck, Sparkles, StickyNote,} from "lucide-react";
 
 const formatLabel = (value) => {
     if (!value) return "—";
@@ -64,6 +55,7 @@ const getConditionStyle = (value) => {
 };
 
 const ConditionCard = ({ label, value, icon: Icon }) => {
+
     const style = getConditionStyle(value);
     const StatusIcon = style.icon;
 
@@ -87,9 +79,7 @@ const ConditionCard = ({ label, value, icon: Icon }) => {
                             className={style.text}
                         />
 
-                        <p
-                            className={`text-sm font-semibold ${style.text}`}
-                        >
+                        <p className={`text-sm font-semibold ${style.text}`}>
                             {formatLabel(value)}
                         </p>
                     </div>
@@ -178,11 +168,6 @@ function InspectionTab({ vehicle }) {
                         <InfoItem
                             label="Title Status"
                             value={vehicle?.titleStatus}
-                        />
-
-                        <InfoItem
-                            label="Repainted"
-                            value={vehicle?.repainted}
                         />
 
                         <InfoItem

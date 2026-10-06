@@ -1,7 +1,10 @@
 
 import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { placeBid, getVehicleBids, getMyBids, getMyBidDetail, withdrawBid, getTopBidders, getMyBidDetailBuyer } from '../controllers/bidController.js';
+import { 
+    placeBid, getVehicleBids, getMyBids, getMyBidDetail, withdrawBid, getTopBidders, getMyBidDetailBuyer,
+    getPublicAuctionBids 
+} from '../controllers/bidController.js';
 
 const router = express.Router();
 
@@ -14,5 +17,8 @@ router.get('/my-bid-detail/:id',authMiddleware(['seller']), getMyBidDetail);
 
 router.get('/get-top-bidders', authMiddleware(['buyer']), getTopBidders);
 router.get('/my-bid-detail-buyer/:id', authMiddleware(['buyer']), getMyBidDetailBuyer);
+
+// ======================== USER
+router.get('/get-auction-bids/:id', getPublicAuctionBids);
 
 export default router;

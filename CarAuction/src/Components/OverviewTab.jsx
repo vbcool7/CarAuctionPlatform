@@ -264,14 +264,7 @@ function OverviewTab({ vehicle }) {
                                 value={formatPrice(vehicle?.startingBidPrice)}
                                 highlight
                             />
-
-                            <StatCard
-                                icon={CircleDollarSign}
-                                label="Reserve Price"
-                                value={formatPrice(vehicle?.reservePrice)}
-                                highlight
-                            />
-
+                            
                             <StatCard
                                 icon={Gavel}
                                 label="Current Bid"

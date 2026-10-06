@@ -20,7 +20,9 @@ const LiveAuctionCard = ({ vehicle, navigate }) => {
     const hasBids = (vehicle.totalBids ?? 0) > 0;
 
     return (
-        <div className='bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col justify-between'>
+        <div
+            onClick={() => navigate(`/live-auction-detail/${vehicle._id}`)}
+            className='bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col justify-between cursor-pointer'>
 
             {/* Image & Badges */}
             <div className='relative w-full h-52 overflow-hidden bg-gray-100'>
@@ -89,7 +91,7 @@ const LiveAuctionCard = ({ vehicle, navigate }) => {
 
                 {/* Action Button */}
                 <button
-                    onClick={() => navigate(`/live-auctions-detail/${vehicle._id}`)}
+                    // onClick={() => navigate(`/live-auction-detail/${vehicle._id}`)}
                     className="w-full bg-[#0B1E3D] hover:bg-[#132B54] border border-[#D97706]/40 text-white py-3 rounded-xl text-sm font-bold shadow-md transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 group-hover:border-[#D97706]">
                     {vehicle.priceType === 'fixed_price' ? 'Buy Now' : 'Place Bid'}
                 </button>
@@ -104,7 +106,7 @@ function HomeLiveAuctions() {
 
     const { data: liveAuctionsResponse, isLoading, isError } = useGetHomeLiveAuctions();
     const liveAuctions = liveAuctionsResponse?.data || [];
-    
+
     const handleStatusClick = (status) => {
         navigate(`/vehicle-list?status=live`);
     };
