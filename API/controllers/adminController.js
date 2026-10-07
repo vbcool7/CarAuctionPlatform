@@ -2,6 +2,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import sendEmail from '../utils/sendEmail.js';
 import {
     buildWelcomeEmail, buildPendingActivationEmail, buildBuyerWelcomeEmail, buildPendingBuyerActivationEmail, reUploadDocumentEmail, reUploadSellerDocumentEmail,
@@ -11,7 +12,7 @@ import {
 
 import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
-import { UAE_UTC_OFFSET_HOURS } from '../models/vehicleModelSchema.js';
+import { UAE_UTC_OFFSET_HOURS, DURATION_MS, parseTime12h } from '../models/vehicleModelSchema.js';
 
 import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
@@ -19,6 +20,7 @@ import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Bid from '../models/bidModelSchema.js';
 import Payout from '../models/payoutModelSchema.js';
+
 import { createNotification } from '../services/notificationService.js';
 
 export const adminSignup = async (req, res) => {
@@ -2769,18 +2771,219 @@ export const getCanceledAuctionStats = async (req, res) => {
     }
 };
 
+// reschedule / relist 
+const REPLANNABLE_STATUSES = ['upcoming', 'unsold', 'reserve-not-met', 'canceled'];
+const MIN_LEAD_MS = 60 * 1000;
+const TIME_12H = /^(0?[1-9]|1[0-2]):[0-5]\d\s?(AM|PM)$/i;
+
+// if notification fail then not give 500
+const safeNotify = async (payload) => {
+    try {
+        await createNotification(payload);
+    } catch (err) {
+        console.error('reschedule notification failed:', err.message);
+    }
+};
+
+export const rescheduleAuction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const role = req.user.role;
+        const { startDate, startTime, duration, reason } = req.body;
+
+        const bad = (message) => res.status(400).json({
+            success: false,
+            message
+        });
+
+        if (!mongoose.Types.ObjectId.isValid(id)) return bad('Invalid auction ID');
+        if (!reason || !String(reason).trim()) return bad('Reason is required');
+
+        // ---- input validation ----
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate || '')) return bad('startDate must be YYYY-MM-DD');
+
+        const day = new Date(`${startDate}T00:00:00.000Z`);
+        if (Number.isNaN(day.getTime()) || day.toISOString().slice(0, 10) !== startDate) {
+            return bad('Invalid startDate');
+        }
+
+        const timeStr = typeof startTime === 'string' ? startTime.trim() : '';
+        if (!TIME_12H.test(timeStr)) return bad('startTime must look like "10:00 AM"');
+
+        const parsed = parseTime12h(timeStr);
+
+        if (!DURATION_MS[duration]) return bad(`Invalid duration: ${duration}`);
+
+        // model ke pre('save') hook wala hi formula (UAE time -> UTC)
+        const startDateTime = new Date(day);
+        startDateTime.setUTCHours(parsed.hours - UAE_UTC_OFFSET_HOURS, parsed.minutes, 0, 0);
+        const endDateTime = new Date(startDateTime.getTime() + DURATION_MS[duration]);
+
+        if (startDateTime.getTime() < Date.now() + MIN_LEAD_MS) {
+            return bad('Start time must be at least 1 minute in the future (UAE time)');
+        }
+
+        // ---- vehicle checks ----
+        const vehicle = await Vehicle.findById(id).select('+scheduleHistory');
+
+        if (!vehicle) {
+            return res.status(404).json({ success: false, message: 'Auction not found' });
+        }
+
+        if (vehicle.adminStatus !== 'approved') return bad('Vehicle is not approved');
+
+        if (vehicle.auctionStatus === 'live') {
+            return bad('Live auction cannot be rescheduled. Cancel it first, then relist.');
+        }
+
+        if (!REPLANNABLE_STATUSES.includes(vehicle.auctionStatus)) {
+            return bad(`Cannot reschedule an auction with status '${vehicle.auctionStatus}'`);
+        }
+
+        const fromStatus = vehicle.auctionStatus;
+        const isRelist = fromStatus !== 'upcoming';
+        const prevStart = vehicle.auctionStartDateTime;
+        const prevEnd = vehicle.auctionEndDateTime;
+        const cleanReason = String(reason).trim();
+
+        // bidders ko notify karne ke liye, reset se PEHLE
+        // (reserve-not-met mein purani bids active/outbid reh jaati hain; canceled ki bids pehle hi 'canceled' hain)
+        const affectedBids = isRelist
+            ? await Bid.find({ vehicleId: vehicle._id, status: { $in: ['active', 'outbid'] } })
+                .select('bidderId bidderType')
+            : [];
+
+        // ---- vehicle update ----
+        vehicle.auctionStartDate = day;
+        vehicle.auctionStartTime = timeStr;
+        vehicle.auctionDuration = duration;
+        vehicle.markModified('auctionStartTime');
+
+        if (isRelist) {
+            vehicle.auctionStatus = 'upcoming';
+            vehicle.currentBid = null;
+            vehicle.extensionCount = 0;
+            vehicle.soldOn = null;
+            vehicle.statusAtCancellation = null;
+            vehicle.canceledBy = null;
+            vehicle.canceledByUserId = null;
+            vehicle.cancellationReason = null;
+            vehicle.canceledAt = null;
+            vehicle.relistCount = (vehicle.relistCount || 0) + 1;
+        }
+
+        vehicle.scheduleHistory.push({
+            at: new Date(),
+            byRole: role,
+            byId: userId,
+            mode: isRelist ? 'relisted' : 'rescheduled',
+            fromStatus,
+            prevStartDateTime: prevStart,
+            prevEndDateTime: prevEnd,
+            newStartDateTime: startDateTime,
+            newEndDateTime: endDateTime,
+            reason: cleanReason,
+        });
+
+        await vehicle.save();
+
+        // ---- old bids archive (not delete) ----
+        if (isRelist) {
+            try {
+                await Bid.updateMany(
+                    { vehicleId: vehicle._id, status: { $in: ['active', 'outbid', 'canceled'] } },
+                    { $set: { status: 'archived' } }
+                );
+            } catch (bidErr) {
+                console.error('CRITICAL: relist ke baad bids archive nahi hui, vehicle', vehicle._id, bidErr);
+            }
+        }
+
+        // ---- notifications ----
+        const verb = isRelist ? 'relisted' : 'rescheduled';
+        const byLabel = role === 'admin' ? 'admin' : 'a manager';
+        const when = `${startDate} ${timeStr} (UAE time)`;
+        const notifType = isRelist ? 'auction_relisted' : 'auction_rescheduled';
+
+        await safeNotify({
+            recipientId: vehicle.sellerId,
+            recipientType: 'Seller',
+            type: notifType,
+            vehicleId: vehicle._id,
+            title: isRelist ? 'Auction Relisted' : 'Auction Rescheduled',
+            message: `${vehicle.listingId} was ${verb} by ${byLabel}. New start: ${when}. Reason: ${cleanReason}`,
+        });
+
+        const uniqueBidders = new Map();
+
+        for (const bid of affectedBids) {
+            uniqueBidders.set(bid.bidderId.toString(), bid.bidderType);
+        }
+
+        for (const [bidderId, bidderType] of uniqueBidders) {
+            await safeNotify({
+                recipientId: bidderId,
+                recipientType: bidderType,
+                type: 'auction_relisted',
+                vehicleId: vehicle._id,
+                title: 'Auction Relisted',
+                message: `The auction for ${vehicle.listingId}, which you had a bid on, was relisted and your bid was cleared. New start: ${when}.`,
+            });
+        }
+
+        if (role === 'auctionManager') {
+            const admin = await Admin.findOne({ role: 'admin' });
+
+            if (admin) {
+                await safeNotify({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: notifType,
+                    vehicleId: vehicle._id,
+                    title: isRelist ? 'Auction Relisted by Manager' : 'Auction Rescheduled by Manager',
+                    message: `${vehicle.listingId} was ${verb} by a manager. New start: ${when}.`,
+                });
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: isRelist ? 'Auction relisted successfully' : 'Auction rescheduled successfully',
+            mode: isRelist ? 'relisted' : 'rescheduled',
+            vehicle: {
+                _id: vehicle._id,
+                listingId: vehicle.listingId,
+                auctionStatus: vehicle.auctionStatus,
+                auctionStartDateTime: vehicle.auctionStartDateTime,
+                auctionEndDateTime: vehicle.auctionEndDateTime,
+                auctionDuration: vehicle.auctionDuration,
+                relistCount: vehicle.relistCount,
+            },
+        });
+
+    } catch (err) {
+        console.log("rescheduleAuction error : ", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
+        });
+    }
+};
+
 // ============================================ BIDS
 
 // get bid stats
 export const getBidStats = async (req, res) => {
     try {
-        const [totalBids, activeBids, wonBids, outbidBids, withdrawnBids, canceledBids] = await Promise.all([
+        const [totalBids, activeBids, wonBids, outbidBids, withdrawnBids, canceledBids, archivedBids] = await Promise.all([
             Bid.countDocuments(),
             Bid.countDocuments({ status: 'active' }),
             Bid.countDocuments({ status: 'won' }),
             Bid.countDocuments({ status: 'outbid' }),
             Bid.countDocuments({ status: 'withdrawn' }),
-            Bid.countDocuments({ status: 'canceled' })
+            Bid.countDocuments({ status: 'canceled' }),
+            Bid.countDocuments({ status: 'archived' })
         ]);
 
         return res.status(200).json({
@@ -2791,7 +2994,8 @@ export const getBidStats = async (req, res) => {
                 wonBids,
                 outbidBids,
                 withdrawnBids,
-                canceledBids
+                canceledBids,
+                archivedBids
             }
         });
 

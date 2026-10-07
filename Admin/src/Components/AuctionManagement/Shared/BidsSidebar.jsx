@@ -26,9 +26,18 @@ function BidsSidebar({ vehicle, bids = [] }) {
         (bid) => bid.status === "canceled"
     ).length;
 
+    const archivedBids = bids.filter(
+        (bid) => bid.status === "archived"
+    ).length;
+
     const validBidAmounts = bids
-        .filter((bid) => bid.status !== 'withdrawn' && bid.status !== 'cancelled')
-        .map((bid) => bid.amount);
+    .filter(
+        (bid) =>
+            bid.status !== 'withdrawn' &&
+            bid.status !== 'canceled' &&
+            bid.status !== 'archived'
+    )
+    .map((bid) => bid.amount);
 
     return (
         <div className="space-y-6">
@@ -63,6 +72,11 @@ function BidsSidebar({ vehicle, bids = [] }) {
                         name: "Cancelled",
                         value: cancelledBids,
                         color: "#EF4444"
+                    },
+                    {
+                        name: "Archived",
+                        value: archivedBids,
+                        color: "#94A3B8"
                     },
                 ]}
             />

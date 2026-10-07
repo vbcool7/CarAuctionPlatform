@@ -29,6 +29,7 @@ import BuyerMyBidsDetail from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBidsD
 import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuctionsDetail';
 
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
+import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
 
 const BUYER_DEEP_LINKS = ['watchlist', 'bids'];
 
@@ -216,6 +217,9 @@ function BuyerPanelPage() {
 
                             {/* support */}
                             {currentPage === "support" && <BuyerSupport setCurrentPage={setCurrentPage} />}
+
+                            {/* notification */}
+                            {currentPage === 'notifications' && <BuyerNotifications setCurrentPage={setCurrentPage} />}
 
                             {/* bid placed */}
                             {isBidModalOpen && bidStep === 'form' && (

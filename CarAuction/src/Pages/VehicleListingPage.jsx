@@ -22,11 +22,11 @@ function VehicleListingPage() {
       {/* ========= filter / list ========= */}
       <div className='w-full flex gap-6 mt-4'>
 
-        <div className='w-[30%]'>
+        <div className='w-full lg:w-[30%]'>
           <VehicleListFilter />
         </div>
 
-        <div className='w-[70%]'>
+        <div className='w-full lg:w-[70%]'>
           <VehicleList />
         </div>
       </div>

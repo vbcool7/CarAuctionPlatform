@@ -1,72 +1,33 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import { BellRing, Bell, Trophy, Clock3, X, Info, CheckCheck, Car, ClipboardCheck, UserPlus, UserCheck, FileCheck, UserX, RefreshCw } from 'lucide-react';
-import { useGetAllNotifications, useMarkAllReadNotification, useReadNotification } from '../hooks/useNotification';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bell, BellRing, CheckCheck, ChevronRight, Clock3, RefreshCw, X, Info, UserCheck } from 'lucide-react';
+
+import { useGetAllNotifications, useMarkAllReadNotification, useReadNotification } from '../../hook/useNotification';
 
 const getIcon = (type) => {
     switch (type) {
-        case 'buyer_added': return <UserPlus size={18} />;
-        case 'buyer_verification_changed': return <UserCheck size={18} />;
-        case 'buyer_document_reviewed': return <FileCheck size={18} />;
-        case 'buyer_suspended': return <UserX size={18} />;
-        case 'buyer_reactivated': return <UserCheck size={18} />;
-        case 'seller_added': return <UserPlus size={18} />;
-        case 'seller_verification_changed': return <UserCheck size={18} />;
-        case 'seller_document_reviewed': return <FileCheck size={18} />;
-        case 'seller_suspended': return <UserX size={18} />;
-        case 'seller_reactivated': return <UserCheck size={18} />;
-        case 'auction_sold': return <Trophy size={18} />;
-        case 'auction_canceled': return <X size={18} />;
-        case 'auction_relisted': return <RefreshCw size={18} />;
-        case 'auction_rescheduled': return <RefreshCw size={18} />;
-        case 'vehicle_added': return <Car size={18} />;
-        case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
-        default: return <Info size={18} />;
+        case 'auction_relisted': return <RefreshCw size={17} />;
+        case 'auction_rescheduled': return <RefreshCw size={17} />;
+        case 'buyer_verification_changed':  return <UserCheck size={17} />;
+        default: return <Info size={17} />;
     }
 };
 
 const getIconStyle = (type) => {
     switch (type) {
-        case 'buyer_added': return 'bg-purple-50 text-purple-600';
-        case 'buyer_verification_changed': return 'bg-green-50 text-green-600';
-        case 'buyer_document_reviewed': return 'bg-amber-50 text-amber-600';
-        case 'buyer_suspended': return 'bg-red-50 text-red-600';
-        case 'buyer_reactivated': return 'bg-green-50 text-green-600';
-        case 'seller_added': return 'bg-purple-50 text-purple-600';
-        case 'seller_verification_changed': return 'bg-green-50 text-green-600';
-        case 'seller_document_reviewed': return 'bg-amber-50 text-amber-600';
-        case 'seller_suspended': return 'bg-red-50 text-red-600';
-        case 'seller_reactivated': return 'bg-green-50 text-green-600';
-        case 'auction_sold': return 'bg-green-50 text-green-600';
-        case 'auction_canceled': return 'bg-red-50 text-red-600';
-         case 'auction_relisted': return 'bg-amber-50 text-amber-600';
+        case 'auction_relisted': return 'bg-amber-50 text-amber-600';
         case 'auction_rescheduled': return 'bg-blue-50 text-blue-600';
-        case 'vehicle_added': return 'bg-blue-50 text-blue-600';
-        case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
+        case 'buyer_verification_changed': return 'bg-green-50 text-green-600';
         default: return 'bg-slate-50 text-slate-600';
     }
 };
 
-const NOTIFICATION_REDIRECT_MAP = {
-    buyer_added: 'buyers',
-    buyer_verification_changed: 'buyers',
-    buyer_document_reviewed: 'buyers',
-    buyer_suspended: 'buyers',
-    buyer_reactivated: 'buyers',
-    seller_added: 'sellers',
-    seller_verification_changed: 'sellers',
-    seller_document_reviewed: 'sellers',
-    seller_suspended: 'sellers',
-    seller_reactivated: 'sellers',
-    auction_sold: 'completed-auctions',
-    auction_canceled: 'canceled-auctions',
-    auction_relisted: 'upcoming-auctions',
-    auction_rescheduled: 'upcoming-auctions',
-    vehicle_added: 'vehicle-approvals',
-    vehicle_reviewed: 'vehicle-approvals',
-};
+// const NOTIFICATION_REDIRECT_MAP = {
+//     auction_canceled: 'my-auctions',
+//     auction_relisted: 'my-bids',
+// };
 
-function NotificationDropdown({ setCurrentPage }) {
+function BuyerNotificationDropdown({ setCurrentPage }) {
 
     const notificationRef = useRef(null);
 
@@ -136,13 +97,13 @@ function NotificationDropdown({ setCurrentPage }) {
     return (
         <div className='relative' ref={notificationRef}>
 
-            {/* Bell Button */}
+            {/* Notification Button */}
             <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className={`relative p-2 rounded-lg transition-all cursor-pointer
                     ${showNotifications
-                        ? 'bg-amber-50 text-amber-600'
-                        : 'text-slate-700 hover:bg-amber-50 hover:text-amber-600'
+                        ? 'bg-amber-500/15 text-amber-400'
+                        : 'text-white hover:bg-white/10 hover:text-amber-400'
                     }`}
             >
                 {unreadCount > 0 ? (
@@ -153,7 +114,7 @@ function NotificationDropdown({ setCurrentPage }) {
 
                 {/* Unread Badge */}
                 {unreadCount > 0 && (
-                    <span className='absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white'>
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-[#0B1E3D]">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
@@ -161,34 +122,48 @@ function NotificationDropdown({ setCurrentPage }) {
 
             {/* Dropdown */}
             {showNotifications && (
-                <div className='absolute right-0 top-full mt-3 w-87 sm:w-95 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50'>
+                <div className='absolute right-0 top-full mt-3 w-80 sm:w-85 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50'>
 
                     {/* Header */}
                     <div className='flex items-center justify-between px-4 py-3.5 border-b border-slate-100'>
                         <div>
-                            <h3 className='text-sm font-bold text-[#0B1E3D]'>
-                                Notifications
-                            </h3>
+                            <div className='flex items-center gap-2'>
+                                <h3 className='text-sm font-bold text-[#0B1E3D]'>
+                                    Notifications
+                                </h3>
+
+                                {unreadCount > 0 && (
+                                    <span className='px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold'>
+                                        {unreadCount} new
+                                    </span>
+                                )}
+                            </div>
 
                             <p className='text-[11px] text-slate-400 mt-0.5'>
-                                {unreadCount > 0
-                                    ? `You have ${unreadCount} unread notifications`
-                                    : 'You are all caught up'}
+                                Stay updated with your auctions
                             </p>
                         </div>
 
-                        {unreadCount > 0 && (
-                            <div className='px-4 py-2 border-b border-slate-100 bg-slate-50/60'>
-                                <button
-                                    onClick={handleMarkAllRead}
-                                    className='text-[11px] font-semibold text-[#D97706] hover:text-[#b45309] transition-colors'
-                                >
-                                    <CheckCheck size={14} />
-                                    Mark all read
-                                </button>
-                            </div>
-                        )}
+                        <button
+                            onClick={() => setShowNotifications(false)}
+                            className='p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer'
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
+
+                    {/* Mark all */}
+                    {unreadCount > 0 && (
+                        <div className='px-4 py-2 border-b border-slate-100 bg-slate-50/60'>
+                            <button
+                                onClick={handleMarkAllRead}
+                                className='flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 hover:text-amber-700 transition cursor-pointer'
+                            >
+                                <CheckCheck size={14} />
+                                Mark all as read
+                            </button>
+                        </div>
+                    )}
 
                     {/* Notification list */}
                     <div className='max-h-85 overflow-y-auto'>
@@ -297,25 +272,24 @@ function NotificationDropdown({ setCurrentPage }) {
                     )}
 
                     {/* Footer */}
-                    <div className='border-t border-slate-100'>
-
+                    <div className='border-t border-slate-100 bg-white'>
                         <button
                             onClick={() => {
                                 setShowNotifications(false);
                                 setCurrentPage('notifications');
                             }}
-                            className='w-full py-3 text-xs font-semibold text-[#0B1E3D] hover:bg-amber-50 hover:text-[#D97706] transition-colors'
+                            className='w-full flex items-center justify-center gap-1.5 py-3 text-xs font-semibold text-[#0B1E3D] hover:bg-amber-50 hover:text-amber-700 transition cursor-pointer'
                         >
                             View all notifications
+                            <ChevronRight size={14} />
                         </button>
-
                     </div>
 
-                </div>
-            )}
-
+                </div >
+            )
+            }
         </div>
-    );
-};
+    )
+}
 
-export default NotificationDropdown;
+export default BuyerNotificationDropdown;

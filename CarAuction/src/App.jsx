@@ -30,6 +30,7 @@ import BuyerPanelPage from './Pages/BuyerPanelPage';
 import SellerPanelPage from './Pages/SellerPanelPage';
 import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
+import RoleRoute from './Components/RoleRoute';
 
 function App() {
   return (
@@ -79,16 +80,25 @@ function App() {
 
           <Route path='/reupload-buyer-docs/:buyer_id/:token/:group' element={<ReUploadBuyerDocs />} />
           <Route path='/reupload-seller-docs/:seller_id/:token/:document' element={<ReUploadSellerDocs />} />
-          
+
         </Route>
 
         {/* ============ auth ============= */}
         <Route element={<AuthLayout />}>
-          <Route path="/buyer-registration" element={<BuyerRegistrationPage />} />
-          <Route path="/buyer-dashboard" element={<BuyerPanelPage />} />
 
+        {/* ============ buyer ============= */}
+          <Route path="/buyer-registration" element={<BuyerRegistrationPage />} />
+
+          <Route element={<RoleRoute allowedRole="buyer" />}>
+            <Route path="/buyer-dashboard" element={<BuyerPanelPage />} />
+          </Route>
+           
+          {/* ============ seller ============= */}
           <Route path='/seller-registration' element={<SellerRegistration />} />
-          <Route path="/seller-dashboard" element={<SellerPanelPage />} />
+
+          <Route element={<RoleRoute allowedRole="seller" />}>
+            <Route path="/seller-dashboard" element={<SellerPanelPage />} />
+          </Route>
 
         </Route>
 

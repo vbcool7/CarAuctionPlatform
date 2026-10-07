@@ -176,9 +176,9 @@ export const getVehicleBids = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const totalBids = await Bid.countDocuments({ id });
+        const totalBids = await Bid.countDocuments({ vehicleId: id, status: { $ne: 'archived' } });
 
-        const bids = await Bid.find({ id })
+        const bids = await Bid.find({ vehicleId: id, status: { $ne: 'archived' } })
             .sort({ amount: -1 })
             .skip(skip)
             .limit(limit);
@@ -289,7 +289,7 @@ export const getMyBids = async (req, res) => {
 
             filter.status = 'outbid';
             filter.vehicleId = { $in: lostVehicleIds };
-        } else if (status && status !== 'all') {
+        } else if (status && status !== 'all' && BID_STATUSES.includes(status)) {
             filter.status = status;
             if (vehicleIdFilter) {
                 filter.vehicleId = { $in: vehicleIdFilter };
@@ -297,6 +297,9 @@ export const getMyBids = async (req, res) => {
         } else if (vehicleIdFilter) {
             filter.vehicleId = { $in: vehicleIdFilter };
         }
+
+        // archived (relist ke baad purani) bids user ko nahi dikhani
+        if (!filter.status) filter.status = { $ne: 'archived' };
 
         const [bids, totalCount] = await Promise.all([
             Bid.find(filter)
@@ -315,7 +318,8 @@ export const getMyBids = async (req, res) => {
             Bid.countDocuments(filter)
         ]);
 
-        const baseFilter = { bidderId: new mongoose.Types.ObjectId(bidderId) };
+        const baseFilter = { bidderId: new mongoose.Types.ObjectId(bidderId), status: { $ne: 'archived' } };
+
         const [allCount, ...statusCounts] = await Promise.all([
             Bid.countDocuments(baseFilter),
             ...BID_STATUSES.map((s) => Bid.countDocuments({ ...baseFilter, status: s }))
@@ -488,7 +492,7 @@ export const getMyBidDetail = async (req, res) => {
         const limit = Math.max(1, parseInt(req.query.limit) || 10);
         const skip = (page - 1) * limit;
 
-        const bid = await Bid.findOne({ _id: id, bidderId: bidderId })
+        const bid = await Bid.findOne({ _id: id, bidderId: bidderId, status: { $ne: 'archived' } })
             .select('vehicleId bidderId bidderType bidId amount status createdAt')
             .populate({
                 path: 'vehicleId',
@@ -503,11 +507,10 @@ export const getMyBidDetail = async (req, res) => {
             });
         }
 
-        // total count for this vehicle (needed for pagination meta — separate from the paginated fetch)
-        const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id });
+        const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } });
 
         // paginated slice of this vehicle's bids
-        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id })
+            const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } })
             .select('bidId bidderId bidderType amount status createdAt')
             .sort({ amount: -1, createdAt: -1 })
             .skip(skip)
@@ -572,7 +575,7 @@ export const getMyBidDetailBuyer = async (req, res) => {
         const limit = Math.max(1, parseInt(req.query.limit) || 10);
         const skip = (page - 1) * limit;
 
-        const bid = await Bid.findOne({ _id: id, bidderId: bidderId })
+        const bid = await Bid.findOne({ _id: id, bidderId: bidderId, status: { $ne: 'archived' } })
             .select('vehicleId bidderId bidderType bidId amount status createdAt')
             .populate({
                 path: 'vehicleId',
@@ -588,9 +591,9 @@ export const getMyBidDetailBuyer = async (req, res) => {
             });
         }
 
-        const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id });
+        const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } });
 
-        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id })
+        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } })
             .select('bidId amount status createdAt')
             .sort({ amount: -1, createdAt: -1 })
             .skip(skip)
@@ -707,7 +710,7 @@ export const getPublicAuctionBids = async (req, res) => {
         const vehicle = await Vehicle.findOne({ _id: id, adminStatus: 'approved', auctionStatus: { $ne: 'draft' } }).select('_id').lean();
         if (!vehicle) return res.status(404).json({ success: false, message: 'Vehicle not found' });
 
-        const base = { vehicleId: vehicle._id, status: { $ne: 'withdrawn' } };
+        const base = { vehicleId: vehicle._id, status: { $nin: ['withdrawn', 'archived'] } };
 
         const [firstBids, bids, total] = await Promise.all([
             Bid.aggregate([

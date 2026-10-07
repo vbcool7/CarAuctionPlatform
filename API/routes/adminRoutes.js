@@ -8,7 +8,7 @@ import {
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes,
-    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats,
+    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction, 
     getAllBids, getBidDetail, getBidStats,
     getAllSales,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
@@ -118,6 +118,7 @@ router.get("/live-auction-stats", authMiddleware(['admin', 'auctionManager']), r
 router.get("/upcoming-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getUpcomingAuctionStats);
 router.get("/completed-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getCompletedAuctionStats);
 router.get("/canceled-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getCanceledAuctionStats);
+router.patch("/reschedule-auction/:id", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), rescheduleAuction);
 
 // ============================ BID
 router.get('/bids-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidStats);

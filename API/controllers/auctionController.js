@@ -17,6 +17,7 @@ export const runAuctionStatusUpdate = async () => {
     // find upcoming vehicles jinka start time aa chuka hai
     const vehiclesToGoLive = await Vehicle.find({
         auctionStatus: "upcoming",
+        adminStatus: "approved",
         auctionStartDate: { $exists: true },
         auctionStartTime: { $exists: true },
     });
@@ -384,7 +385,7 @@ export const getMyAuctionById = async (req, res) => {
     }
 };
 
-// auction cancel - admin + seller
+// auction cancel - admin + manager + seller 
 export const cancelAuction = async (req, res) => {
     try {
         const { id } = req.params;
@@ -1550,11 +1551,11 @@ export const getPublicAuctionDetail = async (req, res) => {
             Seller.findById(v.sellerId).select('businessName fullName profileImage businessType createdAt').lean(),
             Bid.find({
                 vehicleId: v._id,
-                status: { $ne: 'withdrawn' }
+                status: { $nin: ['withdrawn', 'archived'] }
             }).sort({ amount: -1 }).limit(4).select('amount createdAt bidderId').lean(),
 
-            Bid.countDocuments({ vehicleId: v._id, status: { $ne: 'withdrawn' } }),
-            Bid.distinct('bidderId', { vehicleId: v._id, status: { $ne: 'withdrawn' } }),
+            Bid.countDocuments({ vehicleId: v._id, status: { $nin: ['withdrawn', 'archived'] } }),
+            Bid.distinct('bidderId', { vehicleId: v._id, status: { $nin: ['withdrawn', 'archived'] } }),
         ]);
 
         // recent bids: ended => masked name, warna stable anonymous label
@@ -1605,7 +1606,7 @@ export const getPublicAuctionDetail = async (req, res) => {
             }).select('amount').lean();
             if (mine) myActiveBid = { _id: mine._id, amount: mine.amount };
         }
-        
+
         // don't show private fields
         for (const k of [
             'sellerId', 'vin', 'reviewedBy', 'reviewedAt', 'rejectionReason',

@@ -18,6 +18,8 @@ const getIcon = (type) => {
         case 'seller_reactivated': return <UserCheck size={18} />;
         case 'auction_sold': return <Trophy size={18} />;
         case 'auction_canceled': return <X size={18} />;
+        case 'auction_relisted': return <RefreshCw size={18} />;
+        case 'auction_rescheduled': return <RefreshCw size={18} />;
         case 'vehicle_added': return <Car size={18} />;
         case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
         default: return <Info size={18} />;
@@ -38,6 +40,8 @@ const getIconStyle = (type) => {
         case 'seller_reactivated': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
         case 'auction_canceled': return 'bg-red-50 text-red-600';
+         case 'auction_relisted': return 'bg-amber-50 text-amber-600';
+        case 'auction_rescheduled': return 'bg-blue-50 text-blue-600';
         case 'vehicle_added': return 'bg-blue-50 text-blue-600';
         case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
         default: return 'bg-slate-50 text-slate-600';
@@ -57,6 +61,8 @@ const NOTIFICATION_REDIRECT_MAP = {
     seller_reactivated: 'sellers',
     auction_sold: 'completed-auctions',
     auction_canceled: 'canceled-auctions',
+    auction_relisted: 'upcoming-auctions',
+    auction_rescheduled: 'upcoming-auctions',
     vehicle_added: 'vehicle-approvals',
     vehicle_reviewed: 'vehicle-approvals',
 };

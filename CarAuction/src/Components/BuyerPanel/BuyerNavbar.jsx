@@ -7,6 +7,7 @@ import { useBuyerGet, useBuyerLogout } from '../../hook/useBuyer';
 import useAuthStore from '../../store/useAuthStore';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import BuyerNotificationDropdown from './BuyerNotificationDropdown';
 
 
 function BuyerNavbar({ onToggleSideBar, setCurrentPage }) {
@@ -75,27 +76,8 @@ function BuyerNavbar({ onToggleSideBar, setCurrentPage }) {
                 {/* Right — icons + user */}
                 <div className='flex items-center gap-2 sm:gap-4 shrink-0'>
 
-                    {/* Watchlist */}
-                    <button
-                        onClick={() => setCurrentPage('watchlist')}
-                        className='relative p-1 text-slate-300 hover:text-white transition-colors'
-                    >
-                        <Heart size={20} />
-                        <span className='absolute -top-1 -right-1 w-4 h-4 bg-[#D97706] text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
-                            12
-                        </span>
-                    </button>
-
                     {/* Notifications */}
-                    <button
-                        onClick={() => setCurrentPage('Notifications')}
-                        className='relative p-1 text-slate-300 hover:text-white transition-colors'
-                    >
-                        <Bell size={20} />
-                        <span className='absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
-                            4
-                        </span>
-                    </button>
+                    <BuyerNotificationDropdown setCurrentPage={setCurrentPage}/>
 
                     {/* User dropdown */}
                     <div className='relative' ref={dropdownRef}>

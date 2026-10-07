@@ -24,7 +24,7 @@ const notificationSchema = new mongoose.Schema(
                 'vehicle_added', 'vehicle_reviewed',
                 'new_bid_received', 'reserve_price_met',
                 'auction_sold', 'auction_unsold', 'reserve_not_met', 'auction_canceled',
-                // 'outbid', 'won' — deliberately NOT added yet, blocked on bid-semantics decision
+                'auction_relisted', 'auction_rescheduled',
             ],
         },
 

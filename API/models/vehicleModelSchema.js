@@ -177,7 +177,7 @@ const vehicleSchema = new mongoose.Schema(
             url: { type: String, required: true },
             publicId: { type: String, required: true },
             resourceType: { type: String, default: 'raw' },
-            name: { type: String, required: true } // f.originalname
+            name: { type: String, required: true }
         }],
 
         // ============ 5th-step
@@ -250,7 +250,7 @@ const vehicleSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
-        statusAtCancellation: {  // capture pre auc status before change to canceled
+        statusAtCancellation: {
             type: String,
             enum: ['upcoming', 'live'],
             default: null
@@ -268,12 +268,33 @@ const vehicleSchema = new mongoose.Schema(
             type: Date,
             default: null
         },
+
+        // reschedule / relist
+        relistCount: { type: Number, default: 0 },
+
+        scheduleHistory: {
+            type: [{
+                _id: false,
+                at: { type: Date, default: Date.now },
+                byRole: { type: String },
+                byId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+                mode: { type: String, enum: ['rescheduled', 'relisted'] },
+                fromStatus: { type: String },
+                prevStartDateTime: { type: Date },
+                prevEndDateTime: { type: Date },
+                newStartDateTime: { type: Date },
+                newEndDateTime: { type: Date },
+                reason: { type: String },
+            }],
+            default: [],
+            select: false,
+        },
     },
     { timestamps: true }
 );
 
 // calculate auction time
-const DURATION_MS = {
+export const DURATION_MS = {
     '1_day': 1 * 24 * 60 * 60 * 1000,
     '3_days': 3 * 24 * 60 * 60 * 1000,
     '5_days': 5 * 24 * 60 * 60 * 1000,

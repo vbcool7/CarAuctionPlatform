@@ -140,12 +140,15 @@ function AuctionsBidsTab({ bids }) {
                             ? "bg-yellow-100 text-yellow-700"
                             : bid.status === "won"
                               ? "bg-purple-100 text-purple-700"
-                              : bid.status === "canceled"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-gray-100 text-gray-600"
+                              : bid.status === "withdrawn"
+                                ? "bg-amber-100 text-amber-700"
+                                : bid.status === "canceled"
+                                  ? "bg-red-100 text-red-700"
+                                  : bid.status === "archived"
+                                    ? "bg-slate-100 text-slate-600"
+                                    : "bg-gray-100 text-gray-600"
                         }`}
                     >
-
                       {formatLabel(bid.status) || "—"}
                     </span>
                   </td>

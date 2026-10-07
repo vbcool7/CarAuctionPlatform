@@ -45,6 +45,51 @@ const mapFiltersToParams = (filters, search, startDate, endDate) => {
     return params;
 };
 
+// status style
+const getBidStatusStyle = (status) => {
+    switch (status) {
+        case 'active':
+            return 'border-green-200 bg-green-50 text-green-700';
+
+        case 'won':
+            return 'border-purple-200 bg-purple-50 text-purple-700';
+
+        case 'withdrawn':
+            return 'border-amber-200 bg-amber-50 text-amber-700';
+
+        case 'canceled':
+            return 'border-red-200 bg-red-50 text-red-600';
+
+        case 'archived':
+            return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+
+        default:
+            return 'border-gray-200 bg-gray-50 text-gray-600';
+    }
+};
+
+const getBidStatusLabel = (status) => {
+    switch (status) {
+        case 'active':
+            return 'Active';
+
+        case 'won':
+            return 'Won';
+
+        case 'withdrawn':
+            return 'Withdrawn';
+
+        case 'canceled':
+            return 'Canceled';
+
+        case 'archived':
+            return 'Archived';
+
+        default:
+            return 'Outbid';
+    }
+};
+
 function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
     const [activeTab, setActiveTab] = useState("all");
@@ -421,27 +466,9 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
                                                 {/* status */}
                                                 <td className="px-6 py-4">
                                                     <span
-                                                        className={`px-2 py-1 rounded text-[11px] font-medium border
-                                                            ${bid.status === 'active'
-                                                                ? 'border-green-200 bg-green-50 text-green-700'
-                                                                : bid.status === 'won'
-                                                                    ? 'border-purple-200 bg-purple-50 text-purple-700'
-                                                                    : bid.status === 'withdrawn'
-                                                                        ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                                                        : bid.status === 'canceled'
-                                                                            ? 'border-red-200 bg-red-50 text-red-600'
-                                                                            : 'border-gray-200 bg-gray-50 text-gray-600'
-                                                            }`}
+                                                        className={`px-2 py-1 rounded text-[11px] font-medium border ${getBidStatusStyle(bid.status)}`}
                                                     >
-                                                        {bid.status === 'active'
-                                                            ? 'Active'
-                                                            : bid.status === 'won'
-                                                                ? 'Won'
-                                                                : bid.status === 'withdrawn'
-                                                                    ? 'Withdrawn'
-                                                                    : bid.status === 'canceled'
-                                                                        ? 'Canceled'
-                                                                        : 'Outbid'}
+                                                        {getBidStatusLabel(bid.status)}
                                                     </span>
                                                 </td>
 

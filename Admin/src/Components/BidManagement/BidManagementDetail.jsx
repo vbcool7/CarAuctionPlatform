@@ -79,6 +79,51 @@ const getAuctionTimelineStages = (vehicle) => {
     return [createdStage, liveStage, terminalStage];
 };
 
+// status badge
+const getBidStatusStyle = (status) => {
+    switch (status) {
+        case 'active':
+            return 'border-green-200 bg-green-50 text-green-700';
+
+        case 'won':
+            return 'border-purple-200 bg-purple-50 text-purple-700';
+
+        case 'withdrawn':
+            return 'border-amber-200 bg-amber-50 text-amber-700';
+
+        case 'canceled':
+            return 'border-red-200 bg-red-50 text-red-600';
+
+        case 'archived':
+            return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+
+        default:
+            return 'border-gray-200 bg-gray-50 text-gray-600';
+    }
+};
+
+const getBidStatusLabel = (status) => {
+    switch (status) {
+        case 'active':
+            return 'Active';
+
+        case 'won':
+            return 'Won';
+
+        case 'withdrawn':
+            return 'Withdrawn';
+
+        case 'canceled':
+            return 'Canceled';
+
+        case 'archived':
+            return 'Archived';
+
+        default:
+            return 'Outbid';
+    }
+};
+
 function BidManagementDetail({ bidId, setCurrentPage }) {
 
     const { data: bidDetail, isLoading, isError } = useGetBidDetail(bidId);
@@ -200,22 +245,11 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
                             {/* Status */}
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Status</p>
+
                                 <span
-                                    className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold capitalize
-                                        ${bid?.status === 'won'
-                                            ? 'bg-green-100 text-green-700'
-                                            : bid?.status === 'active'
-                                                ? 'bg-green-100 text-green-700'
-                                                : bid?.status === 'outbid'
-                                                    ? 'bg-red-100 text-red-600'
-                                                    : bid?.status === 'withdrawn'
-                                                        ? 'bg-orange-100 text-orange-700'
-                                                        : bid?.status === 'canceled'
-                                                            ? 'bg-gray-100 text-gray-600'
-                                                            : 'bg-gray-100 text-gray-700'
-                                        }`}
+                                    className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold ${getBidStatusStyle(bid?.status)}`}
                                 >
-                                    {bid?.status || '—'}
+                                    {getBidStatusLabel(bid?.status)}
                                 </span>
                             </div>
 
@@ -378,24 +412,12 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
                                                         )}
                                                     </td>
 
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-6 py-4">
                                                         <span
-                                                            className={`inline-flex px-2 py-1 rounded-md text-[11px] font-semibold capitalize
-                                                                ${item?.status === 'won'
-                                                                    ? 'bg-green-100 text-green-700'
-                                                                    : item?.status === 'outbid'
-                                                                        ? 'bg-red-100 text-red-600'
-                                                                        : item?.status === 'withdrawn'
-                                                                            ? 'bg-orange-100 text-orange-700'
-                                                                            : item?.status === 'canceled'
-                                                                                ? 'bg-gray-100 text-gray-600'
-                                                                                : 'bg-gray-100 text-gray-700'
-                                                                }`}
-                                                        >
-                                                            {item?.status || '—'}
+                                                            className={`px-2 py-1 rounded text-[11px] font-medium border ${getBidStatusStyle(item.status)}`}>
+                                                            {getBidStatusLabel(item.status)}
                                                         </span>
                                                     </td>
-
                                                 </tr>
                                             );
                                         })
@@ -409,9 +431,7 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
                                             </td>
                                         </tr>
                                     )}
-
                                 </tbody>
-
                             </table>
                         </div>
 
@@ -741,9 +761,7 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
                         </div>
                     </div>
 
-
                 </div>
-
 
                 {/* ================== Right SIDE ================== */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
@@ -911,14 +929,10 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
 
                     {/* Auction Timeline */}
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
-
-                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">
-                            Auction Timeline
-                        </h3>
-
+                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4"> Auction Timeline </h3>
                         <div className="relative">
 
-                            <div className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200" />
+                            <div className="absolute left-1.25 top-2 bottom-2 w-px bg-gray-200" />
 
                             <div className="space-y-5">
                                 {getAuctionTimelineStages(vehicle).map((stage) => {
@@ -934,7 +948,7 @@ function BidManagementDetail({ bidId, setCurrentPage }) {
                                     return (
                                         <div key={stage.key} className="relative flex gap-3">
                                             <div
-                                                className={`relative z-10 w-[11px] h-[11px] mt-1 rounded-full border-2 border-white ring-1 shrink-0 ${dotColor}`}
+                                                className={`relative z-10 w-2.75 h-2.75 mt-1 rounded-full border-2 border-white ring-1 shrink-0 ${dotColor}`}
                                             />
 
                                             <div>

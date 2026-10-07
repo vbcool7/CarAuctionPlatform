@@ -7,13 +7,13 @@ function OverviewSidebar({ vehicle, bids, participants, setCurrentPage }) {
     const hasBids = bids?.length > 0;
 
     // Current highest bid = jo status 'active' ya 'won' hai
-    // (withdrawn/outbid/cancelled bids ka amount stale ho sakta hai, unhe count nahi karna)
+    // (withdrawn/outbid/canceled bids ka amount stale ho sakta hai, unhe count nahi karna)
     const topBid = hasBids
         ? bids.find((b) => b.status === 'active' || b.status === 'won') || null
         : null;
 
     const recentActiveBids = bids.filter(
-        (b) => b.status !== 'withdrawn' && b.status !== 'cancelled'
+        (b) => b.status !== 'withdrawn' && b.status !== 'canceled' && b.status !== "archived"
     );
 
     return (
@@ -84,6 +84,7 @@ function OverviewSidebar({ vehicle, bids, participants, setCurrentPage }) {
                     <div className="space-y-2">
 
                         {[...bids]
+                            .filter((b) => b.status !== "archived")
                             .sort((a, b) => b.amount - a.amount)
                             .slice(0, 5)
                             .map((bid, index) => (
@@ -151,7 +152,6 @@ function OverviewSidebar({ vehicle, bids, participants, setCurrentPage }) {
 
             </div>
 
-
             {/* Live Activity */}
             <div className="bg-white border border-slate-200 rounded-xl p-5">
 
@@ -197,12 +197,12 @@ function OverviewSidebar({ vehicle, bids, participants, setCurrentPage }) {
 
                                     <p
                                         className={`text-[10px] mt-0.5 ${bid.status === "active"
-                                                ? "text-green-500"
-                                                : bid.status === "won"
-                                                    ? "text-purple-500"
-                                                    : bid.status === "withdrawn" || bid.status === "cancelled"
-                                                        ? "text-red-400"
-                                                        : "text-slate-400"
+                                            ? "text-green-500"
+                                            : bid.status === "won"
+                                                ? "text-purple-500"
+                                                : bid.status === "withdrawn" || bid.status === "cancelled"
+                                                    ? "text-red-400"
+                                                    : "text-slate-400"
                                             }`}
                                     >
                                         {formatLabel(bid.status)}
