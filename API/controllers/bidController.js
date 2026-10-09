@@ -1,13 +1,28 @@
 
+import mongoose from 'mongoose';
 import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
-import mongoose from 'mongoose';
 
 import { getNextBidId } from '../utils/counterHelper.js';
 import { createNotification } from '../services/notificationService.js';
 import { emitToVehicle } from '../sockets/socketEmitter.js';
+
+// Keep only the highest bid active for each vehicle
+const settleActiveBids = async (vehicleId) => {
+    const latest = await Vehicle.findById(vehicleId)
+        .select('currentBid auctionEndDateTime extensionCount')
+        .lean();
+
+    if (latest?.currentBid != null) {
+        await Bid.updateMany(
+            { vehicleId, status: 'active', amount: { $lt: latest.currentBid } },
+            { $set: { status: 'outbid' } }
+        );
+    }
+    return latest;
+};
 
 // SELLER + BUYER : place bid only for price_type = reserve_price
 export const placeBid = async (req, res) => {
@@ -45,7 +60,6 @@ export const placeBid = async (req, res) => {
             });
         }
 
-        // seller can't be bid on their own vehicles
         if (bidderType === 'Seller' && vehicle.sellerId.toString() === bidderId.toString()) {
             return res.status(400).json({
                 success: false,
@@ -82,74 +96,130 @@ export const placeBid = async (req, res) => {
             });
         }
 
-        // ---- CAPTURE OLD STATE BEFORE OVERWRITING ----
-        const isFirstBid = vehicle.currentBid == null;
-        const wasReserveMetBefore = vehicle.currentBid != null && vehicle.currentBid >= vehicle.reservePrice;
+        // ---- ATOMIC: check and update currentBid in one operation ----
+        // new: false => returns the previous state for first-bid and reserve checks
+        const before = await Vehicle.findOneAndUpdate(
+            {
+                _id: vehicleId,
+                adminStatus: 'approved',
+                priceType: 'reserve_price',
+                auctionStatus: 'live',
+                auctionEndDateTime: { $gt: new Date() },
+                startingBidPrice: { $lt: amt },
+                $or: [{ currentBid: null }, { currentBid: { $lt: amt } }],
+            },
+            { $set: { currentBid: amt } },
+            { new: false }
+        ).lean();
 
-        await Bid.updateMany(
-            { vehicleId, status: 'active' },
-            { $set: { status: 'outbid' } }
-        );
+        if (!before) {
+            // Another bid was placed first, or the auction has ended
+            const fresh = await Vehicle.findById(vehicleId)
+                .select('currentBid startingBidPrice auctionStatus auctionEndDateTime')
+                .lean();
 
-        const newBid = await Bid.create({
-            vehicleId,
-            bidderId: bidderId,
-            bidderType,
-            bidId: await getNextBidId(),
-            amount: amt,
-            status: 'active'
-        });
+            if (!fresh || fresh.auctionStatus !== 'live' || fresh.auctionEndDateTime <= new Date()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This auction is not currently live'
+                });
+            }
 
-        vehicle.currentBid = amt;
-
-        // Anti-sniping check / extension check
-        const MAX_EXTENSIONS = 5;
-        const now = new Date();
-        const timeUntilEnd = vehicle.auctionEndDateTime - now; // milliseconds
-        const windowMs = (vehicle.antiSnipingWindow ?? 2) * 60 * 1000;
-
-        if (timeUntilEnd <= windowMs && vehicle.extensionCount < MAX_EXTENSIONS) {
-            const extensionMs = (vehicle.antiSnipingExtension ?? 2) * 60 * 1000;
-            vehicle.auctionEndDateTime = new Date(vehicle.auctionEndDateTime.getTime() + extensionMs);
-            vehicle.extensionCount += 1;
+            const min = fresh.currentBid ?? fresh.startingBidPrice;
+            return res.status(400).json({
+                success: false,
+                message: `Bid must be higher than AED ${min.toLocaleString()}`
+            });
         }
 
-        await vehicle.save();
+        // ---- CAPTURE OLD STATE (atomic update se mila) ----
+        const isFirstBid = before.currentBid == null;
+        const wasReserveMetBefore = before.currentBid != null && before.currentBid >= before.reservePrice;
 
-        // ---- NAYA: real-time-broadcast (bidding) ----
+        // ---- bid create; fail ho to currentBid wapas ----
+        let newBid;
+        try {
+            newBid = await Bid.create({
+                vehicleId,
+                bidderId,
+                bidderType,
+                bidId: await getNextBidId(),
+                amount: amt,
+                status: 'active'
+            });
+        } catch (createErr) {
+            await Vehicle.updateOne(
+                { _id: vehicleId, currentBid: amt },
+                { $set: { currentBid: before.currentBid ?? null } }
+            );
+            throw createErr;
+        }
+
+        // ---- Anti-sniping extension (atomic) ----
+        const MAX_EXTENSIONS = 5;
+        const nowTs = new Date();
+        const windowMs = (before.antiSnipingWindow ?? 2) * 60 * 1000;
+        const extensionMs = (before.antiSnipingExtension ?? 2) * 60 * 1000;
+
+        await Vehicle.findOneAndUpdate(
+            {
+                _id: vehicleId,
+                auctionEndDateTime: { $gt: nowTs, $lte: new Date(nowTs.getTime() + windowMs) },
+                $or: [
+                    { extensionCount: { $lt: MAX_EXTENSIONS } },
+                    { extensionCount: { $exists: false } },
+                ],
+            },
+            [{
+                $set: {
+                    auctionEndDateTime: { $add: ['$auctionEndDateTime', extensionMs] },
+                    extensionCount: { $add: [{ $ifNull: ['$extensionCount', 0] }, 1] },
+                }
+            }],
+            { updatePipeline: true }
+        );
+
+        // ---- sirf sabse upar wali bid 'active' rahe + fresh values broadcast ke liye ----
+        const latest = await settleActiveBids(vehicleId);
+
+        // ---- real-time-broadcast (bidding) ----
         try {
             emitToVehicle(vehicleId, 'bidUpdate', {
                 vehicleId,
-                currentBid: vehicle.currentBid,
-                auctionEndDateTime: vehicle.auctionEndDateTime,
-                extensionCount: vehicle.extensionCount,
+                currentBid: latest.currentBid,
+                auctionEndDateTime: latest.auctionEndDateTime,
+                extensionCount: latest.extensionCount,
             });
         } catch (e) {
             console.error('[socket] bidUpdate emit failed:', e.message);
         }
 
-        // ---- NOTIFICATION TRIGGERS ----
-        if (isFirstBid) {
-            await createNotification({
-                recipientId: vehicle.sellerId,
-                recipientType: 'Seller',
-                type: 'new_bid_received',
-                vehicleId: vehicle._id,
-                title: 'New Bid Received',
-                message: `${vehicle.listingId} received a new bid of AED ${amt}.`,
-            });
-        }
+        // ---- NOTIFICATION TRIGGERS (fail hone par bid response na bigade) ----
+        try {
+            if (isFirstBid) {
+                await createNotification({
+                    recipientId: before.sellerId,
+                    recipientType: 'Seller',
+                    type: 'new_bid_received',
+                    vehicleId: before._id,
+                    title: 'New Bid Received',
+                    message: `${before.listingId} received a new bid of AED ${amt}.`,
+                });
+            }
 
-        const reserveJustMet = !wasReserveMetBefore && amt >= vehicle.reservePrice;
-        if (reserveJustMet) {
-            await createNotification({
-                recipientId: vehicle.sellerId,
-                recipientType: 'Seller',
-                type: 'reserve_price_met',
-                vehicleId: vehicle._id,
-                title: 'Reserve Price Met',
-                message: `${vehicle.listingId} has reached the reserve price.`,
-            });
+            const reserveJustMet = !wasReserveMetBefore && amt >= before.reservePrice;
+            if (reserveJustMet) {
+                await createNotification({
+                    recipientId: before.sellerId,
+                    recipientType: 'Seller',
+                    type: 'reserve_price_met',
+                    vehicleId: before._id,
+                    title: 'Reserve Price Met',
+                    message: `${before.listingId} has reached the reserve price.`,
+                });
+            }
+        } catch (notifErr) {
+            console.error('placeBid notification failed:', notifErr.message);
         }
 
         return res.status(201).json({
@@ -392,7 +462,6 @@ export const withdrawBid = async (req, res) => {
             });
         }
 
-        // Ownership check — only the bidder can withdraw their own bid
         if (bid.bidderId.toString() !== userId.toString()) {
             return res.status(403).json({
                 success: false,
@@ -400,7 +469,6 @@ export const withdrawBid = async (req, res) => {
             });
         }
 
-        // Only active bids can be withdrawn
         if (bid.status !== 'active') {
             return res.status(400).json({
                 success: false,
@@ -434,32 +502,60 @@ export const withdrawBid = async (req, res) => {
             });
         }
 
-        bid.status = 'withdrawn';
-        await bid.save();
+        // ---- ATOMIC 1: bid abhi bhi 'active' ho tabhi withdraw (beech mein outbid ho gayi to nahi) ----
+        const withdrawn = await Bid.findOneAndUpdate(
+            { _id: bid._id, status: 'active' },
+            { $set: { status: 'withdrawn' } },
+            { new: true }
+        );
 
-        // Find next-highest bid among outbid bids
-        const nextHighest = await Bid.findOne({
-            vehicleId: vehicle._id,
-            status: 'outbid'
-        }).sort({ amount: -1 });
-
-        if (nextHighest) {
-            nextHighest.status = 'active';
-            await nextHighest.save();
-            vehicle.currentBid = nextHighest.amount;
-        } else {
-            vehicle.currentBid = vehicle.startingBidPrice;
+        if (!withdrawn) {
+            return res.status(400).json({
+                success: false,
+                message: 'This bid is no longer active'
+            });
         }
 
-        await vehicle.save();
+        // ---- withdraw karne wale ki is vehicle pe baaki saari bids bhi withdrawn, archived / canceled ko mat chhuo (purani history)
+        await Bid.updateMany(
+            {
+                vehicleId: vehicle._id,
+                bidderId: bid.bidderId,
+                status: { $in: ['active', 'outbid'] }
+            },
+            { $set: { status: 'withdrawn' } }
+        );
 
-        // ---- NAYA: real-time-broadcast  ----
+        // ---- agli highest bid (withdraw karne wale ki apni purani bids nahi) ----
+        const nextHighest = await Bid.findOne({
+            vehicleId: vehicle._id,
+            status: 'outbid',
+            bidderId: { $ne: bid.bidderId }
+        }).sort({ amount: -1 });
+
+        // ---- ATOMIC 2: currentBid sirf tab badlo jab ye bid hi currentBid thi ----
+        const reverted = await Vehicle.findOneAndUpdate(
+            { _id: vehicle._id, currentBid: bid.amount },
+            { $set: { currentBid: nextHighest ? nextHighest.amount : null } }
+        );
+
+        if (reverted && nextHighest) {
+            await Bid.updateOne(
+                { _id: nextHighest._id, status: 'outbid' },
+                { $set: { status: 'active' } }
+            );
+        }
+
+        // sirf sabse upar wali bid 'active' rahe + fresh values
+        const latest = await settleActiveBids(vehicle._id);
+
+        // ---- real-time-broadcast ----
         try {
             emitToVehicle(vehicle._id.toString(), 'bidUpdate', {
                 vehicleId: vehicle._id.toString(),
-                currentBid: vehicle.currentBid,
-                auctionEndDateTime: vehicle.auctionEndDateTime,
-                extensionCount: vehicle.extensionCount,
+                currentBid: latest.currentBid,
+                auctionEndDateTime: latest.auctionEndDateTime,
+                extensionCount: latest.extensionCount,
             });
         } catch (socketErr) {
             console.error('[socket] bidUpdate-emit-failed:', socketErr.message);
@@ -510,7 +606,7 @@ export const getMyBidDetail = async (req, res) => {
         const totalBids = await Bid.countDocuments({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } });
 
         // paginated slice of this vehicle's bids
-            const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } })
+        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id, status: { $ne: 'archived' } })
             .select('bidId bidderId bidderType amount status createdAt')
             .sort({ amount: -1, createdAt: -1 })
             .skip(skip)

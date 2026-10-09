@@ -50,7 +50,7 @@ const Tag = ({ children }) => {
     );
 };
 
-function LiveAuctionsDetail({ auction, setCurrentPage }) {
+function LiveAuctionsDetail({ setCurrentPage, auction, onEditVehicle }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -87,6 +87,7 @@ function LiveAuctionsDetail({ auction, setCurrentPage }) {
                 parentPage="live-auctions"
                 currentLabel="Live Auction Detail"
                 backButtonTarget="all-auctions"
+                onEdit={() => onEditVehicle(auction._id, 'live-auction-detail')}
             />
 
             {/* Live Auction Info Bar */}

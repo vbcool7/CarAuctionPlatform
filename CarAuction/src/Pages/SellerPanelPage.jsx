@@ -27,6 +27,7 @@ import Support from '../Components/SellerPanel/Support/Support';
 import CreateTicket from '../Components/SellerPanel/Support/CreateTicket';
 import SupportDetail from '../Components/SellerPanel/Support/SupportDetail';
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
+import EditVehicle from '../Components/SellerPanel/EditVehicle/EditVehicle';
 
 const SELLER_DEEP_LINKS = ['watchlist', 'my-vehicles', 'my-auctions'];
 
@@ -119,11 +120,14 @@ function SellerPanelPage() {
 
               {/* my vehicles */}
               {currentPage === 'my-vehicles' && <MyVehicles setSelectedMyVehicleId={setSelectedMyVehicleId} setCurrentPage={setCurrentPage} />}
-              {currentPage === 'my-vehicles-detail' && <MyVehiclesDetail myVehileId={selectedMyVehicleId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'my-vehicles-detail' && <MyVehiclesDetail myVehileId={selectedMyVehicleId} setSelectedMyVehicleId={setSelectedMyVehicleId} setCurrentPage={setCurrentPage} />}
+
+              {/* edit vehicle */}
+              {currentPage === 'edit-vehicle' && <EditVehicle vehicleId={selectedMyVehicleId} setCurrentPage={setCurrentPage} />}
 
               {/* my auctions */}
               {currentPage === 'my-auctions' && <MyAuctions setSelectedAuctionId={setSelectedAuctionId} setCurrentPage={setCurrentPage} />}
-              {currentPage === 'my-auctions-detail' && <MyAuctionsDetail auctionId={selectedAuctionId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'my-auctions-detail' && <MyAuctionsDetail auctionId={selectedAuctionId} setSelectedMyVehicleId={setSelectedMyVehicleId} setCurrentPage={setCurrentPage} />}
 
               {/* bids offers */}
               {currentPage === 'bids-offers' && <BidsOffers setSelectedBidsOfferId={setSelectedBidsOfferId} setCurrentPage={setCurrentPage} />}

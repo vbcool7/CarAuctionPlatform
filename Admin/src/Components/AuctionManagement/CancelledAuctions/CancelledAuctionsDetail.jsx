@@ -16,8 +16,9 @@ import AuctionsGallery from '../Shared/AuctionsGallery';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 import AuctionsDetailTimeline from '../Shared/AuctionsDetailTimeline';
 
-import { useGetAuctionDetail } from '../../../hooks/useAuction';
+import { useGetAuctionDetail, useRescheduleAuction } from '../../../hooks/useAuction';
 import { formatLabel, formatPrice } from '../../utils/formatter';
+import RescheduleAuctionModal from '../Shared/RescheduleAuctionModal';
 
 const Info = ({ label, value }) => (
     <div className="flex flex-col">
@@ -32,11 +33,14 @@ const TagBadge = ({ children }) => (
     </span>
 );
 
-function CancelledAuctionsDetail({ setCurrentPage, auction }) {
+function CancelledAuctionsDetail({ setCurrentPage, auction, onEditVehicle }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
+    const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+    const [rescheduleError, setRescheduleError] = useState("");
 
     const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
+    const { mutate: rescheduleAuction, isPending: isRescheduling } = useRescheduleAuction();
 
     const vehicle = auctionDetail?.data?.vehicle;
 
@@ -104,11 +108,17 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
         <div>
             <AuctionsDetailHeader
                 setCurrentPage={setCurrentPage}
-                pageTitle="Cancelled Auction Details"
+                pageTitle="Canceled Auction Details"
                 parentLabel="Canceled Auctions"
                 parentPage="canceled-auctions"
                 currentLabel="Canceled Auction Detail"
                 backButtonTarget="all-auctions"
+                actionLabel="Relist"
+                onAction={() => {
+                    setRescheduleError("");
+                    setIsRescheduleOpen(true);
+                }}
+                onEdit={() => onEditVehicle(auction._id, 'canceled-auction-detail')}
             />
 
             {/* cancel info bar */}
@@ -349,6 +359,37 @@ function CancelledAuctionsDetail({ setCurrentPage, auction }) {
                 </div>
 
             </div>
+
+            {/* ----------------- AUCTION RESCHEDULING MODAL ----------------- */}
+            <RescheduleAuctionModal
+                isOpen={isRescheduleOpen}
+                onClose={() => {
+                    if (isRescheduling) return;
+                    setIsRescheduleOpen(false);
+                    setRescheduleError("");
+                }}
+                onConfirm={(payload) => {
+                    setRescheduleError("");
+                    rescheduleAuction(
+                        { id: vehicle._id, ...payload },
+                        {   
+                            onSuccess: (data) => {
+                                setIsRescheduleOpen(false);
+                                toast.success(data?.message || "Auction updated successfully");
+                                setCurrentPage('upcoming-auctions');
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to update auction. Please try again.";
+                                setRescheduleError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                loading={isRescheduling}
+                error={rescheduleError}
+            />
         </div>
     )
 }

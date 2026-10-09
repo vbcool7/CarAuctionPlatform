@@ -144,6 +144,9 @@ function VehicleApprovals({ setCurrentPage, setSelectedVehicleAppId }) {
             {
                 onSettled: () => setPendingId(null),
                 onSuccess: (res) => {
+                    if (res?.windowPassed) {
+                        toast.warning("Approved, but the auction window has passed. Reschedule it from Upcoming Auctions.");
+                    }
                     toast.success(res?.message || "Vehicle approved successfully");
                 },
                 onError: (err) => {

@@ -37,6 +37,9 @@ export const runAuctionStatusUpdate = async () => {
         );
 
         if (now >= startDateTime) {
+            // window guzar chuki ho (pending ke dauraan end time nikal gaya) to live mat karo
+            if (!vehicle.auctionEndDateTime || vehicle.auctionEndDateTime <= now) continue;
+
             vehicle.auctionStatus = 'live';
             await vehicle.save();
             updatedCount++;

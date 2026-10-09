@@ -6,6 +6,7 @@ import API from '../api/axiosInstance';
 
 // =========================== SELLER SIDE
 
+// add vehicle
 export const useDecodeVin = () => {
     return useMutation({
         mutationKey: ['decodeVin'],
@@ -33,6 +34,23 @@ export const useAddVehicle = () => {
         onSuccess: (data) => {
             toast.success(data.message || 'Vehicle listed successfully');
         }
+    });
+};
+
+// edit vehicle
+export const useSellerEditVehicle = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, formData }) => {
+            const res = await API.patch(`/vehicle/seller-edit-vehicle/${id}`, formData);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sellerVehicles'] });
+            queryClient.invalidateQueries({ queryKey: ['vehicleDetail'] });
+            queryClient.invalidateQueries({ queryKey: ['myAuctions'] });
+        },
     });
 };
 

@@ -7,8 +7,8 @@ import {
     adminSignup, login, adminGet, adminLogout,
     addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
     addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
-    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes,
-    getAllAuctions, getAuctionDetail, getAllAuctionStats, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction, 
+    getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes, adminEditVehicle,
+    getAllAuctions, getAuctionDetail, getAllAuctionStats, getUpcomingAuctionsCalendar, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction,
     getAllBids, getBidDetail, getBidStats,
     getAllSales,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
@@ -110,10 +110,19 @@ router.get('/get-vehicle/:id', authMiddleware(['admin', 'auctionManager']), requ
 router.patch('/vehicle-review/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), reviewVehicle);
 router.get('/vehicle-approval-summary', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getVehicleApprovalSummary);
 
+router.patch('/vehicle-edit/:id', authMiddleware(['admin', 'auctionManager']), requirePermission(['manageVehicles', 'manageAuctions']),
+    upload.fields([
+        { name: 'images', maxCount: 15 },
+        { name: 'documents', maxCount: 5 },
+    ]),
+    adminEditVehicle
+);
+
 // ============================ AUCTION
 router.get('/all-auctions', authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAllAuctions);
 router.get('/auction-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAuctionDetail);
 router.get("/all-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getAllAuctionStats);
+router.get("/upcoming-auctions-calendar", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getUpcomingAuctionsCalendar);
 router.get("/live-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getLiveAuctionStats);
 router.get("/upcoming-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getUpcomingAuctionStats);
 router.get("/completed-auction-stats", authMiddleware(['admin', 'auctionManager']), requirePermission('manageAuctions'), getCompletedAuctionStats);

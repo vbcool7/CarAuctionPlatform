@@ -92,3 +92,22 @@ export const useGetVehicleApprovalSummary = () => {
         }
     });
 };
+
+// edit vehicle
+export const useAdminEditVehicle = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, formData }) => {
+            const res = await API.patch(`/admin/vehicle-edit/${id}`, formData);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['vehicle'] });
+            queryClient.invalidateQueries({ queryKey: ['auctionDetail'] });
+            queryClient.invalidateQueries({ queryKey: ['allAuctions'] });
+            queryClient.invalidateQueries({ queryKey: ['allVehicles'] });
+            queryClient.invalidateQueries({ queryKey: ['vehicleDetail'] });
+        },
+    });
+};

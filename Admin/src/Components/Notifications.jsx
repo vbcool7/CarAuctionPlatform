@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, BellRing, Trophy, X, Check, CheckCheck, Info, Search, ArrowLeft, RefreshCw, ChevronRight, ClipboardCheck, Car, UserPlus, UserCheck, FileCheck, UserX } from 'lucide-react';
+import { Bell, BellRing, Trophy, X, Check, CheckCheck, Info, Search, ArrowLeft, RefreshCw, ChevronRight, ClipboardCheck, Car, UserPlus, UserCheck, FileCheck, UserX, FileEdit } from 'lucide-react';
 import { useGetAllNotificationsInfinite, useMarkAllReadNotification, useReadNotification } from '../hooks/useNotification';
 import { useEffect } from 'react';
 
@@ -22,6 +22,8 @@ const getIcon = (type) => {
         case 'auction_rescheduled': return <RefreshCw size={18} />;
         case 'vehicle_added': return <Car size={18} />;
         case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
+        case 'vehicle_edited': return <FileEdit size={18} />;
+        case 'vehicle_resubmitted': return <Car size={18} />;
         default: return <Info size={18} />;
     }
 };
@@ -40,10 +42,12 @@ const getIconStyle = (type) => {
         case 'seller_reactivated': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
         case 'auction_canceled': return 'bg-red-50 text-red-600';
-         case 'auction_relisted': return 'bg-amber-50 text-amber-600';
+        case 'auction_relisted': return 'bg-amber-50 text-amber-600';
         case 'auction_rescheduled': return 'bg-blue-50 text-blue-600';
         case 'vehicle_added': return 'bg-blue-50 text-blue-600';
         case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
+        case 'vehicle_edited': return 'bg-blue-50 text-blue-600';
+        case 'vehicle_resubmitted': return 'bg-blue-50 text-blue-600';
         default: return 'bg-slate-50 text-slate-600';
     }
 };
@@ -65,6 +69,8 @@ const NOTIFICATION_REDIRECT_MAP = {
     auction_rescheduled: 'upcoming-auctions',
     vehicle_added: 'vehicle-approvals',
     vehicle_reviewed: 'vehicle-approvals',
+    vehicle_edited: 'vehicle-approvals',
+    vehicle_resubmitted: 'vehicle-approvals',
 };
 
 function Notifications({ setCurrentPage }) {

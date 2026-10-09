@@ -10,7 +10,7 @@ import {
     buildManagerWelcomeEmail
 } from '../utils/emailTemplates.js';
 
-import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { deleteCloudinaryFiles, deleteStoredFile } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
 import { UAE_UTC_OFFSET_HOURS, DURATION_MS, parseTime12h } from '../models/vehicleModelSchema.js';
 
@@ -1954,7 +1954,8 @@ export const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;
         const vehicle = await Vehicle.findById(id)
-            .populate("sellerId", "fullName email phone profileImage status");
+            .populate("sellerId", "fullName email phone profileImage status")
+            .populate("reviewedBy", "name role");
 
         if (!vehicle) {
             return res.status(404).json({
@@ -2019,7 +2020,10 @@ export const reviewVehicle = async (req, res) => {
             vehicle.reviewedAt = Date.now();
             vehicle.rejectionReason = undefined;
             vehicle.reviewedBy = req.user.id;
-            vehicle.auctionStatus = 'upcoming';
+            // sirf pehli baar (draft) approve pe upcoming; unsold/canceled/etc. ka status mat chhedo
+            if (vehicle.auctionStatus === 'draft') {
+                vehicle.auctionStatus = 'upcoming';
+            }
         } else {
             vehicle.adminStatus = 'rejected';
             vehicle.rejectionReason = rejectionReason.trim();
@@ -2028,6 +2032,11 @@ export const reviewVehicle = async (req, res) => {
         }
 
         await vehicle.save();
+
+        const windowPassed =
+            action === 'approve' &&
+            vehicle.auctionStatus === 'upcoming' &&
+            (!vehicle.auctionEndDateTime || vehicle.auctionEndDateTime <= new Date());
 
         const role = req.user.role; // 'admin' or 'auctionManager'
         const actionLabel = action === 'approve' ? 'approved' : 'rejected';
@@ -2062,7 +2071,8 @@ export const reviewVehicle = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: `Vehicle ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
-            data: vehicle
+            data: vehicle,
+            windowPassed
         });
 
     } catch (err) {
@@ -2137,6 +2147,249 @@ export const getVehicleApprovalSummary = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occurred",
+        });
+    }
+};
+
+// edit vehicle
+
+const MAX_IMAGES = 15;
+const MAX_DOCS = 5;
+const MAX_HISTORY = 50;
+
+const TEXT_FIELDS = [
+    'vehicleType', 'make', 'model', 'trim', 'bodyType', 'transmission', 'fuelType',
+    'drivetrain', 'exteriorColor', 'interiorColor', 'vehicleDescription',
+    'country', 'emirate', 'city', 'zipCode', 'titleStatus', 'accidentHistory',
+    'overallCondition', 'mechanicalCondition', 'interiorCondition', 'exteriorCondition',
+    'doors', 'seats', 'engineSize', 'cylinders', 'keyType', 'additionalFeatures',
+    'repainted', 'smokeOdor', 'petFriendly', 'paintType', 'glassCondition',
+    'tiresCondition', 'tireBrand', 'tireSize', 'seatMaterial', 'sunroof',
+    'acHeater', 'audioSystem', 'navigation', 'powerWindows', 'powerLocks', 'additionalNotes',
+];
+const NUMBER_FIELDS = ['year', 'mileage', 'numberOfKeys'];
+
+// Ek hi jagah rule: seller edit API baad mein isi ko extend karegi
+export const checkAdminEditable = (vehicle) => {
+    if (vehicle.adminStatus === 'rejected') {
+        return 'Rejected vehicles cannot be edited. The seller must edit and resubmit.';
+    }
+    if (vehicle.auctionStatus === 'sold') {
+        return 'Sold vehicles cannot be edited.';
+    }
+    return null;
+};
+
+const parseIds = (v) => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.map(String);
+    const s = String(v).trim();
+    if (s.startsWith('[')) {
+        try { return JSON.parse(s).map(String); } catch { return null; }
+    }
+    return s.split(',').map((x) => x.trim()).filter(Boolean);
+};
+
+// editHistory document bada na ho
+const short = (v) => (typeof v === 'string' && v.length > 300 ? v.slice(0, 300) + '…' : v);
+
+export const adminEditVehicle = async (req, res) => {
+
+    const fail = async (status, message) => {
+        await deleteCloudinaryFiles(req.files);
+        return res.status(status).json({ success: false, message });
+    };
+
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) return fail(404, 'Vehicle not found');
+
+        const vehicle = await Vehicle.findById(id).select('+editHistory');
+        if (!vehicle) return fail(404, 'Vehicle not found');
+
+        const blocked = checkAdminEditable(vehicle);
+        if (blocked) return fail(400, blocked);
+
+        const body = req.body;
+        const files = req.files || {};
+        const changes = [];
+
+         // ---------- text / number fields ----------
+        const fields = [...TEXT_FIELDS, ...NUMBER_FIELDS];
+        if (vehicle.adminStatus === 'pending') fields.push('vin'); 
+
+        for (const field of fields) {
+            if (body[field] === undefined) continue; 
+
+            let incoming = typeof body[field] === 'string' ? body[field].trim() : body[field];
+            if (field === 'vin') incoming = String(incoming).toUpperCase();
+
+            if (incoming === '') {
+                if (Vehicle.schema.path(field).isRequired) return fail(400, `${field} is required`);
+                incoming = undefined; 
+            } else if (NUMBER_FIELDS.includes(field)) {
+                incoming = Number(incoming);
+                if (!Number.isFinite(incoming) || incoming < 0) {
+                    return fail(400, `${field} must be a valid number`);
+                }
+            }
+            const current = vehicle[field];
+            if (String(current ?? '') === String(incoming ?? '')) continue; 
+
+            changes.push({ field, from: short(current ?? null), to: short(incoming ?? null) });
+            vehicle[field] = incoming;
+        }
+
+         // ---------- year range (addVehicle jaisa) ----------
+        if (vehicle.isModified('year')) {
+            const maxYear = new Date().getFullYear() + 1;
+            if (vehicle.year < 1980 || vehicle.year > maxYear) {
+                return fail(400, `Year must be between 1980 and ${maxYear}`);
+            }
+        }
+
+        // ---------- VIN duplicate (addVehicle jaisa) ----------
+        if (vehicle.isModified('vin')) {
+            const dup = await Vehicle.findOne({
+                _id: { $ne: vehicle._id },
+                vin: vehicle.vin,
+                auctionStatus: { $in: ['draft', 'upcoming', 'live'] },
+            }).select('_id');
+            if (dup) return fail(400, 'An active listing already exists for this VIN');
+            vehicle.vinDecoded = false; 
+        }
+
+         // ---------- images / documents ----------
+        const removeImageIds = parseIds(body.removeImageIds);
+        const removeDocIds = parseIds(body.removeDocumentIds);
+
+        if (removeImageIds === null || removeDocIds === null) {
+            return fail(400, 'Invalid remove list');
+        }
+
+        const removedImages = vehicle.images.filter((i) => removeImageIds.includes(String(i._id)));
+        const removedDocs = vehicle.documents.filter((d) => removeDocIds.includes(String(d._id)));
+
+        if (
+            removedImages.length !== new Set(removeImageIds).size ||
+            removedDocs.length !== new Set(removeDocIds).size
+        ) {
+            return fail(400, 'Some files to remove were not found on this vehicle');
+        }
+
+        const newImages = (files.images || []).map((f) => ({
+            url: f.path, publicId: f.filename, resourceType: 'image',
+        }));
+        const newDocs = (files.documents || []).map((f) => ({
+            url: f.path,
+            publicId: f.filename,
+            resourceType: f.mimetype === 'application/pdf' ? 'raw' : 'image',
+            name: f.originalname,
+        }));
+
+        const imagesBefore = vehicle.images.length;
+        const docsBefore = vehicle.documents.length;
+        const imagesAfter = imagesBefore - removedImages.length + newImages.length;
+        const docsAfter = docsBefore - removedDocs.length + newDocs.length;
+
+        if (imagesAfter < 1) return fail(400, 'At least one image is required');
+        if (imagesAfter > MAX_IMAGES) return fail(400, `Maximum ${MAX_IMAGES} images allowed`);
+        if (docsAfter > MAX_DOCS) return fail(400, `Maximum ${MAX_DOCS} documents allowed`);
+
+        const toDelete = [
+            ...removedImages.map((i) => ({ publicId: i.publicId, type: i.resourceType || 'image' })),
+            ...removedDocs.map((d) => ({ publicId: d.publicId, type: d.resourceType || 'raw' })),
+        ];
+
+        if (removedImages.length || newImages.length) {
+            vehicle.images = [
+                ...vehicle.images.filter((i) => !removeImageIds.includes(String(i._id))).map((i) => i.toObject()),
+                ...newImages,
+            ];
+            changes.push({
+                field: 'images',
+                from: `${imagesBefore} images`,
+                to: `${imagesAfter} images (-${removedImages.length}, +${newImages.length})`,
+            });
+        }
+
+        if (removedDocs.length || newDocs.length) {
+            vehicle.documents = [
+                ...vehicle.documents.filter((d) => !removeDocIds.includes(String(d._id))).map((d) => d.toObject()),
+                ...newDocs,
+            ];
+            changes.push({
+                field: 'documents',
+                from: `${docsBefore} documents`,
+                to: `${docsAfter} documents (-${removedDocs.length}, +${newDocs.length})`,
+            });
+        }
+
+        // ---------- koi change nahi ----------
+        if (!changes.length) return fail(400, 'No changes');
+
+        // ---------- editHistory (max 50) ----------
+        vehicle.editHistory.push({ byRole: req.user.role, byId: req.user.id, changes });
+        if (vehicle.editHistory.length > MAX_HISTORY) {
+            vehicle.editHistory.splice(0, vehicle.editHistory.length - MAX_HISTORY);
+        }
+
+        await vehicle.save({ validateModifiedOnly: true });
+
+        await Promise.all(toDelete.map((f) => deleteStoredFile(f.publicId, f.type)));
+
+        // -------- notification trigger
+        try {
+            const changedNames = changes.map((c) => c.field).join(', ');
+            const byLabel = req.user.role === 'admin' ? 'admin' : 'a manager';
+
+            await createNotification({
+                recipientId: vehicle.sellerId,
+                recipientType: 'Seller',
+                type: 'vehicle_edited',
+                vehicleId: vehicle._id,
+                title: 'Vehicle Listing Updated',
+                message: `${vehicle.listingId} was edited by ${byLabel}. Updated: ${changedNames}.`,
+            });
+
+            if (req.user.role === 'auctionManager') {
+                const admin = await Admin.findOne({ role: 'admin' });
+                if (admin) {
+                    await createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'Admin',
+                        type: 'vehicle_edited',
+                        vehicleId: vehicle._id,
+                        title: 'Vehicle Edited by Manager',
+                        message: `${vehicle.listingId} was edited by a manager. Updated: ${changedNames}.`,
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error('adminEditVehicle notification failed:', notifErr.message);
+        }
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Vehicle updated successfully',
+            changedFields: changes.map((c) => c.field),
+        });
+
+    } catch (err) {
+        console.log("adminEditVehicle error :", err);
+        await deleteCloudinaryFiles(req.files);
+
+        if (err.name === 'ValidationError') {
+            const messages = Object.values(err.errors).map((e) => e.message);
+            return res.status(400).json({ 
+                success: false, 
+                message: messages.join(', ') 
+            });
+        }
+
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Server Error Occured' 
         });
     }
 };
@@ -2411,13 +2664,46 @@ export const getAuctionDetail = async (req, res) => {
     }
 };
 
-// Get all auction stats 
-export const getAllAuctionStats = async (req, res) => {
+// get upcoming auctions for admin calendar
+export const getUpcomingAuctionsCalendar = async (req, res) => {
     try {
         const now = new Date();
 
-        const completedStatuses = ["sold", "unsold", "reserve-not-met"];
+        const auctions = await Vehicle.find({
+            adminStatus: 'approved',
+            auctionStatus: 'upcoming',
+            auctionStartDateTime: { $gte: now }
+        })
+            .select(
+                'listingId make model year trim auctionStartDateTime auctionStatus'
+            )
+            .sort({ auctionStartDateTime: 1 });
 
+        const calendarAuctions = auctions.map((vehicle) => ({
+            id: vehicle._id,
+            listingId: vehicle.listingId,
+            title: `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ''}`,
+            auctionStartDateTime: vehicle.auctionStartDateTime,
+            auctionStatus: vehicle.auctionStatus,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            auctions: calendarAuctions,
+        });
+
+    } catch (err) {
+        console.error("getUpcomingAuctionsCalendar Error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
+// Get all auction stats
+export const getAllAuctionStats = async (req, res) => {
+    try {
         const [
             totalAuctions,
             liveAuctions,
@@ -2426,39 +2712,47 @@ export const getAllAuctionStats = async (req, res) => {
             canceledAuctions
         ] = await Promise.all([
 
-            // Total Auctions (approved-scope)
+            // Total Auctions
             Vehicle.countDocuments({
                 adminStatus: "approved"
             }),
 
             // Live Auctions
             Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: "live",
-                auctionStartDateTime: { $lte: now },
-                auctionEndDateTime: { $gt: now }
+                auctionStatus: "live"
             }),
 
             // Upcoming Auctions
             Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: "upcoming",
-                auctionStartDateTime: { $gt: now }
+                auctionStatus: "upcoming"
             }),
 
             // Completed Auctions
             Vehicle.countDocuments({
-                adminStatus: "approved",
-                auctionStatus: { $in: completedStatuses },
-                auctionEndDateTime: { $lte: now }
+                auctionStatus: {
+                    $in: ["sold", "unsold", "reserve-not-met"]
+                }
             }),
 
             // Canceled Auctions
             Vehicle.countDocuments({
-                adminStatus: "approved",
                 auctionStatus: "canceled"
             })
         ]);
+
+        // Debug: canceled vehicles
+        const canceledVehicles = await Vehicle.find(
+            { auctionStatus: "canceled" },
+            {
+                _id: 1,
+                listingId: 1,
+                auctionStatus: 1,
+                adminStatus: 1,
+                canceledBy: 1,
+                statusAtCancellation: 1,
+                canceledAt: 1
+            }
+        ).lean();
 
         return res.status(200).json({
             success: true,
@@ -2474,6 +2768,7 @@ export const getAllAuctionStats = async (req, res) => {
 
     } catch (error) {
         console.error("Get all auction stats error:", error);
+
         return res.status(500).json({
             success: false,
             message: "Failed to fetch all auction stats",

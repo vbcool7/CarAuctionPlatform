@@ -1,17 +1,20 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, BellRing, CheckCheck, ChevronRight, ClipboardCheck, Clock3, Gavel, Info, Trophy, X } from 'lucide-react';
+import { Bell, BellRing, CalendarClock, CheckCheck, ChevronRight, ClipboardCheck, Clock3, FileEdit, Gavel, Info, RotateCcw, Trophy, X } from 'lucide-react';
 import { useGetAllNotifications, useMarkAllReadNotification, useReadNotification } from '../../hook/useNotification';
 
 const getIcon = (type) => {
     switch (type) {
         case 'vehicle_reviewed': return <ClipboardCheck size={18} />;
+        case 'vehicle_edited': return <FileEdit size={17} />;
         case 'new_bid_received': return <Gavel size={17} />;
         case 'reserve_price_met': return <Gavel size={17} />;
         case 'auction_sold': return <Trophy size={17} />;
         case 'auction_unsold': return <Clock3 size={17} />;
         case 'reserve_not_met': return <Gavel size={17} />;
         case 'auction_canceled': return <X size={17} />;
+        case 'auction_relisted': return <RotateCcw size={17} />;
+        case 'auction_rescheduled': return <CalendarClock size={17} />;
         default: return <Info size={17} />;
     }
 };
@@ -19,25 +22,30 @@ const getIcon = (type) => {
 const getIconStyle = (type) => {
     switch (type) {
         case 'vehicle_reviewed': return 'bg-amber-50 text-amber-600';
+         case 'vehicle_edited': return 'bg-blue-50 text-blue-600';
         case 'new_bid_received': return 'bg-blue-50 text-blue-600';
         case 'reserve_price_met': return 'bg-green-50 text-green-600';
         case 'auction_sold': return 'bg-green-50 text-green-600';
         case 'auction_unsold': return 'bg-orange-50 text-orange-600';
         case 'reserve_not_met': return 'bg-amber-50 text-amber-600';
         case 'auction_canceled': return 'bg-red-50 text-red-600';
+        case 'auction_relisted': return 'bg-green-50 text-green-600';
+        case 'auction_rescheduled': return 'bg-blue-50 text-blue-600';
         default: return 'bg-slate-50 text-slate-600';
     }
 };
 
 const NOTIFICATION_REDIRECT_MAP = {
     vehicle_reviewed: 'my-vehicles',
+    vehicle_edited: 'my-vehicles',
     new_bid_received: 'my-auctions',
     reserve_price_met: 'my-auctions',
     auction_sold: 'my-auctions',
     auction_unsold: 'my-auctions',
     reserve_not_met: 'my-auctions',
     auction_canceled: 'my-auctions',
-    // future: outbid, won → likely a different page (e.g. 'my-bids') once bid-semantics resolved
+    auction_relisted: 'my-auctions',
+    auction_rescheduled: 'my-auctions',
 };
 
 function SellerNotificationDropdown({ setCurrentPage }) {

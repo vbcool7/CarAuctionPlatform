@@ -2,6 +2,9 @@
 import Admin from '../models/adminModelSchema.js';
 
 const requirePermission = (permission) => {
+
+    const required = Array.isArray(permission) ? permission : [permission];
+
     return async (req, res, next) => {
         try {
             if (req.user.role === 'admin' || req.user.role === 'seller') return next(); // admin + seller by pass
@@ -30,10 +33,17 @@ const requirePermission = (permission) => {
                 });
             }
 
-            if (!freshUser?.permissions?.[permission]) {
+            // if (!freshUser?.permissions?.[permission]) {
+            //     return res.status(403).json({
+            //         success: false,
+            //         message: `Access Denied: missing '${permission}' permission`
+            //     });
+            // }
+
+            if (!required.some((p) => freshUser?.permissions?.[p])) {
                 return res.status(403).json({
                     success: false,
-                    message: `Access Denied: missing '${permission}' permission`
+                    message: `Access Denied: missing '${required.join("' or '")}' permission`
                 });
             }
 

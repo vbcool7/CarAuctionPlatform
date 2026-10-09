@@ -7,6 +7,7 @@ import { UseCountDown } from '../SellerSharedComponents/UseCountDown';
 import { formatLabel, formatPrice } from '../../../utils/formatters';
 import { useCancelAuction, useGetAuctionDetail } from '../../../hook/useAuction';
 import { toast } from 'react-toastify';
+import { canSellerEdit } from '../../../utils/vehicleRules';
 
 const auctionPhaseLabels = {
     draft: {
@@ -57,7 +58,7 @@ const renderDetailItem = (label, value) => (
     </div>
 );
 
-function MyAuctionsDetail({ setCurrentPage, auctionId }) {
+function MyAuctionsDetail({ setCurrentPage, auctionId, setSelectedMyVehicleId }) {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedImage, setSelectedImage] = useState(0);
@@ -158,9 +159,17 @@ function MyAuctionsDetail({ setCurrentPage, auctionId }) {
                         <Share2 className='w-4 h-4' />
                         Share Auction
                     </button>
-                    <button className='px-4 py-2 text-xs md:text-sm font-medium rounded-lg border border-gray-300'>
-                        More Actions
-                    </button>
+
+                    {canSellerEdit(vehicle) && (
+                        <button
+                            onClick={() => {
+                                setSelectedMyVehicleId(vehicle._id);
+                                setCurrentPage("edit-vehicle");
+                            }}
+                            className='px-4 py-2 text-xs md:text-sm font-medium rounded-lg border border-gray-300'>
+                            Edit Listing
+                        </button>
+                    )}
                 </div>
             </div>
 

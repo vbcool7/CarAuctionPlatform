@@ -1,11 +1,10 @@
 
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import API from "../api/axiosInstance";
-import toast from "react-hot-toast";
 
 // get all auction + live + upcoming + completed + cancel
 export const useGetAllAuctions = (filters = {}) => {
-    const { page = 1, limit = 10, status = 'all', dateRange = null, search = '', vehicleType = '', fuelType = '', startDate = '', endDate = '', sortBy = '',} = filters;
+    const { page = 1, limit = 10, status = 'all', dateRange = null, search = '', vehicleType = '', fuelType = '', startDate = '', endDate = '', sortBy = '', } = filters;
 
     return useQuery({
         queryKey: ['allAuctions', page, limit, status, dateRange, search, vehicleType, fuelType, startDate, endDate, sortBy],
@@ -40,6 +39,17 @@ export const useGetAuctionDetail = (id) => {
     });
 };
 
+// get upcoming auctions dates
+export const useGetUpcomingAuctionsCalendar = () => {
+    return useQuery({
+        queryKey: ['upcomingAuctionsCalendar'],
+        queryFn: async () => {
+            const res = await API.get('/admin/upcoming-auctions-calendar');
+            return res.data;
+        },
+    });
+};
+
 // all auction stats
 export const useGetAllAuctionStats = () => {
     return useQuery({
@@ -48,7 +58,7 @@ export const useGetAllAuctionStats = () => {
             const res = await API.get('/admin/all-auction-stats');
             return res.data;
         },
-        refetchInterval: 10000, 
+        refetchInterval: 10000,
         refetchIntervalInBackground: false,
     });
 };
@@ -61,7 +71,7 @@ export const useGetLiveAuctionStats = () => {
             const res = await API.get('/admin/live-auction-stats');
             return res.data;
         },
-        refetchInterval: 10000, 
+        refetchInterval: 10000,
         refetchIntervalInBackground: false,
     });
 };
@@ -74,7 +84,7 @@ export const useGetUpcomingAuctionStats = () => {
             const res = await API.get("/admin/upcoming-auction-stats");
             return res.data;
         },
-        refetchInterval: 10000, 
+        refetchInterval: 10000,
         refetchIntervalInBackground: false,
     });
 };
@@ -87,7 +97,7 @@ export const useGetCompletedAuctionStats = () => {
             const res = await API.get("/admin/completed-auction-stats");
             return res.data;
         },
-        refetchInterval: 10000, 
+        refetchInterval: 10000,
         refetchIntervalInBackground: false,
     });
 };
@@ -100,7 +110,7 @@ export const useGetCanceledAuctionStats = () => {
             const res = await API.get("/admin/canceled-auction-stats");
             return res.data;
         },
-        refetchInterval: 10000, 
+        refetchInterval: 10000,
         refetchIntervalInBackground: false,
     });
 };
@@ -116,6 +126,28 @@ export const useCancelAuction = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['allAuctions'] });
+        },
+    });
+};
+
+// auction rescheduling / relisting
+export const useRescheduleAuction = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, startDate, startTime, duration, reason }) => {
+            const res = await API.patch(`/admin/reschedule-auction/${id}`, {
+                startDate,
+                startTime,
+                duration,
+                reason,
+            });
+            return res.data;
+        },
+
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['allAuctions'], });
+            queryClient.invalidateQueries({ queryKey: ['upcomingAuctionsCalendar'],});
         },
     });
 };

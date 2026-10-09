@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, CalendarClock, Pencil } from 'lucide-react';
 
 function AuctionsDetailHeader({
     setCurrentPage,
@@ -9,6 +9,9 @@ function AuctionsDetailHeader({
     parentPage,
     currentLabel,
     backButtonTarget,
+    actionLabel,
+    onAction,
+    onEdit,
 }) {
     return (
         <>
@@ -52,16 +55,33 @@ function AuctionsDetailHeader({
                 {/* btns */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
 
-                    <button
+                    {/* <button
                         onClick={() => setCurrentPage(backButtonTarget)}
                         className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D97706] px-4 py-2 font-medium text-white shadow-md shadow-amber-500/20 transition-all duration-200 hover:bg-[#B45F04] hover:scale-[1.02]">
                         <ArrowLeft size={16} />
                         <span className="text-sm">Back to Auctions</span>
-                    </button>
+                    </button> */}
 
-                    <button className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
-                        <span className="text-sm">More Auctions</span>
-                    </button>
+                    {onEdit && (
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50"
+                        >
+                            <Pencil size={16} />
+                            <span className="text-sm">Edit Vehicle</span>
+                        </button>
+                    )}
+
+                    {onAction && (
+                        <button
+                            type="button"
+                            onClick={onAction}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
+                            <CalendarClock size={16} />
+                            <span className="text-sm">{actionLabel}</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </>

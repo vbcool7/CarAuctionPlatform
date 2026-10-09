@@ -5,9 +5,11 @@ import mongoose from 'mongoose';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Admin from '../models/adminModelSchema.js';
 
-import { deleteCloudinaryFiles } from '../utils/cloudinaryUtils.js';
+import { deleteCloudinaryFiles, deleteStoredFile } from '../utils/cloudinaryUtils.js';
 import { getNextListingId } from '../utils/counterHelper.js';
 import { createNotification } from '../services/notificationService.js';
+
+// ================================================= SELLER SIDE
 
 export const decodeVin = async (req, res) => {
     const { vin } = req.params;
@@ -215,7 +217,273 @@ export const addVehicle = async (req, res) => {
     };
 };
 
-// ================================================= SELLER SIDE
+// edit vehicle
+
+const MAX_IMAGES = 15;
+const MAX_DOCS = 5;
+const MAX_HISTORY = 50;
+
+const TEXT_FIELDS = [
+    'vehicleType', 'make', 'model', 'trim', 'bodyType', 'transmission', 'fuelType',
+    'drivetrain', 'exteriorColor', 'interiorColor', 'vehicleDescription',
+    'country', 'emirate', 'city', 'zipCode', 'titleStatus', 'accidentHistory',
+    'overallCondition', 'mechanicalCondition', 'interiorCondition', 'exteriorCondition',
+    'doors', 'seats', 'engineSize', 'cylinders', 'keyType', 'additionalFeatures',
+    'repainted', 'smokeOdor', 'petFriendly', 'paintType', 'glassCondition',
+    'tiresCondition', 'tireBrand', 'tireSize', 'seatMaterial', 'sunroof',
+    'acHeater', 'audioSystem', 'navigation', 'powerWindows', 'powerLocks', 'additionalNotes',
+];
+const NUMBER_FIELDS = ['year', 'mileage', 'numberOfKeys'];
+
+const parseIds = (v) => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v.map(String);
+    const s = String(v).trim();
+    if (s.startsWith('[')) {
+        try { return JSON.parse(s).map(String); } catch { return null; }
+    }
+    return s.split(',').map((x) => x.trim()).filter(Boolean);
+};
+
+const short = (v) => (typeof v === 'string' && v.length > 300 ? v.slice(0, 300) + '…' : v);
+
+const checkSellerEditable = (vehicle) => {
+    if (['draft', 'upcoming'].includes(vehicle.auctionStatus)) return null;
+    if (vehicle.auctionStatus === 'live') {
+        return 'Live auctions cannot be edited. Please contact support.';
+    }
+    return 'This vehicle cannot be edited at this stage. Please contact support.';
+};
+
+export const sellerEditVehicle = async (req, res) => {
+
+    const fail = async (status, message) => {
+        await deleteCloudinaryFiles(req.files);
+        return res.status(status).json({
+            success: false,
+            message
+        });
+    };
+
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) return fail(404, 'Vehicle not found');
+
+        // ownership: sirf apni vehicle
+        const vehicle = await Vehicle.findOne({ _id: id, sellerId: req.user.id }).select('+editHistory');
+        if (!vehicle) return fail(404, 'Vehicle not found');
+
+        const blocked = checkSellerEditable(vehicle);
+        if (blocked) return fail(400, blocked);
+
+        const prevAdminStatus = vehicle.adminStatus;
+        const body = req.body;
+        const files = req.files || {};
+        const changes = [];
+
+        // ---------- text / number fields ----------
+        const fields = [...TEXT_FIELDS, ...NUMBER_FIELDS];
+        if (vehicle.auctionStatus === 'draft') fields.push('vin');
+
+        for (const field of fields) {
+            if (body[field] === undefined) continue;
+
+            let incoming = typeof body[field] === 'string' ? body[field].trim() : body[field];
+            if (field === 'vin') incoming = String(incoming).toUpperCase();
+
+            if (incoming === '') {
+                if (Vehicle.schema.path(field).isRequired) return fail(400, `${field} is required`);
+                incoming = undefined;
+            } else if (NUMBER_FIELDS.includes(field)) {
+                incoming = Number(incoming);
+                if (!Number.isFinite(incoming) || incoming < 0) {
+                    return fail(400, `${field} must be a valid number`);
+                }
+            }
+
+            const current = vehicle[field];
+            if (String(current ?? '') === String(incoming ?? '')) continue;
+
+            changes.push({ field, from: short(current ?? null), to: short(incoming ?? null) });
+            vehicle[field] = incoming;
+        }
+
+        // ---------- price fields (priceType ke hisaab se) ----------
+        const priceFields = vehicle.priceType === 'fixed_price'
+            ? ['buyNowPrice']
+            : ['startingBidPrice', 'reservePrice'];
+
+        for (const field of priceFields) {
+            if (body[field] === undefined) continue;
+
+            const incoming = Number(body[field]);
+            if (String(body[field]).trim() === '' || !Number.isFinite(incoming) || incoming <= 0) {
+                return fail(400, `${field} must be a positive number`);
+            }
+            if (vehicle[field] === incoming) continue;
+
+            changes.push({ field, from: vehicle[field] ?? null, to: incoming });
+            vehicle[field] = incoming;
+        }
+
+        if (
+            vehicle.priceType === 'reserve_price' &&
+            (vehicle.isModified('reservePrice') || vehicle.isModified('startingBidPrice')) &&
+            vehicle.reservePrice <= vehicle.startingBidPrice
+        ) {
+            return fail(400, 'Reserve price must be greater than Starting Bid price');
+        }
+
+        // ---------- year range ----------
+        if (vehicle.isModified('year')) {
+            const maxYear = new Date().getFullYear() + 1;
+            if (vehicle.year < 1980 || vehicle.year > maxYear) {
+                return fail(400, `Year must be between 1980 and ${maxYear}`);
+            }
+        }
+
+        // ---------- VIN duplicate ----------
+        if (vehicle.isModified('vin')) {
+            const dup = await Vehicle.findOne({
+                _id: { $ne: vehicle._id },
+                vin: vehicle.vin,
+                auctionStatus: { $in: ['draft', 'upcoming', 'live'] },
+            }).select('_id');
+            if (dup) return fail(400, 'An active listing already exists for this VIN');
+            vehicle.vinDecoded = false;
+        }
+
+        // ---------- images / documents ----------
+        const removeImageIds = parseIds(body.removeImageIds);
+        const removeDocIds = parseIds(body.removeDocumentIds);
+        if (removeImageIds === null || removeDocIds === null) {
+            return fail(400, 'Invalid remove list');
+        }
+
+        const removedImages = vehicle.images.filter((i) => removeImageIds.includes(String(i._id)));
+        const removedDocs = vehicle.documents.filter((d) => removeDocIds.includes(String(d._id)));
+
+        if (
+            removedImages.length !== new Set(removeImageIds).size ||
+            removedDocs.length !== new Set(removeDocIds).size
+        ) {
+            return fail(400, 'Some files to remove were not found on this vehicle');
+        }
+
+        const newImages = (files.images || []).map((f) => ({
+            url: f.path, publicId: f.filename, resourceType: 'image',
+        }));
+        const newDocs = (files.documents || []).map((f) => ({
+            url: f.path,
+            publicId: f.filename,
+            resourceType: f.mimetype === 'application/pdf' ? 'raw' : 'image',
+            name: f.originalname,
+        }));
+
+        const imagesBefore = vehicle.images.length;
+        const docsBefore = vehicle.documents.length;
+        const imagesAfter = imagesBefore - removedImages.length + newImages.length;
+        const docsAfter = docsBefore - removedDocs.length + newDocs.length;
+
+        if (imagesAfter < 1) return fail(400, 'At least one image is required');
+        if (imagesAfter > MAX_IMAGES) return fail(400, `Maximum ${MAX_IMAGES} images allowed`);
+        if (docsAfter > MAX_DOCS) return fail(400, `Maximum ${MAX_DOCS} documents allowed`);
+
+        const toDelete = [
+            ...removedImages.map((i) => ({ publicId: i.publicId, type: i.resourceType || 'image' })),
+            ...removedDocs.map((d) => ({ publicId: d.publicId, type: d.resourceType || 'raw' })),
+        ];
+
+        if (removedImages.length || newImages.length) {
+            vehicle.images = [
+                ...vehicle.images.filter((i) => !removeImageIds.includes(String(i._id))).map((i) => i.toObject()),
+                ...newImages,
+            ];
+            changes.push({
+                field: 'images',
+                from: `${imagesBefore} images`,
+                to: `${imagesAfter} images (-${removedImages.length}, +${newImages.length})`,
+            });
+        }
+
+        if (removedDocs.length || newDocs.length) {
+            vehicle.documents = [
+                ...vehicle.documents.filter((d) => !removeDocIds.includes(String(d._id))).map((d) => d.toObject()),
+                ...newDocs,
+            ];
+            changes.push({
+                field: 'documents',
+                from: `${docsBefore} documents`,
+                to: `${docsAfter} documents (-${removedDocs.length}, +${newDocs.length})`,
+            });
+        }
+
+        // ---------- koi change nahi ----------
+        if (!changes.length) return fail(400, 'No changes');
+
+        // ---------- hamesha pending ----------
+        if (prevAdminStatus !== 'pending') {
+            changes.push({ field: 'adminStatus', from: prevAdminStatus, to: 'pending' });
+            vehicle.adminStatus = 'pending';
+        }
+
+        // ---------- editHistory (max 50) ----------
+        vehicle.editHistory.push({ byRole: 'seller', byId: req.user.id, changes });
+        if (vehicle.editHistory.length > MAX_HISTORY) {
+            vehicle.editHistory.splice(0, vehicle.editHistory.length - MAX_HISTORY);
+        }
+
+        await vehicle.save({ validateModifiedOnly: true });
+
+        await Promise.all(toDelete.map((f) => deleteStoredFile(f.publicId, f.type)));
+
+        // ---------- notification: sirf jab pending nahi tha ----------
+        if (prevAdminStatus !== 'pending') {
+            try {
+                const recipients = await Admin.find({
+                    role: { $in: ['admin', 'auctionManager'] },
+                }).select('_id');
+
+                const label = prevAdminStatus === 'rejected' ? 'resubmitted after rejection' : 'edited';
+
+                for (const r of recipients) {
+                    await createNotification({
+                        recipientId: r._id,
+                        recipientType: 'Admin',
+                        type: 'vehicle_resubmitted',
+                        vehicleId: vehicle._id,
+                        title: 'Vehicle Resubmitted for Review',
+                        message: `${vehicle.listingId} was ${label} by the seller and is pending review.`,
+                    });
+                }
+            } catch (notifErr) {
+                console.error('sellerEditVehicle notification failed:', notifErr.message);
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: prevAdminStatus === 'pending'
+                ? 'Vehicle updated successfully'
+                : 'Vehicle updated and sent for review',
+            changedFields: changes.map((c) => c.field),
+            adminStatus: vehicle.adminStatus,
+        });
+
+    } catch (err) {
+        console.log('sellerEditVehicle error :', err);
+        await deleteCloudinaryFiles(req.files);
+
+        if (err.name === 'ValidationError') {
+            const messages = Object.values(err.errors).map((e) => e.message);
+            return res.status(400).json({ success: false, message: messages.join(', ') });
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
 
 // stats - vehicles
 export const getVehicleStats = async (req, res) => {
@@ -322,7 +590,7 @@ export const getMyVehicles = async (req, res) => {
     }
 };
 
-// get vehcile by id
+// get by id
 export const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;

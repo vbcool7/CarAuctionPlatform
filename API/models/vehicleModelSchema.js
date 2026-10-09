@@ -289,6 +289,24 @@ const vehicleSchema = new mongoose.Schema(
             default: [],
             select: false,
         },
+
+        // edit vehicle
+        editHistory: {
+            type: [{
+                _id: false,
+                at: { type: Date, default: Date.now },
+                byRole: { type: String },
+                byId: { type: mongoose.Schema.Types.ObjectId, },
+                changes: [{
+                    _id: false,
+                    field: { type: String },
+                    from: { type: mongoose.Schema.Types.Mixed },
+                    to: { type: mongoose.Schema.Types.Mixed },
+                }],
+            }],
+            default: [],
+            select: false,
+        },
     },
     { timestamps: true }
 );

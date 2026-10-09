@@ -172,7 +172,7 @@ function LiveAuctionsDetail() {
     // withdraw bid handler
     const handleWithdraw = () => {
         if (!vehicle.myActiveBid?._id) return;
-        if (!window.confirm('Withdraw your bid? This cannot be undone.')) return;
+        if (!window.confirm('Withdraw your bid? All your bids on this vehicle will also be withdrawn.')) return;
 
         withdrawBid(vehicle.myActiveBid._id, {
             onSuccess: () => {

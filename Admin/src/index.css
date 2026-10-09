@@ -81,6 +81,13 @@
     border-color: #0B1E3D;
 }
 
+/* calender date highlight */
+.auction-highlight-day {
+  font-weight: 700 !important;
+  border-radius: 50% !important;
+  background-color: #fef3c7 !important;
+  color: #d97706 !important;
+}
 
 /* =====================================================
    COMPLETED AUCTION CALENDAR

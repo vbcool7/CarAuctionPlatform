@@ -20,7 +20,6 @@ const menuItems = [
         submenu: [
             { id: "buyers", label: "Buyers" },
             { id: "sellers", label: "Sellers" },
-            { id: "staffs", label: "Staff", adminOnly: true },
             { id: "manager", label: "Manager", adminOnly: true },
         ]
     },
@@ -42,7 +41,7 @@ const menuItems = [
             { id: "live-auctions", label: "Live Auctions", badge: "Live" },
             { id: "upcoming-auctions", label: "Upcoming Auctions" },
             { id: "completed-auctions", label: "Completed Auctions" },
-            { id: "canceled-auctions", label: "Cancelled Auctions" },
+            { id: "canceled-auctions", label: "Canceled Auctions" },
         ]
     },
     {

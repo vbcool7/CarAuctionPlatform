@@ -1,14 +1,15 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, ChevronRight, FileText, XCircle, Circle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, FileText, XCircle, Circle, Pencil } from 'lucide-react';
 import NotesSection from '../SharedComponents/NotesSection';
 import DocumentPreviewModal from "./DocumentPreviewModal";
 import AddNoteModal from './AddNoteModal';
 import { useGetVehicleById, useReviewVehicle } from '../../hooks/useVehicle';
 import toast from 'react-hot-toast';
+import { formatLabel, formatDateTime } from '../utils/formatter';
 
 
-function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
+function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId, onEditVehicle }) {
 
     const { data: vehicleData, isLoading, isError } = useGetVehicleById(vehicleAppId);
     const { mutate: reviewVehicle } = useReviewVehicle();
@@ -29,22 +30,84 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
         { label: "Make", value: vehicle?.make || "---" },
         { label: "Model", value: vehicle?.model || "---" },
         { label: "Year", value: vehicle?.year || "---" },
-
+        { label: "Trim", value: vehicle?.trim || "---" },
         { label: "Vehicle Type", value: vehicle?.vehicleType || "---" },
+        { label: "Body Type", value: vehicle?.bodyType || "---" },
         { label: "Exterior Color", value: vehicle?.exteriorColor || "---" },
         { label: "Interior Color", value: vehicle?.interiorColor || "---" },
-
         { label: "Engine", value: vehicle?.engineSize || "---" },
         { label: "Transmission", value: vehicle?.transmission || "---" },
         { label: "Mileage", value: vehicle?.mileage ? `${vehicle.mileage} km` : "---" },
-
         { label: "Fuel Type", value: vehicle?.fuelType || "---" },
         { label: "Drive Type", value: vehicle?.drivetrain || "---" },
         { label: "Doors", value: vehicle?.doors || "---" },
-
         { label: "Seats", value: vehicle?.seats || "---" },
         { label: "Country", value: vehicle?.country || "---" },
+        { label: "Emirate", value: vehicle?.emirate || "---" },
         { label: "City", value: vehicle?.city || "---" },
+        { label: "ZIP Code", value: vehicle?.zipCode || "---" },
+        { label: "VIN", value: vehicle?.vin || "---" },
+        { label: "Title Status", value: vehicle?.titleStatus || "---" },
+        { label: "Accident History", value: vehicle?.accidentHistory || "---" },
+        { label: "Price Type", value: vehicle?.priceType || "---" },
+        { label: "Auction Type", value: vehicle?.auctionType || "---" },
+        { label: "Auction Status", value: vehicle?.auctionStatus || "---" },
+        { label: "Admin Status", value: vehicle?.adminStatus || "---" },
+
+        ...(vehicle?.priceType === "reserve_price"
+            ? [
+                {
+                    label: "Starting Bid",
+                    value: vehicle?.startingBidPrice
+                        ? `AED ${vehicle.startingBidPrice.toLocaleString()}`
+                        : "---",
+                },
+                {
+                    label: "Reserve Price",
+                    value: vehicle?.reservePrice
+                        ? `AED ${vehicle.reservePrice.toLocaleString()}`
+                        : "---",
+                },
+            ]
+            : vehicle?.priceType === "fixed_price"
+                ? [
+                    {
+                        label: "Buy Now Price",
+                        value: vehicle?.buyNowPrice
+                            ? `AED ${vehicle.buyNowPrice.toLocaleString()}`
+                            : "---",
+                    },
+                ]
+                : []),
+
+        {
+            label: "Auction Starts",
+            value: formatDateTime(vehicle?.auctionStartDateTime),
+        },
+        {
+            label: "Auction Ends",
+            value: formatDateTime(vehicle?.auctionEndDateTime),
+        },
+
+        {
+            label: "Duration",
+            value: vehicle?.auctionDuration || "---",
+        },
+
+        {
+            label: "Views",
+            value: vehicle?.views?.toLocaleString() || "0",
+        },
+
+        {
+            label: "Submitted On",
+            value: formatDateTime(vehicle?.createdAt),
+        },
+
+        {
+            label: "Reviewed On",
+            value: formatDateTime(vehicle?.reviewedAt),
+        },
     ];
 
     const handleApprove = (vehicleId) => {
@@ -127,17 +190,23 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                         onClick={() => setCurrentPage('vehicle-approvals')}
                         className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D97706] px-4 py-2 font-medium text-white shadow-md shadow-amber-500/20 transition-all duration-200 hover:bg-[#B45F04] hover:scale-[1.02]">
                         <ArrowLeft size={16} />
-                        <span className="text-sm">Back to Auctions</span>
+                        <span className="text-sm">Back to Vehicles</span>
                     </button>
 
-                    <button className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
-                        <span className="text-sm">More Auctions</span>
-                    </button>
+                    {vehicle.adminStatus !== 'rejected' && vehicle.auctionStatus !== 'sold' && (
+                        <button
+                            onClick={() => onEditVehicle(vehicle._id, 'vehicle-approvals-detail')}
+                            className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50 active:scale-95"
+                        >
+                            <Pencil size={16} />
+                            <span className="text-sm">Edit Vehicle</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Vehicle Summary */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm mb-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm mb-6">
                 <div className="flex flex-col lg:flex-row gap-6">
 
                     <div className="w-full lg:w-72 shrink-0">
@@ -151,12 +220,12 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                     <div className="flex-1">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                             <div>
-                                <p className="text-xs text-slate-400 mb-1">
+                                <p className="text-xs text-slate-500 mb-1">
                                     Vehicle : {vehicle.listingId}
                                 </p>
 
                                 <h2 className="text-lg md:text-xl font-bold text-[#0B1E3D]">
-                                    {vehicle?.year} {vehicle?.make} {vehicle?.model}
+                                    {vehicle?.year} {formatLabel(vehicle?.make)} {formatLabel(vehicle?.model)}
                                 </h2>
 
                                 <p className="mt-2 text-sm text-slate-500">
@@ -166,69 +235,62 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                                     </span>
                                 </p>
                             </div>
-
                         </div>
 
                         {/* Vehicle Attributes */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                <p className="text-[11px] text-slate-400 mb-1">
-                                    Type
-                                </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 mt-5">
+                            <div className="px-4 first:pl-0 border-r border-slate-200">
+                                <p className="text-[11px] text-slate-400 mb-1">Type</p>
                                 <p className="text-sm font-semibold text-[#0B1E3D]">
-                                    {vehicle?.vehicleType || "---"}
+                                    {formatLabel(vehicle?.vehicleType) || "---"}
                                 </p>
                             </div>
 
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                <p className="text-[11px] text-slate-400 mb-1">
-                                    Color
-                                </p>
+                            <div className="px-4 border-r border-slate-200">
+                                <p className="text-[11px] text-slate-400 mb-1">Color</p>
                                 <p className="text-sm font-semibold text-[#0B1E3D]">
-                                    {vehicle?.exteriorColor || "---"}
+                                    {formatLabel(vehicle?.exteriorColor) || "---"}
                                 </p>
                             </div>
 
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                                <p className="text-[11px] text-slate-400 mb-1">
-                                    Transmission
-                                </p>
+                            <div className="px-4 border-r border-slate-200">
+                                <p className="text-[11px] text-slate-400 mb-1">Transmission</p>
                                 <p className="text-sm font-semibold text-[#0B1E3D]">
-                                    {vehicle?.transmission || "---"}
+                                    {formatLabel(vehicle?.transmission) || "---"}
                                 </p>
                             </div>
 
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                            <div className="px-4 last:pr-0">
                                 <p className="text-[11px] text-slate-400 mb-1">
                                     Submitted On
                                 </p>
+
                                 <p className="text-sm font-semibold text-[#0B1E3D]">
                                     {vehicle?.createdAt
-                                        ? new Date(vehicle.createdAt).toLocaleDateString(
-                                            "en-GB",
-                                            {
-                                                day: "2-digit",
-                                                month: "short",
-                                                year: "numeric",
-                                            }
-                                        )
+                                        ? new Date(vehicle.createdAt).toLocaleString("en-AE", {
+                                            timeZone: "Asia/Dubai",
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            hour12: true,
+                                        })
                                         : "---"}
                                 </p>
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* Tabs */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
 
                 {/* Tabs */}
                 <div className="border-b border-slate-200 px-5 md:px-6">
                     <div className="flex items-center gap-6 md:gap-8 overflow-x-auto scrollbar-hide">
-                        {["overview", "documents", "history", "notes"].map((tab) => (
+                        {["overview", "images", "documents", "history", "notes"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -243,7 +305,6 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                         ))}
                     </div>
                 </div>
-
 
                 {/* Tab Content */}
                 <div className="p-5 md:p-6">
@@ -261,7 +322,7 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                                     <div className="space-y-2 text-[11px] md:text-[12px]">
 
                                         {/* Reason */}
-                                        <div className="grid grid-cols-[110px_1fr]">
+                                        <div className="grid grid-cols-[110px_1fr] gap-2">
                                             <span className="text-gray-500 font-medium">Reason</span>
                                             <span className="font-semibold text-[#0B1E3D]">
                                                 {vehicle?.rejectionReason || "---"}
@@ -269,41 +330,45 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                                         </div>
 
                                         {/* Rejected By */}
-                                        <div className="grid grid-cols-[110px_1fr]">
+                                        <div className="grid grid-cols-[110px_1fr] gap-2">
                                             <span className="text-gray-500 font-medium">Rejected By</span>
                                             <span className="font-semibold text-[#0B1E3D]">
                                                 {vehicle?.reviewedBy?.name || "Admin"}
+                                                {vehicle?.reviewedBy?.role && (
+                                                    <span className="text-xs text-slate-500 ml-1">
+                                                        ({vehicle.reviewedBy.role === "auctionManager"
+                                                            ? "Manager"
+                                                            : "Admin"})
+                                                    </span>
+                                                )}
                                             </span>
                                         </div>
 
                                         {/* Rejected On */}
-                                        <div className="grid grid-cols-[110px_1fr]">
+                                        <div className="grid grid-cols-[110px_1fr] gap-2">
                                             <span className="text-gray-500 font-medium">Rejected On</span>
                                             <span className="font-semibold text-[#0B1E3D]">
                                                 {vehicle?.reviewedAt
-                                                    ? new Date(vehicle.reviewedAt).toLocaleString(
-                                                        "en-GB",
-                                                        {
-                                                            day: "2-digit",
-                                                            month: "short",
-                                                            year: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                            hour12: true,
-                                                        }
-                                                    )
+                                                    ? new Date(vehicle.reviewedAt).toLocaleString("en-AE", {
+                                                        timeZone: "Asia/Dubai",
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                        hour12: true,
+                                                    })
                                                     : "---"}
                                             </span>
                                         </div>
+
                                     </div>
                                 </div>
                             )}
 
-                            <h3 className="text-[13px] font-semibold text-[#0B1E3D] my-4">
-                                Vehicle Information
-                            </h3>
+                            <h3 className="text-[13px] font-semibold text-[#0B1E3D] my-4"> Vehicle Information </h3>
 
-                            <div className="grid grid-cols-3 lg:grid-cols-3 gap-x-10 gap-y-3 md:gap-y-4">
+                            <div className="grid grid-cols-3 lg:grid-cols-5 gap-x-10 gap-y-3 md:gap-y-4">
                                 {overviewData.map((item, index) => (
                                     <div key={index}>
                                         <p className="text-[11px] text-gray-500">
@@ -311,11 +376,40 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                                         </p>
 
                                         <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D] leading-5">
-                                            {item.value}
+                                            {formatLabel(item.value)}
                                         </p>
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === "images" && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {vehicle?.images?.length > 0 ? (
+                                vehicle.images.map((image, index) => (
+                                    <div
+                                        key={image._id || index}
+                                        className="relative aspect-4/3 rounded-xl overflow-hidden bg-slate-100 border border-slate-200"
+                                    >
+                                        <img
+                                            src={image.url}
+                                            alt={`${vehicle?.make || "Vehicle"} ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+
+                                        {index === 0 && (
+                                            <span className="absolute top-2 left-2 px-2 py-1 rounded-md bg-[#0B1E3D] text-white text-[10px] font-medium">
+                                                Cover
+                                            </span>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-12 text-center text-sm text-gray-400">
+                                    No images available
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -541,10 +635,7 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
 
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h3 className="text-base md:text-lg font-semibold text-[#0B1E3D]">
-                            Owner Information
-                        </h3>
-
+                        <h3 className="text-base md:text-lg font-semibold text-[#0B1E3D]"> Owner Information</h3>
                         <p className="text-xs text-slate-400 mt-1">
                             Seller details associated with this vehicle
                         </p>
@@ -597,32 +688,44 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                 {vehicleStatus === "approved" && (
                     <div className="mt-6 pt-6 border-t border-slate-100">
 
-                        <h4 className="text-sm font-semibold text-[#0B1E3D] mb-4">
-                            Approval Information
+                        <h4 className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D] mb-4">
+                            Vehicle Approval Information
                         </h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2">
 
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                                <p className="text-xs text-slate-400 mb-1">
+                            {/* Approved By */}
+                            <div className="px-0 md:px-4 md:border-r border-slate-200">
+                                <p className="text-[11px] text-gray-500 mb-1">
                                     Approved By
                                 </p>
 
-                                <p className="text-sm font-semibold text-[#0B1E3D]">
+                                <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D]">
                                     {vehicle?.reviewedBy?.name || "---"}
+                                    {vehicle?.reviewedBy?.role && (
+                                        <span className="text-[11px] text-slate-500 ml-1 font-medium">
+                                            (
+                                            {vehicle.reviewedBy.role === "auctionManager"
+                                                ? "Manager"
+                                                : "Admin"}
+                                            )
+                                        </span>
+                                    )}
                                 </p>
                             </div>
 
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-4">
-                                <p className="text-xs text-slate-400 mb-1">
+                            {/* Approved On */}
+                            <div className="mt-4 md:mt-0 px-0 md:px-4">
+                                <p className="text-[11px] text-gray-500 mb-1">
                                     Approved On
                                 </p>
 
-                                <p className="text-sm font-semibold text-[#0B1E3D]">
+                                <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D]">
                                     {vehicle?.reviewedAt
                                         ? new Date(vehicle.reviewedAt).toLocaleString(
-                                            "en-GB",
+                                            "en-AE",
                                             {
+                                                timeZone: "Asia/Dubai",
                                                 day: "2-digit",
                                                 month: "short",
                                                 year: "numeric",
@@ -643,20 +746,69 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                 {vehicleStatus === "rejected" && (
                     <div className="mt-6 pt-6 border-t border-slate-100">
 
-                        <h4 className="text-sm font-semibold text-[#0B1E3D] mb-4">
-                            Rejection Information
+                        <h4 className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D] mb-4">
+                            Vehicle Rejection Information
                         </h4>
 
-                        <div className="rounded-xl bg-rose-50 border border-rose-100 p-4">
-                            <p className="text-xs text-rose-500 mb-1">
-                                Reason
-                            </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3">
 
-                            <p className="text-sm font-medium text-rose-700">
-                                {vehicle?.rejectionReason || "No reason provided"}
-                            </p>
+                            {/* Reason */}
+                            <div className="px-0 md:px-4 md:border-r border-slate-200 md:col-span-1">
+                                <p className="text-[11px] text-gray-500 mb-1">
+                                    Rejection Reason
+                                </p>
+
+                                <p className="text-[12px] md:text-[13px] font-semibold text-rose-600 leading-5">
+                                    {vehicle?.rejectionReason || "No reason provided"}
+                                </p>
+                            </div>
+
+                            {/* Rejected By */}
+                            <div className="mt-4 md:mt-0 px-0 md:px-4 md:border-r border-slate-200">
+                                <p className="text-[11px] text-gray-500 mb-1">
+                                    Rejected By
+                                </p>
+
+                                <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D]">
+                                    {vehicle?.reviewedBy?.name || "---"}
+
+                                    {vehicle?.reviewedBy?.role && (
+                                        <span className="text-[11px] text-slate-500 ml-1 font-medium">
+                                            (
+                                            {vehicle.reviewedBy.role === "auctionManager"
+                                                ? "Manager"
+                                                : "Admin"}
+                                            )
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+
+                            {/* Rejected On */}
+                            <div className="mt-4 md:mt-0 px-0 md:px-4">
+                                <p className="text-[11px] text-gray-500 mb-1">
+                                    Rejected On
+                                </p>
+
+                                <p className="text-[12px] md:text-[13px] font-semibold text-[#0B1E3D]">
+                                    {vehicle?.reviewedAt
+                                        ? new Date(vehicle.reviewedAt).toLocaleString(
+                                            "en-AE",
+                                            {
+                                                timeZone: "Asia/Dubai",
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                hour12: true,
+                                            }
+                                        )
+                                        : "---"}
+                                </p>
+                            </div>
+
                         </div>
-
                     </div>
                 )}
 
@@ -664,35 +816,25 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
 
             {/* Information Note */}
             <div className="mt-6">
-
                 {activeTab === "overview" && (
-                    <NotesSection
-                        message="The vehicle approval information is displayed here. Review all vehicle details carefully before taking any action."
-                    />
+                    <NotesSection message="The vehicle approval information is displayed here. Review all vehicle details carefully before taking any action." />
                 )}
-
+                {activeTab === "images" && (
+                    <NotesSection message="Review all vehicle images carefully to ensure they are clear, relevant, and accurately represent the vehicle before taking any action." />
+                )}
                 {activeTab === "documents" && (
-                    <NotesSection
-                        message="Please review all documents carefully. All required documents must be verified before approving this vehicle."
-                    />
+                    <NotesSection message="Please review all documents carefully. All required documents must be verified before approving this vehicle." />
                 )}
-
                 {activeTab === "history" && (
-                    <NotesSection
-                        message="The history log shows all actions performed on this vehicle approval request."
-                    />
+                    <NotesSection message="The history log shows all actions performed on this vehicle approval request." />
                 )}
-
                 {activeTab === "notes" && (
-                    <NotesSection
-                        message="Internal notes are visible only to admin users. Sellers will not be able to see admin notes."
-                    />
+                    <NotesSection message="Internal notes are visible only to admin users. Sellers will not be able to see admin notes." />
                 )}
-
             </div>
 
-            {/* Actions */}
-            {vehicleStatus === "pending" && (
+            {/* Action Buttons */}
+            {/* {vehicleStatus === "pending" && (
                 <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-4 md:p-5 shadow-sm">
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -724,7 +866,7 @@ function VehicleApprovalsDetail({ setCurrentPage, vehicleAppId }) {
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
             {/* reject modal - show only on pending status */}
             {rejectModal.open && (

@@ -661,10 +661,26 @@ function AllAuctions({ setCurrentPage, setSelectedAuction }) {
                         centerLabel="Total"
                         showPercentage={true}
                         segments={[
-                            { name: 'Live', value: statsData?.liveAuctions?.count ?? 0, color: '#10B981' },
-                            { name: 'Upcoming', value: statsData?.upcomingAuctions?.count ?? 0, color: '#3B82F6' },
-                            { name: 'Completed', value: statsData?.completedAuctions?.count ?? 0, color: '#34D399' },
-                            { name: 'Canceled', value: statsData?.canceledAuctions?.count ?? 0, color: '#EF4444' },
+                            {
+                                name: "Live",
+                                value: statsData?.liveAuctions ?? 0,
+                                color: "#10B981",
+                            },
+                            {
+                                name: "Upcoming",
+                                value: statsData?.upcomingAuctions ?? 0,
+                                color: "#3B82F6",
+                            },
+                            {
+                                name: "Completed",
+                                value: statsData?.completedAuctions ?? 0,
+                                color: "#34D399",
+                            },
+                            {
+                                name: "Canceled",
+                                value: statsData?.canceledAuctions ?? 0,
+                                color: "#EF4444",
+                            },
                         ]}
                     />
 

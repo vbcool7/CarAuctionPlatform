@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Copy, Edit3, File, Undo2 } from 'lucide-react';
 import { useVehicleDetail } from '../../../hook/useVehicle';
 import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
+import { canSellerEdit } from '../../../utils/vehicleRules';
 
 const auctionPhaseLabels = {
     draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700' },
@@ -18,7 +19,7 @@ const adminStatusLabels = {
     rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },
 };
 
-function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
+function MyVehiclesDetail({ setCurrentPage, myVehileId, setSelectedMyVehicleId }) {
 
     const { data: vehicleData, isLoading, isError } = useVehicleDetail(myVehileId);
     const vehicle = vehicleData?.data;
@@ -80,9 +81,18 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
 
                 {/* actions */}
                 <div className='w-full md:w-auto flex flex-col sm:flex-row gap-2'>
-                    <button className='w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium rounded-lg border border-gray-300'>
-                        Edit Listing
-                    </button>
+
+                    {canSellerEdit(vehicle) && (
+                        <button
+                            onClick={() => {
+                                setSelectedMyVehicleId(vehicle._id);
+                                setCurrentPage("edit-vehicle");
+                            }}
+                            className='w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50'
+                        >
+                            Edit Listing
+                        </button>
+                    )}
 
                     <button className='w-full sm:w-auto px-4 py-2 text-xs md:text-sm font-medium rounded-lg border border-gray-300'>
                         Duplicate Listing
@@ -815,7 +825,7 @@ function MyVehiclesDetail({ setCurrentPage, myVehileId }) {
                 </div>
             </div>
 
-        </div>
+        </div >
     );
 }
 

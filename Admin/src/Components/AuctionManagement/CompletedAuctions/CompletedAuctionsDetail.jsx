@@ -14,8 +14,9 @@ import AuctionsBidsTab from '../Shared/AuctionsBidsTab';
 import AuctionsGallery from '../Shared/AuctionsGallery';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 import AuctionsDetailTimeline from '../Shared/AuctionsDetailTimeline';
+import RescheduleAuctionModal from '../Shared/RescheduleAuctionModal';
 
-import { useGetAuctionDetail } from '../../../hooks/useAuction';
+import { useGetAuctionDetail, useRescheduleAuction } from '../../../hooks/useAuction';
 import { formatLabel, formatPrice } from '../../utils/formatter';
 
 // tabs
@@ -50,10 +51,14 @@ const Tag = ({ children }) => (
     </span>
 );
 
-function CompletedAuctionsDetail({ setCurrentPage, auction }) {
+function CompletedAuctionsDetail({ setCurrentPage, auction, onEditVehicle }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
+    const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+    const [rescheduleError, setRescheduleError] = useState("");
+
     const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
+    const { mutate: rescheduleAuction, isPending: isRescheduling } = useRescheduleAuction();
 
     const vehicle = auctionDetail?.data?.vehicle;
 
@@ -72,6 +77,9 @@ function CompletedAuctionsDetail({ setCurrentPage, auction }) {
     const participants = auctionDetail?.data?.participants || [];
     const soldTo = auctionDetail?.data?.soldTo;
 
+    // false on sold, true on unsold aur reserve-not-met
+    const canRelist = ['unsold', 'reserve-not-met'].includes(vehicle?.auctionStatus);
+
     return (
         <div>
             <AuctionsDetailHeader
@@ -81,6 +89,20 @@ function CompletedAuctionsDetail({ setCurrentPage, auction }) {
                 parentPage="completed-auctions"
                 currentLabel="Completed Auction Detail"
                 backButtonTarget="all-auctions"
+                actionLabel="Relist"
+                onAction={
+                    canRelist
+                        ? () => {
+                            setRescheduleError("");
+                            setIsRescheduleOpen(true);   // <- open modal
+                        }
+                        : undefined
+                }
+                onEdit={
+                    vehicle.auctionStatus !== "sold"
+                        ? () => onEditVehicle(auction._id, 'completed-auction-detail')
+                        : undefined
+                }
             />
 
             {/* completed info bar */}
@@ -326,6 +348,37 @@ function CompletedAuctionsDetail({ setCurrentPage, auction }) {
                 </div>
 
             </div>
+
+            {/* ----------------- AUCTION RESCHEDULING MODAL ----------------- */}
+            <RescheduleAuctionModal
+                isOpen={isRescheduleOpen}
+                onClose={() => {
+                    if (isRescheduling) return;
+                    setIsRescheduleOpen(false);
+                    setRescheduleError("");
+                }}
+                onConfirm={(payload) => {
+                    setRescheduleError("");
+                    rescheduleAuction(
+                        { id: vehicle._id, ...payload },
+                        {
+                            onSuccess: (data) => {
+                                setIsRescheduleOpen(false);
+                                toast.success(data?.message || "Auction updated successfully");
+                                setCurrentPage('upcoming-auctions');
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to update auction. Please try again.";
+                                setRescheduleError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                loading={isRescheduling}
+                error={rescheduleError}
+            />
 
         </div >
     )

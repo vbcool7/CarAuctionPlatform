@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast';
 
 import useAdminAuthStore from './store/useAdminAuthStore';
@@ -11,13 +11,10 @@ import Login from './Components/Login';
 import Logout from './Components/Logout';
 import Buyer from './Components/UserManagement/Buyer';
 import Seller from './Components/UserManagement/Seller';
-import Staff from './Components/UserManagement/Staff';
 import AddNewBuyerForm from './Components/UserManagement/AddNewUser/AddNewBuyerForm';
 import AddNewSellerForm from './Components/UserManagement/AddNewUser/AddNewSellerForm';
-import AddNewStaffForm from './Components/UserManagement/AddNewUser/AddNewStaffForm';
 import BuyerDetail from './Components/UserManagement/BuyerDetail';
 import SellerDetail from './Components/UserManagement/SellerDetail';
-import StaffDetail from './Components/UserManagement/StaffDetail';
 import VehicleApprovals from './Components/VehicleApprovals/VehicleApprovals';
 import AllAuctions from './Components/AuctionManagement/AllAuctions/AllAuctions';
 import LiveAuctions from './Components/AuctionManagement/LiveAuctions/LiveAuctions';
@@ -65,8 +62,8 @@ import BidManagementDetail from './Components/BidManagement/BidManagementDetail'
 import Notifications from './Components/Notifications';
 import AddNewManagerForm from './Components/UserManagement/AddNewUser/AddNewManagerForm';
 import Manager from './Components/UserManagement/Manager';
-import { useEffect } from 'react';
 import ManagerDetail from './Components/UserManagement/ManagerDetail';
+import EditVehicle from './Components/SharedComponents/EditVehicle';
 
 function App() {
 
@@ -82,10 +79,11 @@ function App() {
   // buyer-seller-staff
   const [selectedBuyerId, setSelectedBuyerId] = useState(null);
   const [selectedSellerId, setSelectedSellerId] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(null);
   const [selectedManagerId, setSelectedManagerId] = useState(null);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState(null);
+
+  const [editReturnPage, setEditReturnPage] = useState('all-auctions');
 
   // vehicle approvals
   const [selectedVehicleAppId, setSelectedVehicleAppId] = useState(null);
@@ -133,9 +131,9 @@ function App() {
 
   useEffect(() => {
     if (token) {
-        setCurrentPage('dashboard');
+      setCurrentPage('dashboard');
     }
-}, [token]);
+  }, [token]);
 
   // Global Toaster 
   const globalToaster = (
@@ -175,10 +173,11 @@ function App() {
     setCurrentPage('seller-detail');
   };
 
-  // user mang - staff detail
-  const handleViewStaff = (staff) => {
-    setSelectedStaff(staff);
-    setCurrentPage('staff-detail');
+  // edit vehicle
+  const openEditVehicle = (vehicleId, fromPage) => {
+    setSelectedVehicleId(vehicleId);
+    setEditReturnPage(fromPage);
+    setCurrentPage('edit-vehicle');
   };
 
   return (
@@ -228,9 +227,6 @@ function App() {
                 {currentPage === 'seller-detail' && <SellerDetail sellerId={selectedSellerId} setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'seller-vehicle-detail' && <SellerVehicleDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />}
 
-                {currentPage === 'staffs' && <Staff onViewStaff={handleViewStaff} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'staff-detail' && <StaffDetail staff={selectedStaff} setCurrentPage={setCurrentPage} />}
-                
                 {currentPage === 'manager' && <Manager setSelectedManagerId={setSelectedManagerId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'manager-detail' && <ManagerDetail managerId={selectedManagerId} setCurrentPage={setCurrentPage} />}
 
@@ -242,15 +238,14 @@ function App() {
 
                 {/* vehicle approval */}
                 {currentPage === 'vehicle-approvals' && <VehicleApprovals setSelectedVehicleAppId={setSelectedVehicleAppId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'vehicle-approvals-detail' && <VehicleApprovalsDetail vehicleAppId={selectedVehicleAppId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'vehicle-approvals-detail' && <VehicleApprovalsDetail vehicleAppId={selectedVehicleAppId} onEditVehicle={openEditVehicle} setCurrentPage={setCurrentPage} />}
 
                 {/* auction management */}
                 {currentPage === 'all-auctions' && <AllAuctions setCurrentPage={setCurrentPage} setSelectedAuction={setSelectedAuction} />}
 
                 {/* auc man - live */}
                 {currentPage === 'live-auctions' &&
-                  <LiveAuctions
-                    setCurrentPage={setCurrentPage}
+                  <LiveAuctions setCurrentPage={setCurrentPage}
                     onSelectVehicle={(auction) => {
                       setSelectedAuction(auction);
                       setCurrentPage('live-auction-detail');
@@ -258,7 +253,7 @@ function App() {
                   />
                 }
                 {currentPage === 'live-auction-detail' && (
-                  <LiveAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                  <LiveAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} onEditVehicle={openEditVehicle} />
                 )}
 
                 {/* auc man - upcoming */}
@@ -272,7 +267,7 @@ function App() {
                   />
                 }
                 {currentPage === 'upcoming-auction-detail' && (
-                  <UpcomingAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                  <UpcomingAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} onEditVehicle={openEditVehicle} />
                 )}
 
                 {/* auc man - cancelled */}
@@ -286,7 +281,7 @@ function App() {
                   />
                 }
                 {currentPage === 'canceled-auction-detail' && (
-                  <CancelledAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                  <CancelledAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} onEditVehicle={openEditVehicle} />
                 )}
 
                 {/* auc man - completed */}
@@ -300,8 +295,11 @@ function App() {
                   />
                 }
                 {currentPage === 'completed-auction-detail' && (
-                  <CompletedAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} />
+                  <CompletedAuctionsDetail setCurrentPage={setCurrentPage} auction={selectedAuction} onEditVehicle={openEditVehicle} />
                 )}
+
+                {/* edit vehicle / auction */}
+                {currentPage === 'edit-vehicle' && <EditVehicle vehicleId={selectedVehicleId} returnPage={editReturnPage} setCurrentPage={setCurrentPage} />}
 
                 {/* bid management */}
                 {currentPage === 'bid-management' && <BidManagement setSelectedBidId={setSelectedBidId} setCurrentPage={setCurrentPage} />}

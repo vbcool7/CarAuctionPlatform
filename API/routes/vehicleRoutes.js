@@ -3,8 +3,8 @@ import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/imageStorage.js';
 import {
-    decodeVin, addVehicle, getMyVehicles, getVehicleStats, getVehicleById,
-    getCategoryCounts, getPublicVehicles, getFilterOptions, getPublicStats, 
+    decodeVin, addVehicle, getMyVehicles, getVehicleStats, getVehicleById, sellerEditVehicle,
+    getCategoryCounts, getPublicVehicles, getFilterOptions, getPublicStats,
 } from '../controllers/vehicleController.js';
 
 const router = express.Router();
@@ -16,7 +16,17 @@ router.post('/add-vehicle',
         { name: 'images', maxCount: 15 },
         { name: 'documents', maxCount: 5 },
     ]),
-    addVehicle);
+    addVehicle
+);
+
+router.patch('/seller-edit-vehicle/:id',
+    authMiddleware(['seller']),
+    upload.fields([
+        { name: 'images', maxCount: 15 },
+        { name: 'documents', maxCount: 5 },
+    ]),
+    sellerEditVehicle
+);
 
 router.get('/get-my-vehicles', authMiddleware(['seller']), getMyVehicles);
 router.get('/get-vehicle-stats', authMiddleware(['seller']), getVehicleStats);

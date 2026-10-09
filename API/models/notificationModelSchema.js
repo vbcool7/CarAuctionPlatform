@@ -21,8 +21,8 @@ const notificationSchema = new mongoose.Schema(
             enum: [
                 'buyer_added', 'buyer_verification_changed', 'buyer_document_reviewed', 'buyer_suspended', 'buyer_reactivated',
                 'seller_added', 'seller_verification_changed', 'seller_document_reviewed', 'seller_suspended', 'seller_reactivated',
-                'vehicle_added', 'vehicle_reviewed',
-                'new_bid_received', 'reserve_price_met',
+                'vehicle_added', 'vehicle_reviewed', 'vehicle_edited',
+                'new_bid_received', 'reserve_price_met', 'vehicle_resubmitted',
                 'auction_sold', 'auction_unsold', 'reserve_not_met', 'auction_canceled',
                 'auction_relisted', 'auction_rescheduled',
             ],

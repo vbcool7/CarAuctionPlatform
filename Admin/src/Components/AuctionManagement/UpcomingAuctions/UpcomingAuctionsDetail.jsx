@@ -12,9 +12,10 @@ import AuctionsVehicleDetailTab from '../Shared/AuctionsVehicleDetailTab';
 import AuctionsDocumentsTab from '../Shared/AuctionsDocumentsTab';
 import ContactSupport from '../../SharedComponents/ContactSupport';
 import CancelAuctionModal from '../Shared/CancelAuctionModal';
-
-import { useCancelAuction, useGetAuctionDetail } from '../../../hooks/useAuction';
+import RescheduleAuctionModal from '../Shared/RescheduleAuctionModal';
 import { formatLabel } from '../../utils/formatter';
+
+import { useCancelAuction, useGetAuctionDetail, useRescheduleAuction } from '../../../hooks/useAuction';
 import { UseCountDown } from '../../SharedComponents/UseCountDown';
 
 // tabs
@@ -37,15 +38,18 @@ const Tag = ({ children }) => (
     </span>
 );
 
-function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
+function UpcomingAuctionsDetail({ setCurrentPage, auction, onEditVehicle }) {
 
     const [activeTab, setActiveTab] = useState('auction-overview');
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState("");
     const [cancelError, setCancelError] = useState("");
+    const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+    const [rescheduleError, setRescheduleError] = useState("");
 
     const { data: auctionDetail, isLoading, isError } = useGetAuctionDetail(auction._id);
     const { mutate: cancelAuction, isPending: isUpdating } = useCancelAuction();
+    const { mutate: rescheduleAuction, isPending: isRescheduling } = useRescheduleAuction();
 
     const vehicle = auctionDetail?.data?.vehicle;
 
@@ -74,6 +78,12 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                 parentPage="upcoming-auctions"
                 currentLabel="Upcoming Auction Detail"
                 backButtonTarget="all-auctions"
+                actionLabel="Reschedule"
+                onAction={() => {
+                    setRescheduleError("");
+                    setIsRescheduleOpen(true);
+                }}
+                onEdit={() => onEditVehicle(auction._id, 'upcoming-auction-detail')}
             />
 
             {/* upcoming info bar */}
@@ -239,7 +249,7 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
 
             </div>
 
-            {/* auction cancel modal */}
+            {/* ------------ AUCTION CANCEL MODAL ------------ */}
             <CancelAuctionModal
                 isOpen={isCancelModalOpen}
                 onClose={() => {
@@ -272,6 +282,37 @@ function UpcomingAuctionsDetail({ setCurrentPage, auction }) {
                 setReason={setCancelReason}
                 loading={isUpdating}
                 error={cancelError}
+            />
+
+            {/* ----------------- AUCTION RESCHEDULING MODAL ----------------- */}
+            <RescheduleAuctionModal
+                isOpen={isRescheduleOpen}
+                onClose={() => {
+                    if (isRescheduling) return;
+                    setIsRescheduleOpen(false);
+                    setRescheduleError("");
+                }}
+                onConfirm={(payload) => {
+                    setRescheduleError("");
+                    rescheduleAuction(
+                        { id: vehicle._id, ...payload },
+                        {
+                            onSuccess: (data) => {
+                                setIsRescheduleOpen(false);
+                                toast.success(data?.message || "Auction updated successfully");
+                                setCurrentPage('upcoming-auctions');
+                            },
+                            onError: (err) => {
+                                const msg = err?.response?.data?.message || "Failed to update auction. Please try again.";
+                                setRescheduleError(msg);
+                                toast.error(msg);
+                            },
+                        }
+                    );
+                }}
+                vehicle={vehicle}
+                loading={isRescheduling}
+                error={rescheduleError}
             />
         </div>
     )
