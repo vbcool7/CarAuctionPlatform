@@ -105,3 +105,42 @@ export const useReuploadBuyerDoc = () => {
         },
     });
 };
+
+// buyer profile update 
+export const useUpdateBuyerProfile = () => {
+    const queryClient = useQueryClient();
+ 
+    return useMutation({
+        mutationKey: ['updateBuyerProfile'],
+        mutationFn: async (formData) => {
+            const res = await API.patch('/buyer/buyer-update-profile', formData);
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['buyer'] });
+        },
+    });
+};
+ 
+// buyer change password
+export const useChangeBuyerPassword = () => {
+    return useMutation({
+        mutationKey: ['changeBuyerPassword'],
+        mutationFn: async (payload) => {
+            const res = await API.put('/buyer/buyer-change-password', payload);
+            return res.data;
+        },
+    });
+};
+ 
+
+// dashboard stats
+export const useGetBuyerDashboardStats = () => {
+    return useQuery({
+        queryKey: ['buyerDashboardStats'],
+        queryFn: async () => {
+            const res = await API.get('/buyer/dashboard-stats');
+            return res.data;
+        },
+    });
+};

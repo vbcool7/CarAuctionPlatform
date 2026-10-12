@@ -50,4 +50,20 @@ const upload = multer({
     },
 });
 
-export { upload };
+// profile photo: sirf images, max 2MB (same storage / folder logic)
+const uploadImage = multer({
+    storage: storage,
+    limits: {
+        fileSize: 2 * 1024 * 1024,   // 2MB
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only JPG, PNG and WEBP images are allowed.'), false);
+        }
+    },
+});
+
+export { upload, uploadImage };

@@ -219,15 +219,15 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
 
                             <div className="flex flex-col items-end gap-1">
                                 <span className="font-medium text-slate-700">
-                                    {record.identityVerification.reviewedBy.name}
+                                    {record.identityVerification?.reviewedBy?.name || "Not Reviewed"}
                                 </span>
 
                                 <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                                    {record.identityVerification.reviewedBy.role === "auctionManager"
+                                    {record.identityVerification?.reviewedBy?.role === "auctionManager"
                                         ? "Auction Manager"
-                                        : record.identityVerification.reviewedBy.role === "admin"
+                                        : record.identityVerification?.reviewedBy?.role === "admin"
                                             ? "Admin"
-                                            : record.identityVerification.reviewedBy.role}
+                                            : record.identityVerification?.reviewedBy?.role}
                                 </span>
                             </div>
                         </div>
@@ -237,15 +237,15 @@ function BuyerKycVerificationDetail({ buyerKycId, setCurrentPage }) {
 
                             <div className="flex flex-col items-end gap-1">
                                 <span className="font-medium text-slate-700">
-                                    {record.addressVerification.reviewedBy.name}
+                                    {record.addressVerification?.reviewedBy?.name || "Not Available"}
                                 </span>
 
                                 <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                                    {record.addressVerification.reviewedBy.role === "auctionManager"
+                                    {record.addressVerification?.reviewedBy?.role === "auctionManager"
                                         ? "Auction Manager"
-                                        : record.addressVerification.reviewedBy.role === "admin"
+                                        : record.addressVerification?.reviewedBy?.role === "admin"
                                             ? "Admin"
-                                            : record.addressVerification.reviewedBy.role}
+                                            : record.addressVerification?.reviewedBy?.role}
                                 </span>
                             </div>
                         </div>

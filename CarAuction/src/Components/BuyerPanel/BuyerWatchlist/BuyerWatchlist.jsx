@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-
-import { Eye, Heart, LayoutGrid, List, } from 'lucide-react';
+import { Eye, Heart} from 'lucide-react';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 import { useClearWatchlist, useGetMyWatchlist, useToggleWatchlist } from '../../../hook/useWatchlist';
 import { useEffect } from 'react';

@@ -122,6 +122,17 @@ export const useGetTopBidders = (limit) => {
     });
 };
 
+// bid activity
+export const useGetBuyerBidActivity = () => {
+    return useQuery({
+        queryKey: ['buyerBidActivity'],
+        queryFn: async () => {
+            const res = await API.get('/bid/bid-activity?limit=3');
+            return res.data;
+        },
+    });
+};
+
 // =========================== USER
 
 // get public bids for particular vehicle

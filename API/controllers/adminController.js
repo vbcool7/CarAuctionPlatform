@@ -10,7 +10,7 @@ import {
     buildManagerWelcomeEmail
 } from '../utils/emailTemplates.js';
 
-import { deleteCloudinaryFiles, deleteStoredFile } from '../utils/cloudinaryUtils.js';
+import { deleteCloudinaryFiles, deleteOldFileFromCloudinary, deleteStoredFile } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId, getNextSellerId } from '../utils/counterHelper.js';
 import { UAE_UTC_OFFSET_HOURS, DURATION_MS, parseTime12h } from '../models/vehicleModelSchema.js';
 
@@ -1271,6 +1271,203 @@ export const getBuyerStats = async (req, res) => {
     }
 };
 
+// update buyer -------------------CHATGPT
+export const updateBuyer = async (req, res) => {
+    let newProfileImageUploaded = false;
+
+    try {
+        const { id } = req.params;
+
+        const buyer = await Buyer.findById(id);
+
+        if (!buyer) {
+            if (req.files) {
+                await deleteCloudinaryFiles(req.files);
+            }
+
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found",
+            });
+        }
+
+        const editableFields = [
+            "firstName",
+            "lastName",
+            "gender",
+            "dob",
+            "nationality",
+            "email",
+            "mobile",
+            "country",
+            "emirate",
+            "city",
+            "address",
+            "pincode",
+            "buyerType",
+            "companyName",
+            "registrationNumber",
+            "vatNumber",
+        ];
+
+        const updates = {};
+
+        editableFields.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+                updates[field] = req.body[field];
+            }
+        });
+
+        // Validate required fields if provided
+        const requiredFields = [
+            "firstName",
+            "lastName",
+            "email",
+            "mobile",
+        ];
+
+        for (const field of requiredFields) {
+            if (
+                Object.prototype.hasOwnProperty.call(updates, field) &&
+                (typeof updates[field] !== "string" ||
+                    !updates[field].trim())
+            ) {
+                if (req.files) {
+                    await deleteCloudinaryFiles(req.files);
+                }
+
+                return res.status(400).json({
+                    success: false,
+                    message: `${field} cannot be empty`,
+                });
+            }
+        }
+
+        // Normalize email and mobile
+        if (updates.email !== undefined) {
+            updates.email = updates.email.trim().toLowerCase();
+        }
+
+        if (updates.mobile !== undefined) {
+            updates.mobile = updates.mobile.trim();
+        }
+
+        // Check duplicate email
+        if (
+            updates.email !== undefined &&
+            updates.email !== buyer.email
+        ) {
+            const existingEmail = await Buyer.findOne({
+                email: updates.email,
+                _id: { $ne: id },
+            });
+
+            if (existingEmail) {
+                if (req.files) {
+                    await deleteCloudinaryFiles(req.files);
+                }
+
+                return res.status(409).json({
+                    success: false,
+                    message: "Email is already registered",
+                });
+            }
+
+            // New email must be verified again
+            updates.isEmailVerified = false;
+        }
+
+        // Check duplicate mobile
+        if (
+            updates.mobile !== undefined &&
+            updates.mobile !== buyer.mobile
+        ) {
+            const existingMobile = await Buyer.findOne({
+                mobile: updates.mobile,
+                _id: { $ne: id },
+            });
+
+            if (existingMobile) {
+                if (req.files) {
+                    await deleteCloudinaryFiles(req.files);
+                }
+
+                return res.status(409).json({
+                    success: false,
+                    message: "Mobile number is already registered",
+                });
+            }
+        }
+
+        // Handle new profile image
+        const newProfileImage = req.files?.profileImageUrl?.[0];
+
+        if (newProfileImage) {
+            newProfileImageUploaded = true;
+            updates.profileImageUrl = newProfileImage.path;
+        }
+
+        // Store old image before updating
+        const oldProfileImageUrl = buyer.profileImageUrl;
+
+        // Update only permitted fields
+        Object.assign(buyer, updates);
+
+        await buyer.save();
+
+        // Delete old image only after successful DB save
+        if (
+            newProfileImage &&
+            oldProfileImageUrl &&
+            oldProfileImageUrl !== newProfileImage.path
+        ) {
+            await deleteOldFileFromCloudinary(oldProfileImageUrl);
+        }
+
+        const buyerToReturn = buyer.toObject();
+        delete buyerToReturn.password;
+
+        return res.status(200).json({
+            success: true,
+            message: "Buyer updated successfully",
+            data: {
+                buyer: buyerToReturn,
+            },
+        });
+
+    } catch (err) {
+        // Clean up new upload if update fails
+        if (newProfileImageUploaded && req.files) {
+            await deleteCloudinaryFiles(req.files);
+        }
+
+        // Handle MongoDB duplicate-key errors
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern || {})[0];
+
+            return res.status(409).json({
+                success: false,
+                message: `${field || "Field"} is already registered`,
+            });
+        }
+
+        // Handle Mongoose validation errors
+        if (err.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: err.message,
+            });
+        }
+
+        console.error("Update Buyer Error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error occurred",
+        });
+    }
+};
+
 // ============================================ SELLER
 
 // add new seller
@@ -1862,6 +2059,195 @@ export const getSellerStats = async (req, res) => {
     }
 };
 
+// update seller -------------------CHATGPT
+export const updateSeller = async (req, res) => {
+    let sellerSaved = false;
+
+    try {
+        const { id } = req.params;
+
+        const seller = await Seller.findById(id);
+
+        if (!seller) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+
+            return res.status(404).json({
+                success: false,
+                message: "Seller not found"
+            });
+        }
+
+        const editableFields = [
+            'fullName',
+            'email',
+            'phone',
+            'businessName',
+            'businessType',
+            'licenseNumber',
+            'vatNumber',
+            'businessYear',
+            'employees',
+            'website',
+            'businessDescription',
+            'country',
+            'emirate',
+            'city',
+            'area',
+            'streetAddress',
+            'building',
+            'poBox',
+            'zipCode'
+        ];
+
+        const updates = {};
+
+        editableFields.forEach((field) => {
+            if (req.body[field] !== undefined) {
+                updates[field] = req.body[field].trim();
+            }
+        });
+
+        // Required fields cannot be cleared for a completed seller
+        const requiredFields = [
+            'fullName',
+            'email',
+            'phone',
+            'businessName',
+            'businessType',
+            'licenseNumber',
+            'businessYear',
+            'employees',
+            'country',
+            'emirate',
+            'city',
+            'area',
+            'streetAddress'
+        ];
+
+        const missingFields = requiredFields.filter(
+            (field) =>
+                updates[field] !== undefined &&
+                !updates[field]
+        );
+
+        if (missingFields.length) {
+            if (req.files) await deleteCloudinaryFiles(req.files);
+
+            return res.status(400).json({
+                success: false,
+                message: "Required fields cannot be empty",
+                fields: missingFields
+            });
+        }
+
+        // Normalize email and phone
+        if (updates.email !== undefined) {
+            updates.email = updates.email.toLowerCase().trim();
+        }
+
+        if (updates.phone !== undefined) {
+            updates.phone = updates.phone.trim();
+        }
+
+        // Check duplicate email or phone, excluding current seller
+        const duplicateConditions = [];
+
+        if (updates.email !== undefined) {
+            duplicateConditions.push({ email: updates.email });
+        }
+
+        if (updates.phone !== undefined) {
+            duplicateConditions.push({ phone: updates.phone });
+        }
+
+        if (duplicateConditions.length) {
+            const existingSeller = await Seller.findOne({
+                _id: { $ne: seller._id },
+                $or: duplicateConditions
+            });
+
+            if (existingSeller) {
+                if (req.files) await deleteCloudinaryFiles(req.files);
+
+                return res.status(400).json({
+                    success: false,
+                    message: "Another seller already exists with this email or phone"
+                });
+            }
+        }
+
+        // Reset email verification only if email actually changes
+        if (
+            updates.email !== undefined &&
+            updates.email !== seller.email
+        ) {
+            updates.isEmailVerified = false;
+        }
+
+        // Handle profile image upload
+        const newProfileImage = req.files?.profileImage?.[0];
+        const oldProfileImage = seller.profileImage;
+
+        if (newProfileImage) {
+            updates.profileImage = newProfileImage.path;
+        }
+
+        // Apply only allowed updates
+        Object.assign(seller, updates);
+
+        await seller.save();
+        sellerSaved = true;
+
+        // Delete old image only after the seller is successfully updated
+        if (
+            newProfileImage &&
+            oldProfileImage &&
+            oldProfileImage !== newProfileImage.path
+        ) {
+            await deleteOldFileFromCloudinary(oldProfileImage);
+        }
+
+        const updatedSeller = seller.toObject();
+        delete updatedSeller.password;
+
+        return res.status(200).json({
+            success: true,
+            message: "Seller updated successfully",
+            seller: updatedSeller
+        });
+
+    } catch (error) {
+        // Clean up newly uploaded files if the database update failed
+        if (!sellerSaved && req.files) {
+            await deleteCloudinaryFiles(req.files);
+        }
+
+        console.error("Update Seller Error:", error);
+
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: "Seller already exists with this email or phone"
+            });
+        }
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: "Validation failed",
+                errors: Object.values(error.errors).map(
+                    (item) => item.message
+                )
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
+        });
+    }
+};
+
 // ============================================ VEHICLES
 
 // get all makes from DB - for make filter (drop-down)
@@ -2214,19 +2600,19 @@ export const adminEditVehicle = async (req, res) => {
         const files = req.files || {};
         const changes = [];
 
-         // ---------- text / number fields ----------
+        // ---------- text / number fields ----------
         const fields = [...TEXT_FIELDS, ...NUMBER_FIELDS];
-        if (vehicle.adminStatus === 'pending') fields.push('vin'); 
+        if (vehicle.adminStatus === 'pending') fields.push('vin');
 
         for (const field of fields) {
-            if (body[field] === undefined) continue; 
+            if (body[field] === undefined) continue;
 
             let incoming = typeof body[field] === 'string' ? body[field].trim() : body[field];
             if (field === 'vin') incoming = String(incoming).toUpperCase();
 
             if (incoming === '') {
                 if (Vehicle.schema.path(field).isRequired) return fail(400, `${field} is required`);
-                incoming = undefined; 
+                incoming = undefined;
             } else if (NUMBER_FIELDS.includes(field)) {
                 incoming = Number(incoming);
                 if (!Number.isFinite(incoming) || incoming < 0) {
@@ -2234,13 +2620,13 @@ export const adminEditVehicle = async (req, res) => {
                 }
             }
             const current = vehicle[field];
-            if (String(current ?? '') === String(incoming ?? '')) continue; 
+            if (String(current ?? '') === String(incoming ?? '')) continue;
 
             changes.push({ field, from: short(current ?? null), to: short(incoming ?? null) });
             vehicle[field] = incoming;
         }
 
-         // ---------- year range (addVehicle jaisa) ----------
+        // ---------- year range (addVehicle jaisa) ----------
         if (vehicle.isModified('year')) {
             const maxYear = new Date().getFullYear() + 1;
             if (vehicle.year < 1980 || vehicle.year > maxYear) {
@@ -2256,10 +2642,10 @@ export const adminEditVehicle = async (req, res) => {
                 auctionStatus: { $in: ['draft', 'upcoming', 'live'] },
             }).select('_id');
             if (dup) return fail(400, 'An active listing already exists for this VIN');
-            vehicle.vinDecoded = false; 
+            vehicle.vinDecoded = false;
         }
 
-         // ---------- images / documents ----------
+        // ---------- images / documents ----------
         const removeImageIds = parseIds(body.removeImageIds);
         const removeDocIds = parseIds(body.removeDocumentIds);
 
@@ -2368,7 +2754,7 @@ export const adminEditVehicle = async (req, res) => {
         } catch (notifErr) {
             console.error('adminEditVehicle notification failed:', notifErr.message);
         }
-        
+
         return res.status(200).json({
             success: true,
             message: 'Vehicle updated successfully',
@@ -2381,15 +2767,15 @@ export const adminEditVehicle = async (req, res) => {
 
         if (err.name === 'ValidationError') {
             const messages = Object.values(err.errors).map((e) => e.message);
-            return res.status(400).json({ 
-                success: false, 
-                message: messages.join(', ') 
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ')
             });
         }
 
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Server Error Occured' 
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
         });
     }
 };
@@ -2491,12 +2877,15 @@ export const getAllAuctions = async (req, res) => {
         // bids + bidders count + sller/buyer bid info
         const vehiclesWithBids = await Promise.all(
             vehicles.map(async (v) => {
-                const bidCount = await Bid.countDocuments({ vehicleId: v._id });
-                const bidderCount = (await Bid.distinct('bidderId', { vehicleId: v._id })).length;
+
+                const currentBids = { vehicleId: v._id, status: { $ne: 'archived' } };
+                const bidCount = await Bid.countDocuments(currentBids);
+                const bidderCount = (await Bid.distinct('bidderId', currentBids)).length;
 
                 let soldTo = null;
                 if (v.auctionStatus === 'sold') {
                     const winningBid = await Bid.findOne({ vehicleId: v._id, status: 'won' });
+
                     if (winningBid) {
                         if (winningBid.bidderType === 'Buyer') {
                             const bidder = await Buyer.findById(winningBid.bidderId).select('firstName lastName email profileImageUrl');
@@ -2559,9 +2948,8 @@ export const getAuctionDetail = async (req, res) => {
         }
 
         // find all bids of this vehicle
-        const allBids = await Bid.find({ vehicleId: vehicle._id }).sort({ createdAt: -1 });
+        const allBids = await Bid.find({ vehicleId: vehicle._id, status: { $ne: 'archived' } }).sort({ createdAt: -1 });
 
-        // resolve bidder info with each bid
         const bidsWithBidderInfo = await Promise.all(
             allBids.map(async (bid) => {
                 let bidderInfo = null;
@@ -2704,55 +3092,21 @@ export const getUpcomingAuctionsCalendar = async (req, res) => {
 // Get all auction stats
 export const getAllAuctionStats = async (req, res) => {
     try {
-        const [
-            totalAuctions,
-            liveAuctions,
-            upcomingAuctions,
-            completedAuctions,
-            canceledAuctions
-        ] = await Promise.all([
+        const [totalAuctions, liveAuctions, upcomingAuctions, completedAuctions, canceledAuctions] = await Promise.all([
 
-            // Total Auctions
+            Vehicle.countDocuments({ adminStatus: "approved" }),
+            Vehicle.countDocuments({ auctionStatus: "live" }),
             Vehicle.countDocuments({
-                adminStatus: "approved"
-            }),
-
-            // Live Auctions
-            Vehicle.countDocuments({
-                auctionStatus: "live"
-            }),
-
-            // Upcoming Auctions
-            Vehicle.countDocuments({
+                adminStatus: "approved",
                 auctionStatus: "upcoming"
             }),
-
-            // Completed Auctions
             Vehicle.countDocuments({
                 auctionStatus: {
                     $in: ["sold", "unsold", "reserve-not-met"]
                 }
             }),
-
-            // Canceled Auctions
-            Vehicle.countDocuments({
-                auctionStatus: "canceled"
-            })
+            Vehicle.countDocuments({ auctionStatus: "canceled" })
         ]);
-
-        // Debug: canceled vehicles
-        const canceledVehicles = await Vehicle.find(
-            { auctionStatus: "canceled" },
-            {
-                _id: 1,
-                listingId: 1,
-                auctionStatus: 1,
-                adminStatus: 1,
-                canceledBy: 1,
-                statusAtCancellation: 1,
-                canceledAt: 1
-            }
-        ).lean();
 
         return res.status(200).json({
             success: true,
@@ -2783,11 +3137,9 @@ export const getLiveAuctionStats = async (req, res) => {
         const now = new Date();
 
         // Next 5 minutes
-        const fiveMinutesLater = new Date(
-            now.getTime() + 5 * 60 * 1000
-        );
+        const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
 
-        // Get all currently live auctions
+        // currently live auctions
         const liveAuctions = await Vehicle.find({
             adminStatus: "approved",
             auctionStatus: "live",
@@ -2800,14 +3152,14 @@ export const getLiveAuctionStats = async (req, res) => {
         );
 
         // Total bids + unique participants
-        const [totalBids, participants] = await Promise.all([
-            Bid.countDocuments({
-                vehicleId: { $in: liveVehicleIds }
-            }),
+        const liveBidFilter = {
+            vehicleId: { $in: liveVehicleIds },
+            status: { $ne: "archived" }
+        };
 
-            Bid.distinct("bidderId", {
-                vehicleId: { $in: liveVehicleIds }
-            })
+        const [totalBids, participants] = await Promise.all([
+            Bid.countDocuments(liveBidFilter),
+            Bid.distinct("bidderId", liveBidFilter)
         ]);
 
         // Total current bid value
@@ -2818,7 +3170,7 @@ export const getLiveAuctionStats = async (req, res) => {
             0
         );
 
-        // Auctions ending in next 5 minutes
+        // ending in next 5 minutes
         const endingSoon = liveAuctions.filter(
             auction =>
                 auction.auctionEndDateTime > now &&
@@ -3493,7 +3845,12 @@ export const getBidDetail = async (req, res) => {
         }
 
         // get all bids of this vehicle
-        const vehicleBids = await Bid.find({ vehicleId: bid.vehicleId._id })
+        const archivedView = bid.status === 'archived';
+
+        const vehicleBids = await Bid.find({
+            vehicleId: bid.vehicleId._id,
+            status: archivedView ? 'archived' : { $ne: 'archived' },
+        })
             .select('bidId bidderId bidderType amount status createdAt')
             .sort({ amount: -1, createdAt: -1 })
             .lean();
@@ -3563,6 +3920,137 @@ export const getBidDetail = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// top bidders
+export const getTopBidders = async (req, res) => {
+    try {
+        const bidders = await Bid.aggregate([
+            {
+                $match: {
+                    status: { $in: ['active', 'outbid', 'won'] },
+                    bidderType: { $in: ['Buyer', 'Seller'] }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        bidderId: '$bidderId',
+                        bidderType: '$bidderType'
+                    },
+                    totalBids: { $sum: 1 },
+                    totalBidAmount: { $sum: '$amount' },
+                    vehiclesParticipated: {
+                        $addToSet: '$vehicleId'
+                    },
+                    lastBidAt: { $max: '$createdAt' }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'buyers',
+                    localField: '_id.bidderId',
+                    foreignField: '_id',
+                    as: 'buyerDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'sellers',
+                    localField: '_id.bidderId',
+                    foreignField: '_id',
+                    as: 'sellerDetails'
+                }
+            },
+            {
+                $addFields: {
+                    bidder: {
+                        $cond: [
+                            { $eq: ['$_id.bidderType', 'Buyer'] },
+                            { $arrayElemAt: ['$buyerDetails', 0] },
+                            { $arrayElemAt: ['$sellerDetails', 0] }
+                        ]
+                    }
+                }
+            },
+            {
+                $match: {
+                    bidder: { $ne: null }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    bidderId: '$_id.bidderId',
+                    bidderType: '$_id.bidderType',
+                    name: {
+                        $cond: [
+                            { $eq: ['$_id.bidderType', 'Buyer'] },
+                            {
+                                $trim: {
+                                    input: {
+                                        $concat: [
+                                            { $ifNull: ['$bidder.firstName', ''] },
+                                            ' ',
+                                            { $ifNull: ['$bidder.lastName', ''] }
+                                        ]
+                                    }
+                                }
+                            },
+                            '$bidder.fullName'
+                        ]
+                    },
+                    email: '$bidder.email',
+                    profileImage: {
+                        $cond: [
+                            { $eq: ['$_id.bidderType', 'Buyer'] },
+                            '$bidder.profileImageUrl',
+                            '$bidder.profileImage'
+                        ]
+                    },
+                    businessName: {
+                        $cond: [
+                            { $eq: ['$_id.bidderType', 'Seller'] },
+                            '$bidder.businessName',
+                            null
+                        ]
+                    },
+                    totalBids: 1,
+                    totalBidAmount: 1,
+                    totalVehiclesParticipated: {
+                        $size: '$vehiclesParticipated'
+                    },
+                    lastBidAt: 1
+                }
+            },
+            {
+                $sort: {
+                    totalBids: -1,
+                    totalBidAmount: -1,
+                    lastBidAt: -1
+                }
+            },
+            {
+                $limit: 5
+            }
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Top bidders fetched successfully',
+            data: {
+                bidders
+            }
+        });
+
+    } catch (err) {
+        console.log("getTopBidders error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };

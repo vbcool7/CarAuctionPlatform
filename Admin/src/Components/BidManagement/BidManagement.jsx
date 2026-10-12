@@ -6,7 +6,7 @@ import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
 
-import { useGetAllBids, useGetBidStats } from '../../hooks/useBid';
+import { useGetAllBids, useGetBidStats, useGetTopBidders } from '../../hooks/useBid';
 import { getPaginationRange } from '../utils/getPaginationRange'
 import { useEffect } from 'react';
 import DateRangePicker from '../SharedComponents/DateRangePicker';
@@ -19,6 +19,7 @@ const tabs = [
     { id: 'outbid', label: 'Outbid', },
     { id: 'withdrawn', label: 'Withdrawn', },
     { id: 'canceled', label: 'Canceled', },
+    { id: 'archived', label: 'Archived', },
 ];
 
 const filterConfig = [
@@ -108,9 +109,11 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
 
     const { data: bidStatsData } = useGetBidStats();
     const { data: allBids, isLoading, isError } = useGetAllBids({ page, limit: 10, status: activeTab, ...params });
+    const { data: topBiddersData } = useGetTopBidders();
 
     const bids = allBids?.bids || [];
     const totalPages = allBids?.pagination?.totalPages || 1;
+    const topBidders = topBiddersData?.data?.bidders || [];
 
     useEffect(() => {
         setPage(1);
@@ -589,6 +592,7 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
                             { name: 'Active', value: bidStatsData?.data?.activeBids || 0, color: '#2563EB' },
                             { name: 'Withdrawn', value: bidStatsData?.data?.withdrawnBids || 0, color: '#64748B' },
                             { name: 'Canceled', value: bidStatsData?.data?.canceledBids || 0, color: '#DC2626' },
+                            { name: 'Archived', value: bidStatsData?.data?.archivedBids || 0, color: '#7C3AED' },
                         ]}
                     />
 
@@ -598,33 +602,59 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
                             <h3 className="font-bold text-slate-900 text-[13px] md:text-sm">
                                 Top Bidders
                             </h3>
+
                             <button className="text-[11px] md:text-xs font-semibold text-amber-600 hover:underline">
                                 View All
                             </button>
                         </div>
+
                         <div className="space-y-3">
-                            {bidsList.map((bidder, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-bold text-slate-700">
-                                            {index + 1 || "--"}
-                                        </span>
-                                        <img
-                                            src={bidder.avatarUrl}
-                                            alt={bidder.bidderName}
-                                            className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                                        />
-                                        <span className="text-[11px] md:text-xs font-semibold text-slate-800">
-                                            {bidder.bidderName}
+                            {topBidders.length > 0 ? (
+                                topBidders.map((bidder, index) => (
+                                    <div
+                                        key={`${bidder.bidderType}-${bidder.bidderId}`}
+                                        className="flex items-center justify-between gap-3"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="text-xs font-bold text-slate-700 w-3 shrink-0">
+                                                {index + 1}
+                                            </span>
+
+                                            <img
+                                                src={
+                                                    bidder.profileImage ||
+                                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                        bidder.name || 'Bidder'
+                                                    )}&background=0B1E3D&color=fff`
+                                                }
+                                                alt={bidder.name || 'Bidder'}
+                                                className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover shrink-0"
+                                            />
+
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] md:text-xs font-semibold text-slate-800 truncate">
+                                                    {bidder.name || 'Unknown Bidder'}
+                                                </p>
+
+                                                <p className="text-[10px] text-slate-500">
+                                                    {bidder.bidderType}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <span className="text-[12px] md:text-xs font-semibold text-slate-600 shrink-0">
+                                            {bidder.totalBids} bids
                                         </span>
                                     </div>
-                                    <span className="text-[12px] md:text-xs font-medium text-slate-600">{bidder.bids}</span>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="text-xs text-slate-500 text-center py-4">
+                                    No bidders found
+                                </p>
+                            )}
                         </div>
                     </div>
+
 
                     {/* recent activity */}
                     <div className="bg-white rounded-xl border border-slate-100 p-4 md:p-5 shadow-sm">

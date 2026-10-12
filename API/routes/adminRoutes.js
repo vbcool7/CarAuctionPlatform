@@ -5,11 +5,11 @@ import authMiddleware from '../middlewares/authMiddleware.js';
 import requirePermission from '../middlewares/requirePermission.js';
 import {
     adminSignup, login, adminGet, adminLogout,
-    addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats,
-    addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats,
+    addNewBuyer, getAllBuyers, toggleBuyerVerification, getBuyerById, buyerDocVerification, suspendBuyer, reactivateBuyer, getBuyerStats, updateBuyer,
+    addNewSeller, getAllSellers, toggleSellerVerification, getSellerById, sellerDocVerification, suspendSeller, reactivateSeller, getSellerStats, updateSeller,
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes, adminEditVehicle,
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getUpcomingAuctionsCalendar, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction,
-    getAllBids, getBidDetail, getBidStats,
+    getAllBids, getBidDetail, getBidStats, getTopBidders,
     getAllSales,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
 } from '../controllers/adminController.js';
@@ -72,6 +72,12 @@ router.patch('/buyer-document-verification/:id/:group', authMiddleware(['admin',
 router.patch('/suspend-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), suspendBuyer);
 router.patch('/reactivate-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), reactivateBuyer);
 router.get('/buyer-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getBuyerStats);
+router.patch('/update-buyer/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'),
+    upload.fields([
+        { name: 'profileImageUrl', maxCount: 1 }
+    ]),
+    updateBuyer
+);
 
 // ============================ SELLER
 router.post('/add-new-seller', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), (req, res, next) => {
@@ -101,6 +107,12 @@ router.patch('/seller-document-verification/:id/:document', authMiddleware(['adm
 router.patch('/suspend-seller/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), suspendSeller);
 router.patch('/reactivate-seller/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), reactivateSeller);
 router.get('/seller-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'), getSellerStats);
+router.patch('/update-seller/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageUsers'),
+    upload.fields([
+        { name: 'profileImage', maxCount: 1 }
+    ]),
+    updateSeller
+);
 
 // ============================ VEHICLE
 router.get('/distinct-makes', authMiddleware(['admin', 'auctionManager']), requirePermission('manageVehicles'), getDistinctMakes);
@@ -133,6 +145,7 @@ router.patch("/reschedule-auction/:id", authMiddleware(['admin', 'auctionManager
 router.get('/bids-stats', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidStats);
 router.get('/all-bids', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getAllBids);
 router.get('/bid-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidDetail);
+router.get('/top-bidders', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getTopBidders);
 
 // ============================ SALES
 router.get('/all-sales', authMiddleware(['admin']), getAllSales);

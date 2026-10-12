@@ -2,8 +2,11 @@
 import bcrypt from 'bcrypt';
 import jwt, { decode } from 'jsonwebtoken';
 import Buyer from '../models/buyerModelSchema.js';
+import Bid from '../models/bidModelSchema.js';
+import Watchlist from '../models/watchlistModelSchema.js';
 import OTP from '../models/otpModelSchema.js';
 import sendEmail from '../utils/sendEmail.js';
+
 import { deleteCloudinaryFiles, deleteOldFileFromCloudinary } from '../utils/cloudinaryUtils.js';
 import { getNextBuyerId } from '../utils/counterHelper.js';
 
@@ -567,112 +570,209 @@ export const reuploadBuyerDocs = async (req, res) => {
     }
 };
 
-// not done below apis
+// change password (buyer)
 export const buyerChangePassword = async (req, res) => {
     try {
-        const { oldPassword, newPassword, confirmPassword } = req.body;
-
-        if (!oldPassword || !newPassword || !confirmPassword) {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+ 
+        const allStrings = [currentPassword, newPassword, confirmPassword]
+            .every((v) => typeof v === 'string' && v.length > 0);
+ 
+        if (!allStrings) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required"
             });
         }
-
+ 
         if (newPassword !== confirmPassword) {
             return res.status(400).json({
                 success: false,
                 message: "New password and confirm password do not match"
             });
         }
-
-        if (newPassword.length < 8) {
+ 
+        if (newPassword === currentPassword) {
             return res.status(400).json({
                 success: false,
-                message: "New password must be at least 8 characters"
+                message: "New password must be different from current password"
             });
         }
-
-        const buyer = await Buyer.findById(req.buyer.id);
-
+ 
+        const buyer = await Buyer.findById(req.user.id).select('+password');
+ 
         if (!buyer) {
             return res.status(404).json({
                 success: false,
                 message: "Buyer not found"
             });
         }
-
-        // verify old password is correct
-        const isMatch = await bcrypt.compare(oldPassword, buyer.password);
+ 
+        const isMatch = await bcrypt.compare(currentPassword, buyer.password);
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
                 message: "Current password is incorrect"
             });
         }
-
-        // hash and save new password
-        const salt = await bcrypt.genSalt(10);
-        buyer.password = await bcrypt.hash(newPassword, salt);
-
-        await buyer.save();
-
+ 
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+ 
+        await Buyer.updateOne({ _id: buyer._id }, { $set: { password: hashedPassword } });
+ 
         return res.status(200).json({
             success: true,
             message: "Password changed successfully"
         });
-
+ 
     } catch (err) {
-        console.log("Error :", err);
+        console.error("Buyer change password error:", err);
         return res.status(500).json({
             success: false,
-            message: "Server Error Occur"
+            message: "Server Error Occurred"
+        });
+    }
+};
+ 
+// update profile (buyer) - sirf phone + profile photo
+export const updateBuyerProfile = async (req, res) => {
+
+    const hasUpload = !!req.files?.['profileImage']?.length;
+ 
+    const discardUpload = async () => {
+        if (!hasUpload) return;
+        try {
+            await deleteCloudinaryFiles(req.files);
+        } catch (cleanupErr) {
+            console.error("Profile upload cleanup failed:", cleanupErr);
+        }
+    };
+ 
+    try {
+        const newImageUrl = req.files?.['profileImage']?.[0]?.path;
+ 
+        const buyer = await Buyer.findById(req.user.id).select('mobile profileImageUrl');
+ 
+        if (!buyer) {
+            await discardUpload();
+            return res.status(404).json({
+                success: false,
+                message: "Buyer not found"
+            });
+        }
+ 
+        const updates = {};
+ 
+        if (req.body.mobile !== undefined) {
+            const mobile = String(req.body.mobile).trim();
+ 
+            if (mobile !== buyer.mobile) {
+                if (!/^\d{10}$/.test(mobile)) {
+                    await discardUpload();
+                    return res.status(400).json({
+                        success: false,
+                        message: "Mobile number must be 10 digits"
+                    });
+                }
+ 
+                const taken = await Buyer.exists({ mobile, _id: { $ne: buyer._id } });
+                if (taken) {
+                    await discardUpload();
+                    return res.status(409).json({
+                        success: false,
+                        message: "This mobile number is already registered"
+                    });
+                }
+ 
+                updates.mobile = mobile;
+                updates.isMobileVerified = false;  
+            }
+        }
+ 
+        if (newImageUrl) {
+            updates.profileImageUrl = newImageUrl;
+        }
+ 
+        if (Object.keys(updates).length === 0) {
+            await discardUpload();
+            return res.status(400).json({
+                success: false,
+                message: "No changes to save"
+            });
+        }
+ 
+        const updated = await Buyer.findByIdAndUpdate(
+            buyer._id,
+            { $set: updates },
+            { new: true }
+        ).select('-password');
+ 
+        if (newImageUrl && buyer.profileImageUrl) {
+            try {
+                await deleteOldFileFromCloudinary(buyer.profileImageUrl);
+            } catch (delErr) {
+                console.error("Old profile photo delete failed (non-fatal):", delErr);
+            }
+        }
+ 
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: updated
+        });
+ 
+    } catch (err) {
+        await discardUpload();
+ 
+        if (err.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "This mobile number is already registered"
+            });
+        }
+ 
+        console.error("Update buyer profile error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred"
         });
     }
 };
 
-export const updateBuyerProfile = async (req, res) => {
+// Get buyer dashboard stats - NOT WORKED
+export const getBuyerDashboardStats = async (req, res) => {
     try {
-        const buyerId = req.buyer.id;
-        const allowedFields = [
-            'firstName', 'lastName', 'email', 'mobile',
-            'dob', 'nationality', 'country', 'city', 'pincode',
-            'preferredLanguage', 'timezone'
-        ];
+        const buyerId = req.user.id;
 
-        const updates = {};
-        for (const field of allowedFields) {
-            if (req.body[field] !== undefined) updates[field] = req.body[field];
-        }
+        const [totalBids, watchlist] = await Promise.all([
+            Bid.countDocuments({
+                bidderId: buyerId,
+                bidderType: 'Buyer',
+                status: { $in: ['active', 'outbid', 'won'] },
+            }),
 
-        const buyer = await Buyer.findById(buyerId);
-        if (!buyer) return res.status(404).json({ success: false, message: "Buyer not found" });
+            Watchlist.findOne({
+                userId: buyerId,
+                userType: 'Buyer',
+            }).select('items'),
+        ]);
 
-        if (updates.email && updates.email !== buyer.email) {
-            updates.isEmailVerified = false;
-            // trigger OTP send here, reuse existing send-otp function
-        }
-        if (updates.mobile && updates.mobile !== buyer.mobile) {
-            updates.isMobileVerified = false;
-        }
-        if (updates.username && updates.username !== buyer.username) {
-            const exists = await Buyer.findOne({ username: updates.username, _id: { $ne: buyerId } });
-            if (exists) {
-                return res.status(400).json({ success: false, message: "Username already taken" });
-            }
-        }
+        const totalWatchlisted = watchlist?.items?.length || 0;
 
-        const updatedBuyer = await Buyer.findByIdAndUpdate(buyerId, updates, {
-            new: true,
-            runValidators: true
-        }).select('-password');
+        return res.status(200).json({
+            success: true,
+            message: 'Buyer dashboard stats fetched successfully',
+            data: {
+                totalBids,
+                totalWatchlisted,
+            },
+        });
+    } catch (error) {
+        console.error('getBuyerDashboardStats error:', error);
 
-        return res.status(200).json({ success: true, message: "Profile updated", data: updatedBuyer });
-    } catch (err) {
-        if (err.code === 11000) {
-            return res.status(400).json({ success: false, message: "Email or mobile already in use" });
-        }
-        console.error("Update buyer profile:", err);
-        return res.status(500).json({ success: false, message: "Server Error Occurred" });
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occurred',
+        });
     }
 };

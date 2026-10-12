@@ -12,14 +12,9 @@ import FilterDropdown from '../BuyerSharedComponents/FilterDropdown';
 import useAuthStore from '../../../store/useAuthStore';
 import { useGetAllAuctions, useGetDistinctMakes, useGetDistinctModel } from '../../../hook/useAuction';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
-
-// stats
-const stats = [
-  { title: "Bids Placed", value: "28", icon: Gavel, link: "View all bids", bgColor: "bg-blue-100/80", iconColor: "text-blue-600", },
-  { title: "Won Auctions", value: "3", icon: Trophy, link: "View won", bgColor: "bg-green-100/80", iconColor: "text-green-600", page: 'won-auctions' },
-  { title: "Watchlisted", value: "12", icon: Heart, link: "View watchlist", bgColor: "bg-orange-100/80", iconColor: "text-orange-600", page: 'watchlist' },
-  { title: "Total Spent", value: "AED 285,000", icon: CreditCard, link: "View payments", bgColor: "bg-purple-100/80", iconColor: "text-purple-600" },
-];
+import { useGetBuyerBidActivity } from '../../../hook/useBid';
+import { useGetMyWatchlist } from '../../../hook/useWatchlist';
+import { useGetBuyerDashboardStats } from '../../../hook/useBuyer';
 
 const getStatusStyles = (status) => {
   switch (status) {
@@ -95,22 +90,22 @@ function AuctionCountdown({ item }) {
 
 const features = [
   {
-    icon: <ShieldCheck size={28} />,
+    icon: <ShieldCheck size={25} />,
     title: "Secure & Safe",
     desc: "100% secure bidding and payments"
   },
   {
-    icon: <BadgeCheck size={28} />,
+    icon: <BadgeCheck size={25} />,
     title: "Verified Vehicles",
     desc: "All vehicles are inspected and verified"
   },
   {
-    icon: <Headset size={28} />,
+    icon: <Headset size={25} />,
     title: "24/7 Support",
     desc: "Our team is always here to help you"
   },
   {
-    icon: <Award size={28} />,
+    icon: <Award size={25} />,
     title: "Best Deals",
     desc: "Competitive prices on quality vehicles"
   }
@@ -131,11 +126,44 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
 
   const params = mapFiltersToParams(filters);
 
+  const { data: statsData, isLoading: isStatsLoading } = useGetBuyerDashboardStats();
   const { data: makesData } = useGetDistinctMakes();
   const { data: modelData } = useGetDistinctModel(filters.allMakes);
   const { data: allAuctions, isLoading, isError } = useGetAllAuctions({ tab: activeTab, ...params, limit: 20 });
+  const { data: bidActivityData, isLoading: isBidActivityLoading } = useGetBuyerBidActivity();
+  const { data: watchlistData, isLoading: isWatchlistLoading } = useGetMyWatchlist({ page: 1, limit: 3 });
 
+  const buyerStats = statsData?.data;
   const auctions = allAuctions?.data || [];
+  const bidActivities = bidActivityData?.data?.bids || [];
+  const watchlistItems = watchlistData?.data?.items || [];
+
+  // stats
+  const stats = [
+    {
+      title: "Bids Placed",
+      value: isStatsLoading ? "..." : (buyerStats?.totalBids ?? 0).toLocaleString(),
+      icon: Gavel,
+      link: "View all bids",
+      bgColor: "bg-blue-100/80",
+      iconColor: "text-blue-600",
+      page: "bids",
+    },
+
+    { title: "Won Auctions", value: "3", icon: Trophy, link: "View won", bgColor: "bg-green-100/80", iconColor: "text-green-600", page: 'won-auctions' },
+
+    {
+      title: "Watchlisted",
+      value: isStatsLoading ? "..." : (buyerStats?.totalWatchlisted ?? 0).toLocaleString(),
+      icon: Heart,
+      link: "View watchlist",
+      bgColor: "bg-orange-100/80",
+      iconColor: "text-orange-600",
+      page: "watchlist",
+    },
+
+    { title: "Total Spent", value: "AED 285,000", icon: CreditCard, link: "View payments", bgColor: "bg-purple-100/80", iconColor: "text-purple-600" },
+  ];
 
   // tabs
   const tabs = [
@@ -182,12 +210,6 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  {/* bid activity */ }
-  const bidHistory = vehicles.slice(0, 3);
-
-  {/* watchlist */ }
-  const watchlistItems = vehicles.slice(3, 6);
-
   if (isLoading) return <p className="p-10 text-center">Loading all auctions....</p>;
   if (isError) return <p className="p-10 text-center text-red-500">Failed to load all auctions list</p>;
 
@@ -207,10 +229,7 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
             key={index}
             className="group relative bg-white px-4 py-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md hover:border-slate-200">
 
-            {/* Subtle top accent */}
             <div className="absolute top-0 left-5 right-5 h-px bg-linear-to-r from-transparent via-slate-100 to-transparent" />
-
-            {/* Icon */}
             <div
               className={`shrink-0 w-12 h-12 flex items-center justify-center rounded-xl ${stat.bgColor} ${stat.iconColor} ring-1 ring-inset ring-black/5 transition-all duration-300 group-hover:scale-105`}
             >
@@ -221,7 +240,6 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
               />
             </div>
 
-            {/* Content */}
             <div className="flex flex-col min-w-0 flex-1">
               <p className="text-xs font-medium text-slate-500 mb-0.5">
                 {stat.title}
@@ -237,7 +255,6 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
                 className="mt-1.5 text-[#D97706] text-xs font-semibold flex items-center w-fit gap-1 transition-all duration-200 hover:text-[#B45309]"
               >
                 {stat.link}
-
                 <span className="transition-transform duration-200 group-hover:translate-x-1">
                   →
                 </span>
@@ -247,7 +264,7 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
         ))}
       </div>
 
-      {/* recommended list of auctions */}
+      {/* =================== AUCTIONS =================== */}
       <div className="w-full ">
         <div className="space-y-6 bg-white p-4 md:p-6 rounded-3xl border border-slate-100 shadow-sm w-full">
 
@@ -545,16 +562,14 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
         </div>
       </div>
 
-      {/* mid section */}
+      {/* =================== MID SECTION =================== */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
         {/* bid activity */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm w-full">
-
+        <div className="bg-white px-4 py-6 rounded-3xl border border-slate-100 shadow-sm w-full">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-[#0B1E3D]">
-              Bid Activity
-            </h2>
+            <h2 className="text-[15px] font-bold text-[#0B1E3D]">Bid Activity</h2>
+
             <button
               onClick={() => setCurrentPage('bids')}
               className="flex items-center gap-1 text-[12px] md:text-sm font-semibold text-[#D97706] hover:text-[#D97706]/80 transition-colors cursor-pointer">
@@ -562,70 +577,157 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
             </button>
           </div>
 
-          {/* List */}
           <div className="space-y-6">
-            {bidHistory.map((item) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover"
-                />
+            {isBidActivityLoading ? (
+              <p className="text-sm text-slate-400">Loading bid activity...</p>
+            ) : bidActivities.length > 0 ? (
+              bidActivities.slice(0, 3).map((item) => {
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-600 truncate">
-                    <span className="font-medium text-[#0B1E3D] text-[12px] md:text-sm">You placed a bid on</span>
-                  </p>
-                  <p className="font-semibold text-[#0B1E3D] text-[12px] md:text-sm truncate">{item.name}</p>
-                </div>
+                const vehicle = item.vehicleId;
+                const image = vehicle?.images?.[0]?.url || vehicle?.images?.[0] || "https://placehold.co/100x100?text=Car";
 
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-[#0B1E3D] text-[12px] md:text-sm">{item.soldPrice || item.bid}</p>
-                  <p className="text-xs text-slate-400">2 min ago</p>
-                </div>
-              </div>
-            ))}
+                return (
+                  <div
+                    key={item._id}
+                    className="flex items-center gap-3">
+                    <img
+                      src={image}
+                      alt={vehicle.year}
+                      className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[#0B1E3D] text-[12px] truncate">
+                        You placed a bid on
+                      </p>
+                      <p className="text-xs text-slate-600 truncate">
+                        {vehicle?.year} {formatLabel(vehicle?.make)} {formatLabel(vehicle?.model)}
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-[#0B1E3D] text-[13px]">
+                        {formatPrice(item.amount)}
+                      </p>
+                      <p className="text-[9px] text-slate-400">
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleString("en", {
+                            timeZone: "Asia/Dubai",
+                            minute: "2-digit",
+                            hour: "2-digit",
+                            day: "2-digit",
+                            month: "short",
+                          })
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-4">
+                No bid activity found.
+              </p>
+            )}
           </div>
         </div>
 
-        {/* watchlist */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm w-full">
+        {/* Watchlist */}
+        <div className="bg-white px-4 py-6 rounded-3xl border border-slate-100 shadow-sm w-full">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-[#0B1E3D]">
-              Watchlist (12)
+            <h2 className="text-[15px] font-bold text-[#0B1E3D]">
+              Watchlist ({watchlistData?.data?.totalItems ?? watchlistItems.length})
             </h2>
+
             <button
               onClick={() => setCurrentPage('watchlist')}
-              className="flex items-center gap-1 text-[12px] md:text-sm font-semibold text-[#D97706] hover:text-[#D97706]/80 transition-colors">
+              className="flex items-center gap-1 text-[12px] md:text-sm font-semibold text-[#D97706] hover:text-[#D97706]/80 transition-colors" >
               View All <ArrowRight size={16} />
             </button>
           </div>
 
-          {/* List */}
-          <div className="space-y-6">
-            {watchlistItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-4">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover"
-                />
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[#0B1E3D] text-[12px] md:text-sm truncate">{item.name}</p>
+          {isWatchlistLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-4 animate-pulse">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-3/4 rounded bg-slate-200" />
+                    <div className="h-3 w-1/2 rounded bg-slate-100" />
+                  </div>
                 </div>
+              ))}
+            </div>
+          ) : watchlistItems.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="text-sm font-medium text-slate-500">
+                Your watchlist is empty
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Save cars you're interested in to find them here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {watchlistItems.map((item) => {
 
-                <div className="text-right shrink-0">
-                  <p className="font-bold text-[#0B1E3D] text-[12px] md:text-sm">{item.soldPrice || item.bid}</p>
+                const vehicle = item.vehicleId || item.vehicle || item;
+                const vehicleId = vehicle._id || item.vehicleId;
 
-                  <p className={`text-xs font-medium ${item.status === 'live' ? 'text-green-600' : 'text-slate-500'
-                    }`}>
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+                const image = vehicle.images?.[0]?.url || vehicle.images?.[0] || '/placeholder-car.png';
+                const status = vehicle.auctionStatus;
+
+                const price = vehicle.priceType === 'fixed_price' ? vehicle.buyNowPrice : vehicle.currentBid ?? vehicle.startingBidPrice;
+
+                return (
+                  <div
+                    key={item._id || vehicleId}
+                    className="flex items-center gap-3 cursor-pointer rounded-xl hover:bg-slate-50 transition-colors"
+                  >
+                    <img
+                      src={image}
+                      alt={vehicle.year}
+                      className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover bg-slate-100"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[#0B1E3D] text-[12px] truncate">
+                        You watchlisted this vehicle
+                      </p>
+                      <p className="text-xs text-slate-600 truncate">
+                        {vehicle?.year} {formatLabel(vehicle?.make)} {formatLabel(vehicle?.model)}
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-[#0B1E3D] text-[13px]">
+                        {formatPrice(price)}
+                      </p>
+
+                      <p
+                        className={`text-[9px] font-medium capitalize ${status === 'live'
+                          ? 'text-green-600'
+                          : status === 'upcoming'
+                            ? 'text-blue-600'
+                            : status === 'sold'
+                              ? 'text-emerald-600'
+                              : status === 'unsold'
+                                ? 'text-red-500'
+                                : status === 'reserve-not-met'
+                                  ? 'text-amber-600'
+                                  : 'text-slate-500'
+                          }`}
+                      >
+                        {status.replaceAll('-', ' ')}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* account summary */}
@@ -664,21 +766,21 @@ function BuyerDashboard({ setCurrentPage, openBidModal, setSelectedVehicleId, se
         </div>
       </div>
 
-      {/* feature bar */}
-      <div className="bg-white p-3 md:p-6 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+      {/* =================== FEATURE BAR =================== */}
+      <div className="bg-white px-3 py-4 rounded-2xl md:rounded-3xl border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
         {features.map((feature, index) => (
           <div
             key={index}
             className="flex items-start gap-3 md:gap-4">
 
-            <div className="p-2 md:p-3 rounded-2xl bg-amber-50 text-[#D97706]">
+            <div className="p-2 rounded-2xl bg-amber-50 text-[#D97706]">
               {feature.icon}
             </div>
 
             {/* Text Content */}
             <div>
-              <h3 className="font-bold text-[#0B1E3D] text-sm md:text-md">{feature.title}</h3>
-              <p className="text-[13px] md:text-sm text-slate-500 mt-1 leading-relaxed">
+              <h3 className="font-bold text-[#0B1E3D] text-[13px]">{feature.title}</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 {feature.desc}
               </p>
             </div>

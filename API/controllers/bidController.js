@@ -661,6 +661,32 @@ export const getMyBidDetail = async (req, res) => {
 
 // ============================== BUYER
 
+// get buyer bid activity
+export const getBuyerBidActivity = async (req, res) => {
+    try {
+        const bids = await Bid.find({
+            bidderId: req.user.id,
+            bidderType: "Buyer",
+            status: { $in: ["active", "outbid", "won"] },
+        })
+            .populate("vehicleId", "make model year images")
+            .sort({ createdAt: -1 })
+            .limit(3);
+
+        return res.status(200).json({
+            success: true,
+            message: "Buyer bid activity fetched successfully",
+            data: { bids },
+        });
+    } catch (err) {
+        console.error("getBuyerBidActivity error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occurred",
+        });
+    }
+};
+
 // get my bid detail
 export const getMyBidDetailBuyer = async (req, res) => {
     try {
