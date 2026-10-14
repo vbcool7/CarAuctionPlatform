@@ -7,9 +7,11 @@ import adminRoutes from './adminRoutes.js';
 import vehicleRoutes from './vehicleRoutes.js';
 import auctionRoutes from './auctionRoutes.js';
 import bidRoutes from './bidRoutes.js';
-import purchaseRoutes from './purchaseRoutes.js';
 import notificationRoutes from './notificationRoutes.js';
 import watchlistRoutes from './watchlistRoutes.js';
+import buyNowRoutes from './buyNowRoutes.js';
+import paymentRoutes from './paymentRoutes.js';
+import payoutRoutes from './payoutRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -20,8 +22,10 @@ rootRouter.use('/seller', sellerRoutes);
 rootRouter.use('/vehicle', vehicleRoutes);
 rootRouter.use('/auction', auctionRoutes);
 rootRouter.use('/bid', bidRoutes);
-rootRouter.use('/purchase', purchaseRoutes);
 rootRouter.use('/notification', notificationRoutes);
 rootRouter.use('/watchlist', watchlistRoutes);
+rootRouter.use('/buy', buyNowRoutes);
+rootRouter.use('/payment', paymentRoutes);
+rootRouter.use('/payout', payoutRoutes);
 
 export default rootRouter;

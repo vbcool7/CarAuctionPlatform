@@ -1,10 +1,10 @@
 
 import express from 'express';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import { buyVehicle } from '../controllers/purchaseController.js';
+import { buyNow } from '../controllers/buyNowController.js';
 
 const router = express.Router();
 
-router.post('/buy-vehicle/:id', authMiddleware(['buyer', 'seller']), buyVehicle);
+router.post('/buy-now', authMiddleware(['buyer', 'seller']), buyNow);
 
 export default router;

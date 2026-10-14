@@ -609,10 +609,12 @@ function EndedAuctionsDetail() {
                         <div className="relative flex flex-col h-full">
 
                             {isSold ? (
+                                <div className="h-110">
                                 <EndedSoldGallery
                                     images={vehicle.images?.map(img => img.url) || []}
                                     status={vehicle.auctionStatus}
                                 />
+                                </div>
                             ) : (
                                 <EndedUnsoldGallery
                                     images={vehicle.images?.map(img => img.url) || []}

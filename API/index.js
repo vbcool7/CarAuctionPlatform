@@ -1,6 +1,6 @@
 
+import 'dotenv/config';
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import http from 'http';
 import connectDb from './config/connectDb.js';
@@ -8,8 +8,7 @@ import rootRouter from './routes/mainRoutes.js';
 
 import { startAuctionCron } from './cron/auctionCron.js';
 import { initSocket } from './sockets/socketServer.js';
-
-dotenv.config();
+import { stripeWebhook } from './controllers/paymentController.js';
 
 const app = express();
 
@@ -27,6 +26,10 @@ app.use(cors({
     origin: ALLOWED_ORIGINS,
     credentials: true
 }));
+
+app.post('/api/v1/payments/stripe/webhook',
+    express.raw({ type: 'application/json' }),
+    stripeWebhook);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

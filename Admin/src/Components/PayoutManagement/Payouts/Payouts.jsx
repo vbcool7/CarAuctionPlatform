@@ -1,12 +1,16 @@
 
 import React, { useState } from 'react';
-import { Wallet, CheckSquare, Clock, X, Download, Calendar, Plus, ArrowUpRight, History, Check, FilePlus, ClipboardCheck } from "lucide-react";
-import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
+import { Wallet, CheckSquare, Clock, X, Download, Calendar, Check, FilePlus, ClipboardCheck, ArrowLeftRight, CreditCard, Eye, Landmark, MoreVertical } from "lucide-react";
 import { SiWise } from "react-icons/si";
+import { payoutsList } from '../../Data';
+import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
+
 import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
-import PayoutsList from './PayoutsList';
+
+import { useGetAllPayouts } from '../../../hooks/usePayout';
+import { formatLabel } from '../../utils/formatter';
 
 const payoutStats = [
     {
@@ -62,11 +66,43 @@ const recentActivity = [
     { title: "Payout completed", desc: "PAYOUT-2024-0231 to Sarah Williams", amount: "$24,750.00", time: "09:45 AM", icon: Check, iconBg: "bg-green-500" },
 ];
 
-function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
+// tabs
+const tabs = [
+    { id: 'all-payouts', label: 'All Payouts' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'processing', label: 'Processing' },
+    { id: 'completed', label: 'Completed' },
+    { id: 'failed', label: 'Failed' },
+    { id: 'cancelled', label: 'Cancelled' },
+];
+
+const STATUS_STYLES = {
+    on_hold: 'border-gray-200 bg-gray-50 text-gray-600',
+    available: 'border-blue-200 bg-blue-50 text-blue-600',
+    requested: 'border-amber-200 bg-amber-50 text-amber-600',
+    paid: 'border-green-200 bg-green-50 text-green-700',
+    canceled: 'border-red-200 bg-red-50 text-red-600',
+};
+
+function Payouts({ setCurrentPage, setSelectedPayoutId }) {
+
+    const [page, setPage] = useState('');
+
+    const maskIban = (v) => (v ? `•••• ${String(v).slice(-4)}` : '—');
+    const fmtMoney = (n, cur = 'AED') =>
+        `${cur} ${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    const fmtDate = (d) => (d ? new Date(d) : null);
+
+    const { data, isLoading, isError } = useGetAllPayouts(page, 10, status);
+    const payoutsList = data?.payouts ?? [];
 
     const [selectedPayoutType, setSelectedPayoutType] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
     const [selectedMethod, setSelectedMethod] = useState("");
+    const [activeTab, setActiveTab] = useState("all-payouts");
+
+    if (isLoading) return <p className="p-10 text-center">Loading bid list....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load bid list</p>;
 
     return (
         <div>
@@ -74,10 +110,7 @@ function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
             {/* Header */}
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between pb-6">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">
-                        Payouts
-                    </h1>
-
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">Payouts</h1>
                     <div className="mt-2 flex items-center text-[11px] md:text-[13px]">
                         <span
                             onClick={() => setCurrentPage("dashboard")}
@@ -86,7 +119,6 @@ function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
                         </span>
 
                         <span className="mx-2 text-slate-300">/</span>
-
                         <span className="text-slate-500">Payment Management</span>
 
                         <span className="mx-2 text-slate-300">/</span>
@@ -106,9 +138,9 @@ function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
                         <span className="text-[13px]">Download Payouts</span>
                     </button>
 
-                    <button 
-                    onClick={() => setCurrentPage('create-payout')}
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D97706] px-4 py-2 font-medium text-white shadow-md shadow-amber-500/20 transition-all duration-200 hover:bg-[#B45F04] hover:scale-[1.02]">
+                    <button
+                        onClick={() => setCurrentPage('create-payout')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D97706] px-4 py-2 font-medium text-white shadow-md shadow-amber-500/20 transition-all duration-200 hover:bg-[#B45F04] hover:scale-[1.02]">
                         <span className="text-sm">Create Payouts</span>
                     </button>
                 </div>
@@ -216,7 +248,168 @@ function Payouts({ setCurrentPage,  setSelectedPayoutId }) {
 
                 {/* left side - section */}
                 <div className="lg:col-span-2 space-y-6">
-                    <PayoutsList  setSelectedPayoutId={ setSelectedPayoutId} setCurrentPage={setCurrentPage}/>
+                    <div>
+                        {/* tabs */}
+                        <div className="flex gap-10 border-b border-slate-100 my-6 overflow-x-auto no-scrollbar">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`pb-3 text-[14px] font-medium whitespace-nowrap border-b-2 transition-colors 
+                                                ${activeTab === tab.id
+                                            ? 'border-[#D97706] text-[#D97706]'
+                                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        }`}>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* table */}
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table className="w-full text-left table-fixed">
+                                <thead className="bg-gray-100 border-b border-gray-200 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
+                                    <tr>
+                                        <th className="px-6 py-4 w-45">Payout ID</th>
+                                        <th className="px-6 py-4 w-60">Seller</th>
+                                        <th className="px-6 py-4 w-65">Vehicle</th>
+                                        <th className="px-6 py-4 w-40">Net Amount</th>
+                                        <th className="px-6 py-4 w-45">Platform Fee (5%)</th>
+                                        <th className="px-6 py-4 w-45">Bank</th>
+                                        {/* <th className="px-6 py-4 w-40">Account Details</th> */}
+                                        <th className="px-6 py-4 w-35">Status</th>
+                                        <th className="px-6 py-4 w-35">Payout Date</th>
+                                        <th className="px-6 py-4 w-30">Actions</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-amber-50">
+                                    {payoutsList.map((p, index) => {
+
+                                        const seller = p.sellerId;
+                                        const vehicle = p.vehicleId;
+                                        const date = fmtDate(p.paidAt || p.requestedAt || p.createdAt);
+
+                                        return (
+                                            <tr
+                                                key={p._id || index}
+                                                className="hover:bg-gray-50/50 transition-colors">
+
+                                                {/* bid id */}
+                                                <td className='px-6 py-4'>
+                                                    <span className='text-[13px] font-semibold text-gray-500'>
+                                                        {p.payoutId || "---"}
+                                                    </span>
+                                                </td>
+
+                                                {/* user */}
+                                                <td className="px-6 py-4 flex items-center gap-4">
+                                                    <img
+                                                        src={seller?.profileImage}
+                                                        alt={seller?.fullName}
+                                                        className="w-7 h-7 object-cover rounded-full shrink-0" />
+                                                    <div className="truncate">
+                                                        <div className="text-gray-700 font-semibold text-[13px] truncate">
+                                                            {seller?.businessName || seller?.fullName || 'Deleted seller'}
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-500 truncate">{seller?.email || '—'}</div>
+                                                    </div>
+                                                </td>
+
+
+                                                {/* vehicle */}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                                            {vehicle?.images?.[0]?.url ? (
+                                                                <img
+                                                                    src={vehicle.images[0].url}
+                                                                    alt={`${vehicle?.make || ''} ${vehicle?.model || ''}`}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                                                    <icon name="car-front" size="lg" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="min-w-0">
+                                                            <div className="text-[13px] font-semibold text-slate-800 truncate">
+                                                                {vehicle
+                                                                    ? `${vehicle.year} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`
+                                                                    : '—'}
+                                                            </div>
+
+                                                            <div className="text-[11px] text-slate-500 mt-1 truncate">
+                                                                {p.listingId || vehicle?.listingId || 'No Listing ID'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* net amt */}
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[13px] font-bold text-green-600">{fmtMoney(p.netAmount, p.currency)}</div>
+                                                    <div className="text-[11px] text-slate-400 mt-0.5">
+                                                        Gross {fmtMoney(p.grossAmount, p.currency)}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[13px] font-bold text-slate-800">
+                                                        {fmtMoney(p.commissionAmount, p.currency)}
+                                                    </div>
+                                                </td>
+
+                                                {/* bank */}
+                                                <td className="px-6 py-4 text-[13px] leading-tight">
+                                                    {p.bankSnapshot?.ibanNumber ? (
+                                                        <>
+                                                            <div className="font-semibold text-slate-800">{maskIban(p.bankSnapshot.ibanNumber)}</div>
+                                                            {p.bankSnapshot.bankName && (
+                                                                <div className="text-[11px] text-slate-400 mt-0.5 truncate">{p.bankSnapshot.bankName}</div>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400">Not requested yet</span>
+                                                    )}
+                                                </td>
+
+                                                {/* status */}
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-[11px] font-medium border ${STATUS_STYLES[p.status] || STATUS_STYLES.on_hold}`}>
+                                                        {p.status?.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+
+                                                {/* pay date / time */}
+                                                <td className="px-6 py-4 text-[13px] leading-tight">
+                                                    {date ? (
+                                                        <>
+                                                            <div className="font-semibold text-slate-800">{date.toLocaleDateString()}</div>
+                                                            <div className="text-[11px] text-slate-400 mt-0.5">
+                                                                {p.paidAt ? 'Paid' : p.requestedAt ? 'Requested' : 'Created'}
+                                                            </div>
+                                                        </>
+                                                    ) : '—'}
+                                                </td>
+
+                                                {/* actions */}
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => { setSelectedPayoutId(p._id); setCurrentPage('payouts-detail'); }}
+                                                        className="p-1 text-slate-400 hover:text-slate-600">
+                                                        <Eye size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 {/* right side - section */}

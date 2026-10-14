@@ -10,8 +10,9 @@ import {
     getAllVehicles, getVehiclesBySeller, getVehicleById, reviewVehicle, getVehicleApprovalSummary, getDistinctMakes, adminEditVehicle,
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getUpcomingAuctionsCalendar, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction,
     getAllBids, getBidDetail, getBidStats, getTopBidders,
-    getAllSales,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
+    getAllPayouts,
+    cancelAndRefundOrder, confirmHandover, markPayoutPaid, rejectPayoutRequest, 
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -147,7 +148,13 @@ router.get('/all-bids', authMiddleware(['admin', 'auctionManager']), requirePerm
 router.get('/bid-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getBidDetail);
 router.get('/top-bidders', authMiddleware(['admin', 'auctionManager']), requirePermission('manageBids'), getTopBidders);
 
-// ============================ SALES
-router.get('/all-sales', authMiddleware(['admin']), getAllSales);
+// ============================ PAYOUT
+router.get('/get-all-payouts', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), getAllPayouts);
+router.patch('/confirm-handover/:orderId', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), confirmHandover);
+router.patch('/mark-payout-paid/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), markPayoutPaid);
+router.patch('/reject-payout-request/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), rejectPayoutRequest);
+
+// ============================ REFUND
+router.post('/cancel-refund/:id', authMiddleware(['admin']), cancelAndRefundOrder);
 
 export default router;

@@ -20,8 +20,15 @@ import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Bid from '../models/bidModelSchema.js';
 import Payout from '../models/payoutModelSchema.js';
+import Order from '../models/orderModelSchema.js';
+import PaymentEvent from '../models/paymentEventModelSchema.js';
 
+import { getStripe } from "../config/stripe.js";
+import { createPayoutForOrder } from "../utils/payoutHelper.js";
 import { createNotification } from '../services/notificationService.js';
+
+const bad = (res, message, code = 400) => res.status(code).json({ success: false, message });
+const clean = (v) => (typeof v === 'string' ? v.trim() : '');
 
 export const adminSignup = async (req, res) => {
     try {
@@ -2790,7 +2797,7 @@ export const getAllAuctions = async (req, res) => {
         const skip = (page - 1) * limit;
         const { status, dateRange, search, vehicleType, fuelType, startDate, endDate, sortBy } = req.query;
 
-        const validStatuses = ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'canceled'];
+        const validStatuses = ['draft', 'upcoming', 'live', 'sold', 'unsold', 'reserve-not-met', 'pending_payment', 'canceled'];
 
         const filter = {
             adminStatus: 'approved',
@@ -2825,7 +2832,7 @@ export const getAllAuctions = async (req, res) => {
 
         // completed
         if (status === 'completed') {
-            filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met'] };
+            filter.auctionStatus = { $in: ['sold', 'unsold', 'reserve-not-met', 'pending_payment'] };
         } else if (status === 'canceled' && req.query.dateRange) {
             filter.auctionStatus = 'canceled';
             filter.statusAtCancellation = req.query.dateRange; // 'upcoming' or 'live'
@@ -3102,7 +3109,7 @@ export const getAllAuctionStats = async (req, res) => {
             }),
             Vehicle.countDocuments({
                 auctionStatus: {
-                    $in: ["sold", "unsold", "reserve-not-met"]
+                    $in: ["sold", "unsold", "reserve-not-met", 'pending_payment']
                 }
             }),
             Vehicle.countDocuments({ auctionStatus: "canceled" })
@@ -3312,7 +3319,7 @@ export const getCompletedAuctionStats = async (req, res) => {
             // Total Completed — sold + unsold + reserve-not-met, sabka sum
             Vehicle.countDocuments({
                 ...baseFilter,
-                auctionStatus: { $in: ["sold", "unsold", "reserve-not-met"] }
+                auctionStatus: { $in: ["sold", "unsold", "reserve-not-met", 'pending_payment'] }
             }),
 
             // Sold
@@ -3331,7 +3338,7 @@ export const getCompletedAuctionStats = async (req, res) => {
             Vehicle.countDocuments({
                 ...baseFilter,
                 auctionStatus: "reserve-not-met"
-            })
+            }),
         ]);
 
         return res.status(200).json({
@@ -4055,206 +4062,381 @@ export const getTopBidders = async (req, res) => {
     }
 };
 
-// ============================================ SALES
+// ============================================ PAYOUT
 
-// get all sales
-export const getAllSales = async (req, res) => {
+// get payouts
+export const getAllPayouts = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-
-        const { search, saleType, status, startDate, endDate, sortBy } = req.query;
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
 
         const filter = {};
 
-        if (saleType) {
-            const saleTypeMap = { auction: 'Bid', fixed: 'Purchase' };
-            if (!saleTypeMap[saleType]) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid sale type'
-                });
-            }
-            filter.saleType = saleTypeMap[saleType];
+        if (req.query.status) {
+            filter.status = req.query.status
         }
 
-        if (status) {
-            const validStatuses = ['pending', 'processing', 'paid'];
-            if (!validStatuses.includes(status)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid status'
-                });
-            }
-            filter.status = status;
-        }
-
-        // date filter
-        if (startDate || endDate) {
-            filter.createdAt = {};
-
-            if (startDate) {
-                const start = new Date(startDate);
-                if (isNaN(start.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Invalid startDate'
-                    });
-                }
-                filter.createdAt.$gte = start;
-            }
-            if (endDate) {
-                const end = new Date(endDate);
-                if (isNaN(end.getTime())) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Invalid endDate'
-                    });
-                }
-                end.setHours(23, 59, 59, 999);
-                filter.createdAt.$lte = end;
-            }
-        }
-
-        const pipeline = [
-            { $match: filter },
-
-            // Vehicle lookup
-            {
-                $lookup: {
-                    from: Vehicle.collection.name,
-                    localField: 'vehicleId',
-                    foreignField: '_id',
-                    as: 'vehicle',
-                },
-            },
-            { $unwind: { path: '$vehicle', preserveNullAndEmptyArrays: true } },
-
-            // Seller lookup
-            {
-                $lookup: {
-                    from: Seller.collection.name,
-                    localField: 'sellerId',
-                    foreignField: '_id',
-                    as: 'seller',
-                },
-            },
-            { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
-
-            // Buyer lookup — dynamic ref (Buyer or Seller), so lookup both, pick by buyerType
-            {
-                $lookup: {
-                    from: Buyer.collection.name,
-                    localField: 'buyerId',
-                    foreignField: '_id',
-                    as: 'buyerFromBuyer',
-                },
-            },
-            {
-                $lookup: {
-                    from: Seller.collection.name,
-                    localField: 'buyerId',
-                    foreignField: '_id',
-                    as: 'buyerFromSeller',
-                },
-            },
-            {
-                $addFields: {
-                    buyer: {
-                        $cond: [
-                            { $eq: ['$buyerType', 'Buyer'] },
-                            { $arrayElemAt: ['$buyerFromBuyer', 0] },
-                            { $arrayElemAt: ['$buyerFromSeller', 0] },
-                        ],
-                    },
-                },
-            },
-        ];
-
-        if (search?.trim()) {
-            const searchTerm = search.trim();
-            const escapedSearch = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const searchRegex = new RegExp(escapedSearch, 'i');
-
-            pipeline.push({
-                $match: {
-                    $or: [
-                        { 'vehicle.listingId': searchRegex },
-                        { 'vehicle.make': searchRegex },
-                        { 'vehicle.model': searchRegex },
-                        { 'seller.fullName': searchRegex },
-                        { 'seller.businessName': searchRegex },
-                        { 'buyer.firstName': searchRegex },
-                        { 'buyer.lastName': searchRegex },
-                        { 'buyer.email': searchRegex },
-                        { invoiceNumber: searchRegex },
-                    ],
-                },
-            });
-        }
-
-        const sortOption = sortBy === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
-        pipeline.push({ $sort: sortOption });
-
-        pipeline.push({
-            $project: {
-                payoutId: 1,
-                invoiceNumber: 1,
-                saleType: 1,
-                saleAmount: 1,
-                commissionRate: 1,
-                commissionAmount: 1,
-                payoutAmount: 1,
-                status: 1,
-                createdAt: 1,
-
-                'vehicle._id': 1,
-                'vehicle.listingId': 1,
-                'vehicle.make': 1,
-                'vehicle.model': 1,
-                'vehicle.year': 1,
-
-                'seller._id': 1,
-                'seller.fullName': 1,
-                'seller.businessName': 1,
-                'seller.email': 1,
-
-                'buyer._id': 1,
-                'buyer.firstName': 1,
-                'buyer.lastName': 1,
-                'buyer.businessName': 1,
-                'buyer.email': 1,
-
-            },
-        });
-
-        pipeline.push({
-            $facet: {
-                sales: [{ $skip: skip }, { $limit: limit }],
-                totalCount: [{ $count: 'count' }],
-            },
-        });
-
-        const [result] = await Payout.aggregate(pipeline);
-
-        const sales = result?.sales || [];
-        const totalCount = result?.totalCount?.[0]?.count || 0;
-        const totalPages = Math.ceil(totalCount / limit);
+        const [payouts, total] = await Promise.all([
+            Payout.find(filter)
+                .populate('sellerId', 'sellerId profileImage fullName businessName email phone')
+                .populate('vehicleId', 'listingId make model year images')
+                .populate('orderId', 'orderId amount paidAt handover')
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean(),
+            Payout.countDocuments(filter),
+        ]);
 
         return res.status(200).json({
             success: true,
-            message: 'Sales fetched successfully',
-            data: sales,
-            pagination: { currentPage: page, totalPages, totalCount, limit },
+            payouts,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            },
         });
 
     } catch (err) {
-        console.error("All Sales Error:", err);
-
-        return res.status(500).json({
+        console.log("getAllPayouts error :", err);
+        res.status(500).json({
             success: false,
-            message: "Server Error Occurred"
+            message: "Server Error Occured"
+        });
+    }
+};
+
+// confirm handover - Car buyer ko mil gayi: admin confirm kare -> seller ka payout 'available'
+export const confirmHandover = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const note = clean(req.body?.note);
+
+        if (!mongoose.isValidObjectId(orderId)) return bad(res, 'Invalid order id');
+        if (note.length < 3) return bad(res, 'A note is required (how was the handover verified?)');
+
+        const now = new Date();
+        const order = await Order.findOneAndUpdate(
+            { _id: orderId, status: 'paid', 'handover.status': { $ne: 'confirmed' } },
+            {
+                $set: {
+                    'handover.status': 'confirmed',
+                    'handover.confirmedAt': now,
+                    'handover.confirmedBy': req.user.id,
+                    'handover.confirmedByRole': req.user.role,
+                    'handover.note': note,
+                },
+                $push: { statusHistory: { status: 'handover_confirmed', at: now, by: req.user.role, note } },
+            },
+            { new: true }
+        ).lean();
+
+        if (!order) {
+            const existing = await Order.findById(orderId).select('status handover').lean();
+            if (!existing) return bad(res, 'Order not found', 404);
+            if (existing.status !== 'paid') return bad(res, `Order is ${existing.status}, payment not completed`);
+            return bad(res, 'Handover is already confirmed');
+        }
+
+        let payout = await Payout.findOneAndUpdate(
+            { orderId: order._id, status: 'on_hold' },
+            {
+                $set: { status: 'available' },
+                $push: { history: { status: 'available', at: now, by: req.user.role, byId: req.user.id, note: `Handover confirmed: ${note}` } },
+            },
+            { new: true }
+        ).lean();
+
+        // payout kisi wajah se bana nahi tha to ab bana do (handover confirmed hone se seedha 'available')
+        if (!payout) payout = await createPayoutForOrder(order);
+
+        await notifySafe({
+            recipientId: order.sellerId, recipientType: 'Seller', type: 'handover_confirmed',
+            vehicleId: order.vehicleId, title: 'Payout available',
+            message: `Handover of ${order.listingId} is confirmed. You can now request your payout.`,
+        });
+
+        return res.status(200).json({ success: true, message: 'Handover confirmed', payoutStatus: payout?.status || null });
+
+    } catch (err) {
+        console.error('confirmHandover error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// mark payout paid
+export const markPayoutPaid = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ref = clean(req.body?.transferReference);
+
+        if (!mongoose.isValidObjectId(id)) return bad(res, 'Invalid payout id');
+        if (!ref) return bad(res, 'Bank transfer reference is required');
+
+        const now = new Date();
+        const payout = await Payout.findOneAndUpdate(
+            { _id: id, status: 'requested' },
+            {
+                $set: { status: 'paid', paidAt: now, paidBy: req.user.id, transferReference: ref },
+                $push: { history: { status: 'paid', at: now, by: req.user.role, byId: req.user.id, note: `Transfer ref: ${ref}` } },
+            },
+            { new: true }
+        ).lean();
+
+        if (!payout) {
+            const existing = await Payout.findById(id).select('status').lean();
+
+            if (!existing) return bad(res, 'Payout not found', 404);
+            return bad(res, `Only requested payouts can be marked paid (status: ${existing.status})`);
+        }
+
+        await notifySafe({
+            recipientId:
+                payout.sellerId,
+            recipientType: 'Seller',
+            type: 'payout_paid',
+            vehicleId: payout.vehicleId,
+            title: 'Payout sent',
+            message: `AED ${payout.netAmount} for ${payout.listingId} was transferred to your bank account. Ref: ${ref}.`,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Payout marked as paid',
+            payout
+        });
+
+    } catch (err) {
+        console.error('markPayoutPaid error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// reject payout request
+export const rejectPayoutRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reason = clean(req.body?.reason);
+
+        if (!mongoose.isValidObjectId(id)) return bad(res, 'Invalid payout id');
+        if (!reason) return bad(res, 'Reason is required');
+
+        const now = new Date();
+        const payout = await Payout.findOneAndUpdate(
+            { _id: id, status: 'requested' },
+            {
+                $set: { status: 'available' },
+                $unset: { requestedAt: '', bankSnapshot: '' },
+                $push: { history: { status: 'available', at: now, by: req.user.role, byId: req.user.id, note: `Request rejected: ${reason}` } },
+            },
+            { new: true }
+        ).lean();
+
+        if (!payout) {
+            const existing = await Payout.findById(id).select('status').lean();
+
+            if (!existing) return bad(res, 'Payout not found', 404);
+            return bad(res, `Only requested payouts can be rejected (status: ${existing.status})`);
+        }
+
+        await notifySafe({
+            recipientId: payout.sellerId,
+            recipientType: 'Seller',
+            type: 'payout_rejected',
+            vehicleId: payout.vehicleId,
+            title: 'Payout request rejected',
+            message: `Your payout request for ${payout.listingId} was rejected. Reason: ${reason}. You can fix this and request again.`,
+        });
+
+        return res.status(200).json({ success: true, message: 'Payout request rejected', payout });
+
+    } catch (err) {
+        console.error('rejectPayoutRequest error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// ============================================ REFUND
+
+const notifySafe = async (payload) => {
+    try {
+        await createNotification(payload);
+    } catch (err) {
+        console.error('[refund] notification failed:', err.message);
+    }
+};
+
+const OPEN_PAYOUT_STATUSES = ['on_hold', 'available', 'requested'];
+
+// POST /payments/admin/orders/:id/cancel-refund   body: { reason }
+// Paid order cancel + buyer ko FULL refund (Stripe) + car wapas 'unsold' (admin relist kar sakta hai)
+//
+// Order of operations (paise ki baat hai, isliye):
+//   1) Payout ko 'canceled' karke LOCK  -> seller request / admin transfer ab nahi ho sakta
+//   2) Stripe refund                    -> fail ho to lock wapas hata do, kuchh nahi badlta
+//   3) Order canceled, car unsold, bid canceled, notifications
+
+export const cancelAndRefundOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+
+        if (!mongoose.isValidObjectId(id)) return bad(res, 'Invalid order id');
+        if (reason.length < 3) return bad(res, 'A reason is required');
+
+        const order = await Order.findById(id).lean();
+        if (!order) return bad(res, "Order Not Found", 404);
+
+        if (order.status !== 'paid') return bad(res, `Only paid orders can be refunded (order is ${order.status})`);
+
+        const pi = order.stripePaymentIntentId;
+        if (!pi) return bad(res, 'No Stripe payment found for this order');
+
+        const now = new Date();
+
+        // ---- 1) lock via payout ----
+        const locked = await Payout.findOneAndUpdate(
+            { orderId: order._id, status: { $in: OPEN_PAYOUT_STATUSES } },
+            {
+                $set: { status: 'canceled' },
+                $push: { history: { status: 'canceled', at: now, by: req.user.role, byId: req.user.id, note: `Order canceled & refunded: ${reason}` } },
+            },
+            { new: false }
+        ).lean();
+
+        const revertLock = async (why) => {
+            if (!locked) return;
+            await Payout.updateOne(
+                { _id: locked._id, status: 'canceled' },
+                {
+                    $set: { status: locked.status },
+                    $push: { history: { status: locked.status, at: new Date(), by: 'system', note: why } },
+                }
+            );
+        };
+
+        if (!locked) {
+            const existing = await Payout.findOne({ orderId: order._id }).select('status').lean();
+            // payout hi nahi bana tha, ya pichli attempt beech me ruki thi (canceled) -> aage badho
+            if (existing && existing.status !== 'canceled') {
+                return bad(res, `Seller payout is already ${existing.status}. This cannot be auto-refunded, handle it manually.`);
+            }
+        }
+
+        // ---- 2) Stripe refund ----
+        let refund;
+        try {
+            refund = await getStripe().refunds.create(
+                { payment_intent: pi, metadata: { orderId: order.orderId, reason: 'admin_cancel' } },
+                { idempotencyKey: `refund_admin_${pi}` }
+            );
+        } catch (err) {
+            if (err?.code === 'charge_already_refunded') {
+                refund = { id: null, status: 'succeeded' };       // pehle ho chuka tha
+            } else {
+                console.error('[refund] Stripe refund failed:', err.message);
+                await revertLock('Refund failed, cancel reverted');
+
+                await PaymentEvent.create({
+                    type: 'refund.admin',
+                    orderId: order._id,
+                    paymentIntentId: pi,
+                    amount: Math.round(order.amount * 100),
+                    currency: 'aed',
+                    outcome: 'refund_failed',
+                    processed: true,
+                    note: err.message,
+                });
+                return bad(res, 'Refund failed at the payment gateway. Nothing was changed, try again.', 502);
+            }
+        }
+
+        if (refund.status === 'failed' || refund.status === 'canceled') {
+            await revertLock('Refund failed, cancel reverted');
+            return bad(res, 'Refund was not accepted by the payment gateway. Nothing was changed.', 502);
+        }
+
+        // ---- 3) Order / vehicle / bid ----
+        const canceled = await Order.findOneAndUpdate(
+            { _id: order._id, status: 'paid' },
+            {
+                $set: {
+                    status: 'canceled',
+                    isOpen: false,                    // new order can make from this vehicle
+                    canceledAt: now,
+                    'refund.status': refund.status,
+                    'refund.stripeRefundId': refund.id,
+                    'refund.amount': order.amount,
+                    'refund.reason': reason,
+                    'refund.refundedAt': now,
+                    'refund.refundedBy': req.user.id,
+                },
+                $push: { statusHistory: { status: 'canceled', at: now, by: req.user.role, note: `Refunded: ${reason}` } },
+            },
+            { new: true }
+        ).lean();
+
+        await PaymentEvent.create({
+            type: 'refund.admin',
+            orderId: order._id,
+            paymentIntentId: pi,
+            amount: Math.round(order.amount * 100),
+            currency: 'aed',
+            outcome: 'refunded_admin',
+            processed: true,
+            note: reason,
+        });
+
+        if (!canceled) {
+            return res.status(200).json({
+                success: true,
+                message: 'Order was already canceled'
+            });
+        }
+
+        // vehicle can be relisted
+        await Vehicle.updateOne(
+            { _id: order.vehicleId, auctionStatus: 'sold' },
+            { $set: { auctionStatus: 'unsold', soldOn: null } }
+        );
+
+        // 'won' bid ko 'canceled': relist par archive hogi, home page par galat 'sold' winner nahi dikhega
+        if (order.bidId) {
+            await Bid.updateOne({ _id: order.bidId, status: 'won' }, { $set: { status: 'canceled' } });
+        }
+
+        await notifySafe({
+            recipientId: order.buyerId,
+            recipientType: order.buyerType,
+            type: 'order_canceled',
+            vehicleId: order.vehicleId,
+            title: 'Order canceled and refunded',
+            message: `Your order for ${order.listingId} was canceled and AED ${order.amount} is being refunded to your card. Reason: ${reason}`,
+        });
+
+        await notifySafe({
+            recipientId: order.sellerId,
+            recipientType: 'Seller',
+            type: 'order_canceled',
+            vehicleId: order.vehicleId,
+            title: 'Sale canceled',
+            message: `The sale of ${order.listingId} was canceled and the buyer was refunded. The vehicle is unsold and can be relisted by admin. Reason: ${reason}`,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Order canceled and refunded',
+            refundStatus: refund.status
+        });
+
+    } catch (err) {
+        console.log("cancelAndRefundOrder Error :", err);
+        res.status(500).json({
+            success: false,
+            message: "Server Error Occured"
         });
     }
 };

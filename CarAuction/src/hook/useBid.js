@@ -142,4 +142,4 @@ export const useGetPublicAuctionBids = (id, page = 1, limit = 10) =>
         queryFn: async () => (await API.get(`/bid/get-auction-bids/${id}?page=${page}&limit=${limit}`)).data,
         enabled: !!id,
         placeholderData: keepPreviousData,
-    });
+});

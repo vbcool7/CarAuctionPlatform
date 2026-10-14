@@ -4,11 +4,11 @@ import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
+import Order from '../models/orderModelSchema.js';
 import mongoose from 'mongoose';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
 import { createNotification } from '../services/notificationService.js';
-import { createPayoutForSale } from '../utils/createPayout.js';
 
 // RESERVE PRICE - Moves upcoming auctions to live when start time arrives
 export const runAuctionStatusUpdate = async () => {
@@ -48,93 +48,298 @@ export const runAuctionStatusUpdate = async () => {
     return updatedCount;
 };
 
-// RESERVE PRICE - Moves live auctions to sold/unsold/reserve-not-met when end time passes
+const notifySafe = async (payload) => {
+    try {
+        await createNotification(payload);
+    } catch (err) {
+        console.error('[auction-cron] notification failed:', err.message);
+    }
+};
+
+// RESERVE PRICE - live auctions jinka end time nikal gaya:
+//   bid nahi        -> unsold
+//   reserve not met -> reserve-not-met
+//   reserve met     -> pending_payment + Order (48h) ; 'sold' status after payment
 export const runAuctionEndUpdate = async () => {
+
     const now = new Date();
-
     const admin = await Admin.findOne();
-
-    const vehiclesToClose = await Vehicle.find({
+ 
+    const candidates = await Vehicle.find({
         auctionStatus: 'live',
         priceType: 'reserve_price',
         auctionEndDateTime: { $lte: now },
-    });
-
+    }).select('_id').lean();
+ 
     let updatedCount = 0;
-
-    for (const vehicle of vehiclesToClose) {
-        const winningBid = await Bid.findOne({
-            vehicleId: vehicle._id,
-            status: 'active',
-        });
-
-        let notifType, notifTitle, notifMessage;
-
-        if (!winningBid) {
-            vehicle.auctionStatus = 'unsold';
-            notifType = 'auction_unsold';
-            notifTitle = 'Auction Unsold';
-            notifMessage = `${vehicle.listingId} was not sold because no bids were received.`;
-
-        } else if (vehicle.currentBid < vehicle.reservePrice) {
-            vehicle.auctionStatus = 'reserve-not-met';
-            notifType = 'reserve_not_met';
-            notifTitle = 'Reserve Price Not Met';
-            notifMessage = `${vehicle.listingId} did not meet the reserve price.`;
-
-        } else {
-            vehicle.auctionStatus = 'sold';
-            vehicle.soldOn = new Date();
-
-            winningBid.status = 'won';
-            await winningBid.save();
-
-            // payout create 
-            try {
-                await createPayoutForSale({
-                    vehicleId: vehicle._id,
-                    sellerId: vehicle.sellerId,
-                    buyerId: winningBid.bidderId,
-                    buyerType: winningBid.bidderType,
-                    saleAmount: winningBid.amount,
-                    saleType: 'Bid',
-                    sourceId: winningBid._id,
-                });
-            } catch (payoutErr) {
-                console.error('CRITICAL: Payout creation failed for vehicle', vehicle._id, payoutErr);
-            }
-
-            notifType = 'auction_sold';
-            notifTitle = 'Your vehicle has been sold';
-            notifMessage = `${vehicle.listingId} was sold for AED ${winningBid.amount}.`;
-        }
-
-        await vehicle.save();
-        updatedCount++;
-
-        await createNotification({
-            recipientId: vehicle.sellerId,
-            recipientType: 'Seller',
-            type: notifType,
-            vehicleId: vehicle._id,
-            title: notifTitle,
-            message: notifMessage,
-        });
-
-        // ---- ADMIN NOTIFICATION (naya, sirf sold case me) ----
-        if (notifType === 'auction_sold' && admin) {
-            await createNotification({
-                recipientId: admin._id,
-                recipientType: 'Admin',
-                type: 'auction_sold',
+ 
+    for (const { _id } of candidates) {
+        try {
+            const vehicle = await Vehicle.findOne({
+                _id,
+                auctionStatus: 'live',
+                auctionEndDateTime: { $lte: now },
+            }).lean();
+            if (!vehicle) continue;
+ 
+            const winningBid = await Bid.findOne({
                 vehicleId: vehicle._id,
-                title: 'Vehicle Sold',
-                message: `${vehicle.listingId} was sold for AED ${winningBid.amount}.`,
-            });
+                status: 'active',
+            }).sort({ amount: -1 });
+ 
+            let nextStatus;
+            if (!winningBid) nextStatus = 'unsold';
+            else if (winningBid.amount < vehicle.reservePrice) nextStatus = 'reserve-not-met';
+            else nextStatus = 'pending_payment';
+ 
+            // ATOMIC claim: cron overlap / multiple instance me ek hi run is vehicle ko close karega
+            const claimed = await Vehicle.findOneAndUpdate(
+                { _id, auctionStatus: 'live', auctionEndDateTime: { $lte: now } },
+                { $set: { auctionStatus: nextStatus } },
+                { new: true }
+            ).select('listingId sellerId').lean();
+            if (!claimed) continue;
+ 
+            if (nextStatus === 'pending_payment') {
+                const dueAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
+ 
+                try {
+                    await Order.create({
+                        vehicleId: vehicle._id,
+                        listingId: vehicle.listingId,
+                        sellerId: vehicle.sellerId,
+                        buyerId: winningBid.bidderId,
+                        buyerType: winningBid.bidderType,
+                        source: 'auction',
+                        bidId: winningBid._id,
+                        amount: winningBid.amount,
+                        paymentDueAt: dueAt,
+                        statusHistory: [{
+                            status: 'pending_payment',
+                            by: 'system',
+                            note: `Auction ended, reserve met. Bid AED ${winningBid.amount}`,
+                        }],
+                    });
+                } catch (orderErr) {
+                    // 11000 = Order already bana hua hai (duplicate run) -> kuchh mat karo
+                    if (orderErr?.code !== 11000) {
+                        // Order nahi bana: vehicle wapas live, agle minute retry hoga
+                        await Vehicle.updateOne(
+                            { _id, auctionStatus: 'pending_payment' },
+                            { $set: { auctionStatus: 'live' } }
+                        );
+                        console.error('[auction-cron] Order create failed, vehicle reverted to live:', vehicle._id, orderErr);
+                        continue;
+                    }
+                }
+ 
+                const dueText = dueAt.toLocaleString('en-GB', { timeZone: 'Asia/Dubai' });
+ 
+                // winner (buyer ya seller) ko notification
+                await notifySafe({
+                    recipientId: winningBid.bidderId,
+                    recipientType: winningBid.bidderType,
+                    type: 'auction_won',
+                    vehicleId: vehicle._id,
+                    title: 'You won the auction',
+                    message: `You won ${vehicle.listingId} with AED ${winningBid.amount}. Complete payment before ${dueText} (UAE time).`,
+                });
+ 
+                await notifySafe({
+                    recipientId: vehicle.sellerId,
+                    recipientType: 'Seller',
+                    type: 'payment_pending',
+                    vehicleId: vehicle._id,
+                    title: 'Auction ended - awaiting payment',
+                    message: `${vehicle.listingId} reached the reserve with AED ${winningBid.amount}. Waiting for the winner's payment.`,
+                });
+ 
+            } else {
+                const isUnsold = nextStatus === 'unsold';
+                await notifySafe({
+                    recipientId: vehicle.sellerId,
+                    recipientType: 'Seller',
+                    type: isUnsold ? 'auction_unsold' : 'reserve_not_met',
+                    vehicleId: vehicle._id,
+                    title: isUnsold ? 'Auction Unsold' : 'Reserve Price Not Met',
+                    message: isUnsold
+                        ? `${vehicle.listingId} was not sold because no bids were received.`
+                        : `${vehicle.listingId} did not meet the reserve price.`,
+                });
+            }
+ 
+            updatedCount++;
+        } catch (err) {
+            console.error('[auction-cron] failed to close vehicle', _id, err);
         }
     }
+ 
     return updatedCount;
 };
+
+// PAYMENT EXPIRY - 48h me payment nahi hua: Order expired, vehicle -> unsold (admin relist kar sakta hai)
+// auction + buy_now dono ke Orders ke liye
+export const runPaymentExpiry = async () => {
+    const now = new Date();
+    const admin = await Admin.findOne();
+ 
+    const due = await Order.find({
+        status: 'pending_payment',
+        paymentDueAt: { $lte: now },
+    }).select('_id').lean();
+ 
+    let expiredCount = 0;
+ 
+    for (const { _id } of due) {
+        try {
+            // ATOMIC: sirf pending_payment hi expire ho (beech me paid ho gaya to skip)
+            const order = await Order.findOneAndUpdate(
+                { _id, status: 'pending_payment', paymentDueAt: { $lte: now } },
+                {
+                    $set: { status: 'expired', isOpen: false, expiredAt: now },
+                    $push: {
+                        statusHistory: {
+                            status: 'expired',
+                            at: now,
+                            by: 'system',
+                            note: 'Payment not received within 48 hours',
+                        },
+                    },
+                },
+                { new: true }
+            ).lean();
+            if (!order) continue;
+ 
+            await Vehicle.updateOne(
+                { _id: order.vehicleId, auctionStatus: 'pending_payment' },
+                { $set: { auctionStatus: 'unsold' } }
+            );
+ 
+            await notifySafe({
+                recipientId: order.buyerId,
+                recipientType: order.buyerType,
+                type: 'payment_expired',
+                vehicleId: order.vehicleId,
+                title: 'Payment window expired',
+                message: `Payment for ${order.listingId} was not completed within 48 hours, so the purchase has expired.`,
+            });
+ 
+            await notifySafe({
+                recipientId: order.sellerId,
+                recipientType: 'Seller',
+                type: 'payment_expired',
+                vehicleId: order.vehicleId,
+                title: 'Buyer did not pay',
+                message: `The buyer did not pay for ${order.listingId} in time. The vehicle is now unsold and can be relisted by admin.`,
+            });
+ 
+            if (admin) {
+                await notifySafe({
+                    recipientId: admin._id,
+                    recipientType: 'Admin',
+                    type: 'payment_expired',
+                    vehicleId: order.vehicleId,
+                    title: 'Payment expired',
+                    message: `Order ${order.orderId} for ${order.listingId} expired unpaid. Vehicle can be relisted.`,
+                });
+            }
+ 
+            expiredCount++;
+        } catch (err) {
+            console.error('[auction-cron] payment expiry failed for order', _id, err);
+        }
+    }
+ 
+    return expiredCount;
+};
+
+// RESERVE PRICE - Moves live auctions to sold/unsold/reserve-not-met when end time passes
+// export const runAuctionEndUpdate = async () => {
+//     const now = new Date();
+
+//     const admin = await Admin.findOne();
+
+//     const vehiclesToClose = await Vehicle.find({
+//         auctionStatus: 'live',
+//         priceType: 'reserve_price',
+//         auctionEndDateTime: { $lte: now },
+//     });
+
+//     let updatedCount = 0;
+
+//     for (const vehicle of vehiclesToClose) {
+//         const winningBid = await Bid.findOne({
+//             vehicleId: vehicle._id,
+//             status: 'active',
+//         });
+
+//         let notifType, notifTitle, notifMessage;
+
+//         if (!winningBid) {
+//             vehicle.auctionStatus = 'unsold';
+//             notifType = 'auction_unsold';
+//             notifTitle = 'Auction Unsold';
+//             notifMessage = `${vehicle.listingId} was not sold because no bids were received.`;
+
+//         } else if (vehicle.currentBid < vehicle.reservePrice) {
+//             vehicle.auctionStatus = 'reserve-not-met';
+//             notifType = 'reserve_not_met';
+//             notifTitle = 'Reserve Price Not Met';
+//             notifMessage = `${vehicle.listingId} did not meet the reserve price.`;
+
+//         } else {
+//             vehicle.auctionStatus = 'sold';
+//             vehicle.soldOn = new Date();
+
+//             winningBid.status = 'won';
+//             await winningBid.save();
+
+//             // payout create 
+//             try {
+//                 await createPayoutForSale({
+//                     vehicleId: vehicle._id,
+//                     sellerId: vehicle.sellerId,
+//                     buyerId: winningBid.bidderId,
+//                     buyerType: winningBid.bidderType,
+//                     saleAmount: winningBid.amount,
+//                     saleType: 'Bid',
+//                     sourceId: winningBid._id,
+//                 });
+//             } catch (payoutErr) {
+//                 console.error('CRITICAL: Payout creation failed for vehicle', vehicle._id, payoutErr);
+//             }
+
+//             notifType = 'auction_sold';
+//             notifTitle = 'Your vehicle has been sold';
+//             notifMessage = `${vehicle.listingId} was sold for AED ${winningBid.amount}.`;
+//         }
+
+//         await vehicle.save();
+//         updatedCount++;
+
+//         await createNotification({
+//             recipientId: vehicle.sellerId,
+//             recipientType: 'Seller',
+//             type: notifType,
+//             vehicleId: vehicle._id,
+//             title: notifTitle,
+//             message: notifMessage,
+//         });
+
+//         // ---- ADMIN NOTIFICATION (naya, sirf sold case me) ----
+//         if (notifType === 'auction_sold' && admin) {
+//             await createNotification({
+//                 recipientId: admin._id,
+//                 recipientType: 'Admin',
+//                 type: 'auction_sold',
+//                 vehicleId: vehicle._id,
+//                 title: 'Vehicle Sold',
+//                 message: `${vehicle.listingId} was sold for AED ${winningBid.amount}.`,
+//             });
+//         }
+//     }
+//     return updatedCount;
+// };
 
 // FIXED PRICE - Moves live fixed_price vehicles to 'unsold' when the auction window expires without a purchase
 export const runFixedPriceExpiry = async () => {
