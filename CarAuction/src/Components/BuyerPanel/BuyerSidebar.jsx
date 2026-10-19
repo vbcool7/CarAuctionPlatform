@@ -38,7 +38,7 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
     return (
         <>
             <div
-                className={`fixed inset-y-0 left-0 z-60 flex w-72 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 ease-in-out
+                className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 ease-in-out
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
         ${collapsed ? 'lg:w-20' : 'lg:w-72'}

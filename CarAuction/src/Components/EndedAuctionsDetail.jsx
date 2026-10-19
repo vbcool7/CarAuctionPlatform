@@ -601,19 +601,17 @@ function EndedAuctionsDetail() {
                     </div>
                 )}
 
-                <div className={`grid grid-cols-1 gap-5 mt-6 items-stretch 
-                ${isSold ? 'lg:grid-cols-12' : 'lg:grid-cols-9'}`}>
+                <div className={`grid grid-cols-1 gap-5 mt-6 items-stretch ${isSold ? 'lg:grid-cols-12' : 'lg:grid-cols-9'}`}>
 
                     {/* Gallery */}
                     <div className={`${isSold ? 'lg:col-span-5' : 'lg:col-span-5'} flex flex-col h-full`}>
                         <div className="relative flex flex-col h-full">
-
                             {isSold ? (
                                 <div className="h-110">
-                                <EndedSoldGallery
-                                    images={vehicle.images?.map(img => img.url) || []}
-                                    status={vehicle.auctionStatus}
-                                />
+                                    <EndedSoldGallery
+                                        images={vehicle.images?.map(img => img.url) || []}
+                                        status={vehicle.auctionStatus}
+                                    />
                                 </div>
                             ) : (
                                 <EndedUnsoldGallery
@@ -621,7 +619,6 @@ function EndedAuctionsDetail() {
                                     status={vehicle.auctionStatus}
                                 />
                             )}
-
                         </div>
                     </div>
 

@@ -70,6 +70,47 @@ export const getMyPayouts = async (req, res) => {
     }
 };
 
+// get payout detail
+export const getMyPayoutById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid payout ID",
+            });
+        }
+
+        const payout = await Payout.findOne({ _id: id, sellerId: req.user.id, })
+            .populate("vehicleId", "make model year images listingId")
+            .populate("orderId", "orderId amount status paidAt source")
+            .populate("paidBy", "fullName email")
+            .lean();
+
+        if (!payout) {
+            return res.status(404).json({
+                success: false,
+                message: "Payout not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Successfully fetched data for payout",
+            payout,
+        });
+
+    } catch (error) {
+        console.error("Get payout detail error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured",
+        });
+    }
+};
+
 // request for payout
 export const requestPayout = async (req, res) => {
     try {

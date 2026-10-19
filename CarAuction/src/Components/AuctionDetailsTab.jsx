@@ -1,4 +1,4 @@
-import { Gavel, Tag } from "lucide-react";
+import { Gavel, Tag, CalendarDays, Info } from "lucide-react";
 import { RowData } from "./DetailTabs";
 import { formatPrice } from "../utils/formatters";
 
@@ -14,7 +14,11 @@ const formatLabel = (value) => {
 const formatDateTime = (value) => {
     if (!value) return "—";
 
-    return new Date(value).toLocaleString("en-GB", {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return date.toLocaleString("en-GB", {
         timeZone: "Asia/Dubai",
         day: "2-digit",
         month: "short",
@@ -26,35 +30,44 @@ const formatDateTime = (value) => {
 };
 
 function AuctionDetailsTab({ vehicle }) {
-    const isFixedPrice = vehicle?.priceType === "fixed_price";
+    if (!vehicle) {
+        return (
+            <p className="text-sm text-slate-500 text-center py-8">
+                Auction details are not available.
+            </p>
+        );
+    }
+
+    const isFixedPrice = vehicle.priceType === "fixed_price";
+    const isReservePrice = vehicle.priceType === "reserve_price";
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* Financial Section */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6">
+            {/* Pricing Information */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">
                     <Tag size={16} className="text-[#D97706]" />
-                    Financials
+                    Pricing Information
                 </h4>
 
-                {isFixedPrice ? (
-                    <>
-                        <RowData
-                            label="Buy Now Price"
-                            value={
-                                vehicle.buyNowPrice != null
-                                    ? formatPrice(vehicle.buyNowPrice)
-                                    : "—"
-                            }
-                        />
+                <RowData
+                    label="Pricing Type"
+                    value={formatLabel(vehicle.priceType)}
+                />
 
-                        <RowData
-                            label="Currency"
-                            value="AED"
-                        />
-                    </>
-                ) : (
+                {isFixedPrice && (
+                    <RowData
+                        label="Buy Now Price"
+                        value={
+                            vehicle.buyNowPrice != null
+                                ? formatPrice(vehicle.buyNowPrice)
+                                : "—"
+                        }
+                    />
+                )}
+
+                {isReservePrice && (
                     <>
                         <RowData
                             label="Starting Bid"
@@ -66,9 +79,10 @@ function AuctionDetailsTab({ vehicle }) {
                         />
 
                         <RowData
-                            label="Current Highest Bid"
+                            label="Current Bid"
                             value={
-                                vehicle.currentBid != null
+                                vehicle.currentBid != null &&
+                                    Number(vehicle.currentBid) > 0
                                     ? formatPrice(vehicle.currentBid)
                                     : "No bids yet"
                             }
@@ -76,27 +90,33 @@ function AuctionDetailsTab({ vehicle }) {
 
                         <RowData
                             label="Total Bids"
-                            value={(vehicle.totalBids ?? 0).toLocaleString()}
-                        />
-
-                        <RowData
-                            label="Currency"
-                            value="AED"
+                            value={
+                                vehicle.totalBids != null
+                                    ? Number(vehicle.totalBids).toLocaleString()
+                                    : "—"
+                            }
                         />
                     </>
                 )}
+
+                <RowData label="Currency" value="AED" />
             </div>
 
-            {/* Auction Terms */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6">
+            {/* Auction Schedule */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">
-                    <Gavel size={16} className="text-[#D97706]" />
-                    Auction Terms
+                    <CalendarDays size={16} className="text-[#D97706]" />
+                    Auction Schedule
                 </h4>
 
                 <RowData
                     label="Auction Type"
                     value={formatLabel(vehicle.auctionType)}
+                />
+
+                <RowData
+                    label="Auction Status"
+                    value={formatLabel(vehicle.auctionStatus)}
                 />
 
                 <RowData
@@ -110,28 +130,15 @@ function AuctionDetailsTab({ vehicle }) {
                 />
 
                 <RowData
-                    label="Auction Duration"
+                    label="Duration"
                     value={formatLabel(vehicle.auctionDuration)}
                 />
-
-                {!isFixedPrice && (
-                    <>
-                        <RowData
-                            label="Late Bid Extension"
-                            value={
-                                vehicle.antiSnipingExtension != null
-                                    ? `${vehicle.antiSnipingExtension} min`
-                                    : "—"
-                            }
-                        />
-                    </>
-                )}
             </div>
 
-            {/* Important Information */}
+            {/* Information Note */}
             <div className="md:col-span-2 bg-amber-50 border border-amber-100 rounded-xl p-4">
                 <div className="flex items-start gap-3">
-                    <Gavel
+                    <Info
                         size={17}
                         className="text-[#D97706] mt-0.5 shrink-0"
                     />
@@ -139,14 +146,14 @@ function AuctionDetailsTab({ vehicle }) {
                     <div>
                         <p className="text-sm font-bold text-slate-900">
                             {isFixedPrice
-                                ? "Important Purchase Information"
-                                : "Important Auction Information"}
+                                ? "Purchase Information"
+                                : "Auction Information"}
                         </p>
 
                         <p className="text-xs text-slate-600 leading-5 mt-1.5">
                             {isFixedPrice
-                                ? "This vehicle is available for direct purchase at the listed Buy Now price once the auction becomes active."
-                                : `Place your bids before the auction ends. The final auction outcome will be determined once the bidding period closes.`}
+                                ? "This vehicle was listed for direct purchase at its specified Buy Now price."
+                                : "Bidding details and auction schedule are displayed above. The final outcome depends on the auction result and applicable auction rules."}
                         </p>
                     </div>
                 </div>

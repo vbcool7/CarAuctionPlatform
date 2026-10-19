@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Share2, Heart, MapPin, Hash, Cog, Flag, Fuel, Download, Send, Gauge } from 'lucide-react';
 import Breadcrumbs from './Breadcrumbs';
 import LiveBidsPanel from './SharedComponents/LiveBidsPanel';
@@ -28,9 +27,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePublicAuctionDetail } from '../hook/useAuction';
 import { useBidSocket } from '../socket/listeners/useBidSocket';
 import { usePlaceBid, useWithdrawBid } from '../hook/useBid';
-import useAuthStore from '../store/useAuthStore';
 import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
-
+import { useBuyNow, useCheckout } from '../hook/useBuy';
+import useAuthStore from '../store/useAuthStore';
 
 const initialMessages = [
     { user: "Ali Hassan", text: "This is a great car! 🔥" },
@@ -127,7 +126,9 @@ function LiveAuctionsDetail() {
     const { mutate: placeBid, isPending } = usePlaceBid();
     const { mutate: withdrawBid, isPending: isWithdrawing } = useWithdrawBid();
     const { data: watchlistIds } = useGetWatchlistIds();
-    const { mutate: toggleWatchlist, variables: pendingId } = useToggleWatchlist();
+    const { mutate: toggleWatchlist, isPending: isTogglingPending, variables: pendingId } = useToggleWatchlist();
+    const { mutateAsync: buyNowAsync, isPending: isBuying } = useBuyNow();
+    const { mutateAsync: checkoutAsync, isPending: isStartingCheckout } = useCheckout();
 
     useBidSocket(id);
 
@@ -141,7 +142,7 @@ function LiveAuctionsDetail() {
     if (!vehicle) return <div className="p-10 text-center">Vehicle not found!</div>;
 
     const isWatchlisted = !!watchlistIds?.has(vehicle._id);
-    const isToggling = isPending && pendingId === vehicle._id;
+    const isToggling = isTogglingPending && pendingId === vehicle._id;
 
     const hasBids = vehicle.totalBids > 0;
 
@@ -186,6 +187,32 @@ function LiveAuctionsDetail() {
                 toast.error(err.response?.data?.message || 'Could not withdraw bid')
             },
         });
+    };
+
+    // handle buy now
+    const handleBuyNow = async () => {
+
+        if (!token) {
+            navigate('/login', { state: { from: location.pathname } });
+            toast.error('Please login to continue.');
+            return;
+        }
+
+        if (!window.confirm(`Buy this vehicle for ${formatPrice(vehicle.buyNowPrice)}? The vehicle will be reserved for you and you must pay within 48 hours.`))
+            return;
+
+        try {
+            const res = await buyNowAsync(vehicle._id);
+            try {
+                const c = await checkoutAsync(res.order._id);
+                window.location.href = c.url;
+            } catch (err) {
+                toast.error(err.response?.data?.message || 'Reserved, but could not open payment. Pay from your Payments page.');
+                navigate('/buyer-dashboard');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Could not complete Buy Now');
+        }
     };
 
     // watchlist handler
@@ -326,8 +353,8 @@ function LiveAuctionsDetail() {
                                 onClick={(e) => handleWatchlistClick(e, vehicle)}
                                 disabled={isToggling}
                                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${isWatchlisted
-                                        ? "bg-orange-50 text-[#D97706] border border-orange-200 hover:bg-orange-100"
-                                        : "border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                    ? "bg-orange-50 text-[#D97706] border border-orange-200 hover:bg-orange-100"
+                                    : "border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                                     }`}
                             >
                                 <Heart
@@ -489,9 +516,18 @@ function LiveAuctionsDetail() {
                                             </button>
                                         </>
                                     )
+                                ) : vehicle.isOwner ? (
+                                    <div className="w-full py-4 px-5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                                        <p className="text-sm font-semibold text-slate-600">Own Listing</p>
+                                        <p className="text-xs text-slate-400 mt-1">You cannot buy your own vehicle.</p>
+                                    </div>
                                 ) : (
-                                    <button className="w-full bg-[#D97706] hover:bg-[#b86405] text-white text-sm font-bold py-2.5 rounded-lg transition-all">
-                                        Buy Now {formatPrice(vehicle.buyNowPrice)}
+                                    <button
+                                        onClick={handleBuyNow}
+                                        disabled={isBuying || isStartingCheckout}
+                                        className="w-full bg-[#D97706] hover:bg-[#b86405] text-white text-sm font-bold py-2.5 rounded-lg transition-all disabled:opacity-50"
+                                    >
+                                        {isBuying || isStartingCheckout ? 'Processing...' : `Buy Now ${formatPrice(vehicle.buyNowPrice)}`}
                                     </button>
                                 )}
                             </div>

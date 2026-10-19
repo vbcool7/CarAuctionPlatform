@@ -1,45 +1,163 @@
 
 import React from 'react';
-import { payoutsData } from '../SellerSharedComponents/SellerData';
-import { Circle, CircleHelp, Download, Hourglass, Info, Landmark, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Circle, CircleHelp, Download, Hourglass, Info, Landmark, MessageCircle, CheckCircle2, Wallet, Car, Clock, XCircle, } from 'lucide-react';
+import { toast } from 'react-toastify';
+
+import { formatDateTime, formatLabel, formatPrice, } from '../../../utils/formatters';
+import { useGetMyPayoutById, useRequestPayout, } from '../../../hook/usePayout';
+
+const STATUS_STYLES = {
+    on_hold: 'bg-amber-50 text-amber-700 border-amber-200',
+    available: 'bg-blue-50 text-blue-700 border-blue-200',
+    requested: 'bg-purple-50 text-purple-700 border-purple-200',
+    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    canceled: 'bg-red-50 text-red-600 border-red-200',
+};
+
+const STATUS_ICONS = {
+    on_hold: Hourglass,
+    available: Wallet,
+    requested: Clock,
+    paid: CheckCircle2,
+    canceled: XCircle,
+};
+
+const getDate = (date) => {
+    if (!date) return '—';
+
+    const parsed = new Date(date);
+
+    return Number.isNaN(parsed.getTime())
+        ? '—'
+        : formatDateTime(parsed);
+};
+
+const maskAccount = (account) => {
+    if (!account) return '—';
+    return `•••• ${String(account).slice(-4)}`;
+};
 
 function PayoutDetails({ payoutId, setCurrentPage }) {
 
-    const payout = payoutsData.find((item) => item.id === payoutId);
+    const { data, isLoading, isError, } = useGetMyPayoutById(payoutId);
+    const { mutate: requestPayout, isPending, variables: payingId, } = useRequestPayout();
+
+    const payout = data?.payout;
+    const vehicle = payout?.vehicleId;
+    const order = payout?.orderId;
+    const bank = payout?.bankSnapshot;
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-9 h-9 border-4 border-amber-100 border-t-amber-600 rounded-full animate-spin" />
+                <p className="text-sm text-slate-500 mt-4">
+                    Loading payout details...
+                </p>
+            </div>
+        );
+    }
+
+    if (isError || !payout) {
+        return (
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+                <Wallet className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <h2 className="text-lg font-bold text-[#0B1E3D]">Payout Not Found</h2>
+                <p className="text-sm text-slate-500 mt-2">Unable to load this payout. Please try again.</p>
+                <button
+                    type="button"
+                    onClick={() => setCurrentPage('payouts')}
+                    className="mt-5 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700">
+                    Back to Payouts
+                </button>
+            </div>
+        );
+    }
+
+    // handle payout request 
+    const handleRequest = () => {
+        if (
+            !window.confirm(`Request payout of ${formatPrice(payout.netAmount)} to your registered bank account?`)
+        ) {
+            return;
+        }
+
+        requestPayout(payout._id, {
+            onSuccess: () => {
+                toast.success('Payout requested');
+            },
+            onError: (err) => {
+                toast.error(
+                    err.response?.data?.message || 'Could not request payout'
+                );
+            },
+        });
+    };
+
+    const status = payout.status;
+    const StatusIcon = STATUS_ICONS[status] || Clock;
+
+    const vehicleName = vehicle
+        ? `${vehicle.year ?? ''} ${formatLabel(vehicle.make)} ${formatLabel(vehicle.model)}`.trim()
+        : 'Vehicle details unavailable';
+
+    const vehicleImage = vehicle?.images?.[0]?.url;
+
+    const history = [...(payout.history || [])].sort(
+        (a, b) => new Date(a.at || 0) - new Date(b.at || 0)
+    );
 
     return (
-        <div className='pb-6 space-y-6'>
+        <div className="pb-6 space-y-6">
 
-            {/* back link */}
+            {/* Back link */}
             <button
+                type="button"
                 onClick={() => setCurrentPage('payouts')}
-                className='flex items-center gap-1 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]'
-            >
-                ← Back to Payouts
+                className="flex items-center gap-1.5 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Payouts
             </button>
 
-            {/* header */}
-            <div className='w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0'>
-                <div className='flex flex-col'>
-                    <h1 className='text-xl md:text-2xl font-bold'>Payout Details</h1>
-                    <p className='text-xs md:text-sm text-gray-600 p-px'>
-                        Overview of all completed and pending payouts to your account.
-                    </p>
+            {/* Header */}
+            <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">Payout Details</h1>
+                    <p className="text-xs md:text-sm text-gray-600 mt-1">View your payout information, payment breakdown and status history.</p>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                    <button className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg transition-colors shadow-sm active:scale-95">
-                        <Download className='h-4 w-4' />
+                <div className="flex flex-wrap items-center gap-2">
+                    {status === 'available' && (
+                        <button
+                            type="button"
+                            onClick={handleRequest}
+                            disabled={isPending}
+                            className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs md:text-sm font-semibold text-white hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Wallet className="h-4 w-4" />
+                            {isPending && payingId === payout._id
+                                ? 'Requesting...'
+                                : 'Request Payout'}
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        disabled
+                        title="Receipt export is not available yet"
+                        className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-medium text-slate-400 bg-white border border-slate-200 rounded-lg cursor-not-allowed"
+                    >
+                        <Download className="h-4 w-4" />
                         Export Receipt
                     </button>
                 </div>
             </div>
 
-            {/* main grid */}
-            <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            {/* Main grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* left column */}
-                <div className='lg:col-span-2 space-y-6'>
+                {/* -------------------- LEFT -------------------- */}
+                <div className="lg:col-span-2 space-y-6">
 
                     {/* Payout Summary */}
                     <div className="bg-white border border-gray-200 rounded-xl p-5">
@@ -49,577 +167,331 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
                                 <Landmark className="w-7 h-7 text-emerald-600" />
                             </div>
 
-                            <div>
-                                <p className="text-xs font-medium text-gray-600 mb-1">Payout ID</p>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium text-gray-600 mb-1">
+                                    Payout ID
+                                </p>
+
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <h2 className="text-xl font-bold text-[#0B1E3D]">
-                                        {payout.id}
+                                    <h2 className="text-lg md:text-xl font-bold text-[#0B1E3D] break-all">
+                                        {payout.payoutId || '—'}
                                     </h2>
 
-                                    <div>
-                                        {payout.status === "Completed" ? (
-                                            <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 rounded-md">
-                                                Completed
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 rounded-md">
-                                                Pending
-                                            </span>
-                                        )}
-                                    </div>
+                                    <span
+                                        className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-md border ${STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 border-slate-200'
+                                            }`}
+                                    >
+                                        {formatLabel(status)}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-5">
                             <div>
-                                <p className="text-xs font-medium text-gray-500 mb-2">Payout Date</p>
-                                <p className="text-sm font-semibold text-[#0B1E3D]">{payout.payoutDate}</p>
-                                <p className="text-xs text-gray-400 mt-1">{payout.payoutTime}</p>
+                                <p className="text-xs font-medium text-gray-500 mb-2">
+                                    Created At
+                                </p>
+                                <p className="text-sm font-semibold text-[#0B1E3D]">
+                                    {getDate(payout.createdAt)}
+                                </p>
                             </div>
 
                             <div>
-                                <p className="text-xs font-medium text-gray-500 mb-2">Earnings From</p>
-                                <p className="text-sm font-semibold text-[#0B1E3D]">{payout.earningsFrom}</p>
-                                <p className="text-xs text-gray-400 mt-1">{payout.salesCount}</p>
+                                <p className="text-xs font-medium text-gray-500 mb-2">
+                                    Listing ID
+                                </p>
+                                <p className="text-sm font-semibold text-[#0B1E3D] break-all">
+                                    {payout.listingId || vehicle?.listingId || '—'}
+                                </p>
                             </div>
 
                             <div>
-                                <p className="text-xs font-medium text-gray-500 mb-2"> Payout Method</p>
+                                <p className="text-xs font-medium text-gray-500 mb-2">
+                                    Payout Method
+                                </p>
                                 <div className="flex items-center gap-2">
                                     <Landmark className="w-4 h-4 text-slate-600" />
-                                    <p className="text-sm font-semibold text-[#0B1E3D]">{payout.payoutMethod}</p>
+                                    <p className="text-sm font-semibold text-[#0B1E3D]">
+                                        Bank Transfer
+                                    </p>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-1 ml-6">{payout.accountNumber}</p>
                             </div>
 
                             <div>
-                                <p className="text-xs font-medium text-gray-500 mb-2">Payout Amount</p>
-                                <p className="text-xl font-bold text-[#0B1E3D]">{payout.amount}</p>
+                                <p className="text-xs font-medium text-gray-500 mb-2">
+                                    Payout Amount
+                                </p>
+                                <p className="text-xl font-bold text-[#0B1E3D]">
+                                    {formatPrice(payout.netAmount)}
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    {/* payout info */}
+                    {/* Payment Information */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
-                        {/* Header */}
                         <div className="px-4 py-3 border-b border-gray-100">
                             <h3 className="text-sm font-semibold text-[#0B1E3D]">
                                 Payment Information
                             </h3>
                         </div>
 
-                        {/* Details */}
                         <div className="px-4 py-3">
 
-                            {/* Payout ID */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Payout ID
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    PAYOUT12456
-                                </span>
-                            </div>
+                            {[
+                                ['Payout ID', payout.payoutId],
+                                ['Order ID', order?.orderId],
+                                ['Listing ID', payout.listingId],
+                                ['Created At', getDate(payout.createdAt)],
+                                ['Requested At', getDate(payout.requestedAt)],
+                                ['Paid At', getDate(payout.paidAt)],
+                                ['Payout Method', 'Bank Transfer'],
+                                ['Bank Name', bank?.bankName],
+                                ['Account Holder Name', bank?.accountHolderName],
+                                ['Account Number', maskAccount(bank?.accountNumber)],
+                                ['IBAN', bank?.ibanNumber ? maskAccount(bank.ibanNumber) : null],
+                                ['SWIFT Code', bank?.swiftCode],
+                                ['Transfer Reference', payout.transferReference],
+                            ].map(([label, value]) => (
+                                <div
+                                    key={label}
+                                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 py-2.5 border-b border-gray-100 last:border-b-0"
+                                >
+                                    <span className="text-[13px] text-gray-600">
+                                        {label}
+                                    </span>
 
-                            {/* Payout Date */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Payout Date
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    May 31, 2024 02:45 PM
-                                </span>
-                            </div>
+                                    <span className="text-[13px] font-medium text-gray-800 sm:text-right break-all">
+                                        {value || '—'}
+                                    </span>
+                                </div>
+                            ))}
 
-                            {/* Earnings From */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Earnings From
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    May 1 – May 31, 2024 (31 Sales)
-                                </span>
-                            </div>
-
-                            {/* Payout Method */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Payout Method
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    Bank Transfer
-                                </span>
-                            </div>
-
-                            {/* Bank Name */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Bank Name
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    Wells Fargo Bank
-                                </span>
-                            </div>
-
-                            {/* Account Holder Name */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Account Holder Name
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    Michael Johnson
-                                </span>
-                            </div>
-
-                            {/* Account Number */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Account Number
-                                </span>
-                                <span className="text-[13px] font-medium text-gray-800">
-                                    **** **** 4567
-                                </span>
-                            </div>
-
-                            {/* Reference ID */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span className="text-[13px] text-gray-600">
-                                    Reference ID
-                                </span>
-                                <span className="text-[13px] font-mono font-medium text-gray-800">
-                                    UTR987654321
-                                </span>
-                            </div>
-
-                            {/* Status */}
-                            <div className="flex items-center justify-between py-1.5 border-b border-gray-100">
+                            <div className="flex items-center justify-between gap-3 py-2.5">
                                 <span className="text-[13px] text-gray-600">
                                     Status
                                 </span>
 
-                                {payout.status === "Completed" ? (
-                                    <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 rounded-md">
-                                        Completed
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 rounded-md">
-                                        Pending
-                                    </span>
-                                )}
-                            </div>
-
-                            {/* Expected Payout Date */}
-                            <div className="flex items-center justify-between py-1.5">
-                                <span className="text-[13px] text-gray-600">
-                                    Expected Payout Date
-                                </span>
-                                <span className="text-[13px] font-semibold text-gray-800">
-                                    Jun 3, 2024
+                                <span
+                                    className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-md border ${STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 border-slate-200'
+                                        }`}
+                                >
+                                    {formatLabel(status)}
                                 </span>
                             </div>
 
                         </div>
                     </div>
 
-                    {/* sales payout included */}
+                    {/* Vehicle / Sale Information */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-
+                        <div className="px-5 py-4 border-b border-gray-100">
                             <h3 className="text-base font-semibold text-[#0B1E3D]">
-                                Sales Included in This Payout
-                                <span className="text-gray-500 font-normal ml-1">
-                                    (31 Sales)
-                                </span>
+                                Sale Included in This Payout
                             </h3>
-
-                            <button className="text-xs font-medium text-[#D97706] hover:underline">
-                                View All Sales
-                            </button>
-
+                            <p className="text-xs text-gray-500 mt-1">
+                                Vehicle and sale amount associated with this payout.
+                            </p>
                         </div>
 
-
-                        {/* Table */}
                         <div className="overflow-x-auto">
-
-                            <table className="w-full min-w-[750px]">
-
+                            <table className="w-full min-w-138">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-gray-100">
-
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500">
-                                            Vehicle
-                                        </th>
-
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500">
-                                            Sale Date
-                                        </th>
-
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500">
-                                            Sale Price
-                                        </th>
-
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500">
-                                            Commission (5%)
-                                        </th>
-
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500">
-                                            Payout Amount
-                                        </th>
-
+                                        {['Vehicle', 'Sale Amount', 'Commission', 'Payout Amount'].map((heading) => (
+                                            <th
+                                                key={heading}
+                                                className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500"
+                                            >
+                                                {heading}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
 
-
-                                <tbody className="divide-y divide-gray-100">
-
-                                    {[
-                                        {
-                                            id: 1,
-                                            image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=300&q=80',
-                                            vehicle: '2021 BMW X5',
-                                            stock: 'BDV12345',
-                                            date: 'May 30, 2024',
-                                            time: '02:30 PM',
-                                            salePrice: 28500,
-                                            commission: 1425,
-                                            payout: 27075
-                                        },
-                                        {
-                                            id: 2,
-                                            image: 'https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=300&q=80',
-                                            vehicle: '2019 Audi Q5',
-                                            stock: 'BDV12344',
-                                            date: 'May 28, 2024',
-                                            time: '11:15 AM',
-                                            salePrice: 18000,
-                                            commission: 900,
-                                            payout: 17100
-                                        },
-                                        {
-                                            id: 3,
-                                            image: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=300&q=80',
-                                            vehicle: '2020 Mercedes C300',
-                                            stock: 'BDV12343',
-                                            date: 'May 25, 2024',
-                                            time: '04:45 PM',
-                                            salePrice: 22750,
-                                            commission: 1137.5,
-                                            payout: 21612.5
-                                        }
-                                    ].map((sale) => (
-
-                                        <tr
-                                            key={sale.id}
-                                            className="hover:bg-slate-50/50"
-                                        >
-
-                                            {/* Vehicle */}
-                                            <td className="px-4 py-3">
-
-                                                <div className="flex items-center gap-3">
-
+                                <tbody>
+                                    <tr className="hover:bg-slate-50/50">
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-3">
+                                                {vehicleImage ? (
                                                     <img
-                                                        src={sale.image}
-                                                        alt={sale.vehicle}
-                                                        className="w-12 h-9 object-cover rounded-md shrink-0"
+                                                        src={vehicleImage}
+                                                        alt={vehicleName}
+                                                        className="w-14 h-10 object-cover rounded-md shrink-0"
                                                     />
-
-                                                    <div>
-                                                        <p className="text-xs font-semibold text-[#0B1E3D]">
-                                                            {sale.vehicle}
-                                                        </p>
-
-                                                        <p className="text-[10px] text-gray-400 mt-0.5">
-                                                            Stock ID: {sale.stock}
-                                                        </p>
+                                                ) : (
+                                                    <div className="w-14 h-10 bg-slate-100 rounded-md flex items-center justify-center shrink-0">
+                                                        <Car className="w-5 h-5 text-slate-400" />
                                                     </div>
+                                                )}
 
+                                                <div>
+                                                    <p className="text-xs font-semibold text-[#0B1E3D]">
+                                                        {vehicleName}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">
+                                                        {payout.listingId || '—'}
+                                                    </p>
                                                 </div>
+                                            </div>
+                                        </td>
 
-                                            </td>
+                                        <td className="px-4 py-3 text-xs font-semibold text-[#0B1E3D]">
+                                            {formatPrice(payout.grossAmount)}
+                                        </td>
 
+                                        <td className="px-4 py-3">
+                                            <p className="text-xs font-semibold text-slate-700">
+                                                - {formatPrice(payout.commissionAmount)}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400 mt-1">
+                                                {payout.commissionPercent ?? 0}% commission
+                                            </p>
+                                        </td>
 
-                                            {/* Sale Date */}
-                                            <td className="px-4 py-3">
-
-                                                <p className="text-[11px] font-medium text-[#0B1E3D]">
-                                                    {sale.date}
-                                                </p>
-
-                                                <p className="text-[10px] text-gray-400 mt-0.5">
-                                                    {sale.time}
-                                                </p>
-
-                                            </td>
-
-
-                                            {/* Sale Price */}
-                                            <td className="px-4 py-3">
-
-                                                <span className="text-xs font-semibold text-[#0B1E3D]">
-                                                    ${sale.salePrice.toLocaleString()}
-                                                </span>
-
-                                            </td>
-
-
-                                            {/* Commission */}
-                                            <td className="px-4 py-3">
-
-                                                <span className="text-xs font-semibold text-[#0B1E3D]">
-                                                    ${sale.commission.toLocaleString()}
-                                                </span>
-
-                                            </td>
-
-
-                                            {/* Payout */}
-                                            <td className="px-4 py-3">
-
-                                                <span className="text-xs font-semibold text-[#0B1E3D]">
-                                                    ${sale.payout.toLocaleString()}
-                                                </span>
-
-                                            </td>
-
-                                        </tr>
-
-                                    ))}
-
+                                        <td className="px-4 py-3 text-xs font-bold text-emerald-600">
+                                            {formatPrice(payout.netAmount)}
+                                        </td>
+                                    </tr>
                                 </tbody>
-
                             </table>
-
                         </div>
 
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
-
-                            <p className="text-[10px] text-gray-500">
-                                Showing 1 to 3 of 31 sales
-                            </p>
-
-                            <button className="px-4 py-1.5 border border-gray-200 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-50">
-                                View All Sales
-                            </button>
-
+                        <div className="px-5 py-3 border-t border-gray-100 flex flex-wrap justify-between gap-2">
+                            <span className="text-xs text-gray-500">
+                                Order: {order?.orderId || '—'}
+                            </span>
+                            <span className="text-xs font-semibold text-[#0B1E3D]">
+                                Total: {formatPrice(payout.netAmount)}
+                            </span>
                         </div>
-
                     </div>
                 </div>
 
-                {/* right col */}
+                {/* -------------------- RIGHT -------------------- */}
                 <div className="space-y-5">
 
-                    {/* ================== PAYOUT STATUS ================== */}
+                    {/* Payout Status History */}
                     <div className="bg-white border border-gray-200 rounded-xl p-5">
 
                         <h3 className="text-md font-semibold text-[#0B1E3D] mb-5">
-                            Payout Status
+                            Payout Status History
                         </h3>
 
-                        <div className="relative">
+                        {history.length > 0 ? (
+                            <div className="relative">
+                                <div className="absolute left-3 top-3 bottom-3 w-px bg-gray-200" />
 
-                            {/* Vertical Line */}
-                            <div className="absolute left-[12px] top-3 bottom-3 w-px bg-gray-200" />
+                                <div className="space-y-5">
+                                    {history.map((item, index) => {
+                                        const isLatest = index === history.length - 1;
+                                        const itemStatus = item.status;
+                                        const HistoryIcon = STATUS_ICONS[itemStatus] || Circle;
 
-                            <div className="space-y-5">
+                                        return (
+                                            <div
+                                                key={`${item.status}-${item.at}-${index}`}
+                                                className="relative flex gap-3"
+                                            >
+                                                <div
+                                                    className={`w-7 h-7 rounded-full border flex items-center justify-center z-10 shrink-0 ${isLatest
+                                                        ? 'bg-amber-50 border-amber-200'
+                                                        : 'bg-slate-50 border-slate-200'
+                                                        }`}
+                                                >
+                                                    <HistoryIcon
+                                                        className={`w-3.5 h-3.5 ${isLatest ? 'text-amber-600' : 'text-slate-400'
+                                                            }`}
+                                                    />
+                                                </div>
 
-                                {/* Initiated */}
-                                <div className="relative flex gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="text-[13px] font-semibold text-[#0B1E3D]">
+                                                        {formatLabel(itemStatus)}
+                                                    </p>
 
-                                    <div className="w-7 h-7 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center z-10 shrink-0">
-                                        <Hourglass className="w-3.5 h-3.5 text-[#D97706]" />
-                                    </div>
+                                                    <p className="text-[11px] text-gray-500 mt-0.5">
+                                                        {getDate(item.at)}
+                                                    </p>
 
-                                    <div>
-                                        <p className="text-[13px] font-semibold text-[#0B1E3D]">
-                                            Payout Initiated
-                                        </p>
+                                                    {item.note && (
+                                                        <p className="text-[11px] text-gray-500 mt-1">
+                                                            {item.note}
+                                                        </p>
+                                                    )}
 
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            May 31, 2024 02:45 PM
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-400 mt-0.5">
-                                            Your payout has been initiated.
-                                        </p>
-                                    </div>
-
+                                                    {item.by && (
+                                                        <p className="text-[10px] text-gray-400 mt-1">
+                                                            Updated by: {formatLabel(item.by)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-
-
-                                {/* Processing */}
-                                <div className="relative flex gap-3">
-
-                                    <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center z-10 shrink-0">
-                                        <Circle className="w-3 h-3 text-gray-300 fill-gray-300" />
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[13px] font-semibold text-[#0B1E3D]">
-                                            Processing
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            Estimated: Jun 1 – Jun 3, 2024
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-400 mt-0.5">
-                                            We are processing your payout.
-                                        </p>
-                                    </div>
-
-                                </div>
-
-
-                                {/* In Transit */}
-                                <div className="relative flex gap-3">
-
-                                    <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center z-10 shrink-0">
-                                        <Circle className="w-3 h-3 text-gray-300 fill-gray-300" />
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[13px] font-semibold text-[#0B1E3D]">
-                                            In Transit
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            Estimated: Jun 3 – Jun 4, 2024
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-400 mt-0.5">
-                                            Your payout is on the way to your bank.
-                                        </p>
-                                    </div>
-
-                                </div>
-
-
-                                {/* Paid */}
-                                <div className="relative flex gap-3">
-
-                                    <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center z-10 shrink-0">
-                                        <Circle className="w-3 h-3 text-gray-300 fill-gray-300" />
-                                    </div>
-
-                                    <div>
-                                        <p className="text-[13px] font-semibold text-[#0B1E3D]">
-                                            Paid
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            Estimated: Jun 4, 2024
-                                        </p>
-
-                                        <p className="text-[11px] text-gray-400 mt-0.5">
-                                            The amount will be credited to your bank account.
-                                        </p>
-                                    </div>
-
-                                </div>
-
                             </div>
+                        ) : (
+                            <div className="py-6 text-center">
+                                <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                <p className="text-sm font-medium text-slate-600">
+                                    No status history yet
+                                </p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    Payout status updates will appear here.
+                                </p>
+                            </div>
+                        )}
 
-                        </div>
-
-                        {/* Info */}
-                        <div className="flex items-center gap-2 mt-5 pt-3 border-t border-gray-100">
-                            <Info className="w-4 h-4 text-gray-400" />
-
+                        <div className="flex items-start gap-2 mt-5 pt-3 border-t border-gray-100">
+                            <Info className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
                             <p className="text-[11px] text-gray-500">
-                                Payouts are usually completed within 3-5 business days.
+                                Payout status and timestamps reflect the information recorded by BidDrive.
                             </p>
                         </div>
-
                     </div>
 
-                    {/* ================== AMOUNT BREAKDOWN ================== */}
+                    {/* Amount Breakdown */}
                     <div className="bg-white border border-gray-200 rounded-xl p-5">
 
                         <h3 className="text-md font-semibold text-[#0B1E3D] mb-4">
                             Amount Breakdown
                         </h3>
 
-                        <div className="space-y-2.5">
-
-                            {/* Total Earnings */}
-                            <div className="flex items-center justify-between">
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
                                 <span className="text-xs text-gray-500">
-                                    Total Earnings
+                                    Sale Amount
                                 </span>
-
                                 <span className="text-sm font-semibold text-[#0B1E3D]">
-                                    $6,860.00
+                                    {formatPrice(payout.grossAmount)}
                                 </span>
                             </div>
 
-                            {/* Platform Fee */}
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between gap-3">
                                 <span className="text-xs text-gray-500">
-                                    Platform Fee (5%)
+                                    Platform Commission ({payout.commissionPercent ?? 0}%)
                                 </span>
-
                                 <span className="text-sm font-semibold text-red-500">
-                                    -$343.00
+                                    - {formatPrice(payout.commissionAmount)}
                                 </span>
                             </div>
-
-                            {/* Payment Processing */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500">
-                                        Payment Processing Fee
-                                    </span>
-
-                                    <Info className="w-3 h-3 text-gray-400" />
-                                </div>
-
-                                <span className="text-sm font-semibold text-red-500">
-                                    -$55.00
-                                </span>
-                            </div>
-
-                            {/* Other Adjustments */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
-                                    <span className="text-xs text-gray-500">
-                                        Other Adjustments
-                                    </span>
-
-                                    <Info className="w-3 h-3 text-gray-400" />
-                                </div>
-
-                                <span className="text-sm font-semibold text-red-500">
-                                    -$212.00
-                                </span>
-                            </div>
-
                         </div>
 
-                        {/* Payout Amount */}
-                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
-
+                        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-gray-200">
                             <span className="text-sm font-semibold text-[#0B1E3D]">
-                                Payout Amount
+                                Net Payout
                             </span>
-
-                            <span className="text-sm font-bold text-green-600">
-                                $6,250.00
+                            <span className="text-sm font-bold text-emerald-600">
+                                {formatPrice(payout.netAmount)}
                             </span>
-
                         </div>
-
                     </div>
 
-                    {/* ================== NEED HELP ================== */}
+                    {/* Need Help */}
                     <div className="bg-white border border-gray-200 rounded-xl p-5">
 
                         <h3 className="text-md font-semibold text-[#0B1E3D] mb-4">
@@ -627,29 +499,29 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
                         </h3>
 
                         <div className="flex items-start gap-3">
-
                             <div className="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                                <CircleHelp className="w-4.5 h-4.5 text-blue-500" />
+                                <CircleHelp className="w-4 h-4 text-blue-500" />
                             </div>
 
                             <p className="text-[12px] leading-5 text-gray-500">
-                                If you have any questions about your payout, our support team
-                                is here to help.
+                                If you have questions about this payout, contact the BidDrive support team.
                             </p>
-
                         </div>
 
-                        <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-md text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50">
+                        <button
+                            type="button"
+                            onClick={() => setCurrentPage('support')}
+                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-md text-[12px] font-medium text-[#0B1E3D] hover:bg-gray-50"
+                        >
                             <MessageCircle className="w-4 h-4 text-[#D97706]" />
                             Contact Support
                         </button>
-
                     </div>
 
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
-export default PayoutDetails
+export default PayoutDetails;

@@ -1,71 +1,171 @@
+const formatEnumText = (str) => {
+  if (str === undefined || str === null || str === "") return "N/A";
 
-import { RatingBar } from "./DetailTabs";
-import { Badge } from "./DetailTabs";
+  return String(str)
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const getStatusTheme = (value) => {
+  switch (value) {
+    case "excellent":
+    case "factory_original":
+    case "no_cracks":
+    case "yes":
+      return {
+        dot: "bg-emerald-500",
+        text: "text-emerald-700",
+        bg: "bg-emerald-50",
+        border: "border-emerald-200",
+      };
+
+    case "good":
+      return {
+        dot: "bg-green-500",
+        text: "text-green-700",
+        bg: "bg-green-50",
+        border: "border-green-200",
+      };
+
+    case "minor_cracks":
+      return {
+        dot: "bg-amber-500",
+        text: "text-amber-700",
+        bg: "bg-amber-50",
+        border: "border-amber-200",
+      };
+
+    case "fair":
+    case "needs_replacement":
+    case "not_sure":
+      return {
+        dot: "bg-orange-500",
+        text: "text-orange-700",
+        bg: "bg-orange-50",
+        border: "border-orange-200",
+      };
+
+    case "poor":
+    case "major_cracks":
+      return {
+        dot: "bg-rose-500",
+        text: "text-rose-700",
+        bg: "bg-rose-50",
+        border: "border-rose-200",
+      };
+
+    default:
+      return {
+        dot: "bg-slate-400",
+        text: "text-slate-500",
+        bg: "bg-slate-50",
+        border: "border-slate-200",
+      };
+  }
+};
 
 function ConditionTab({ vehicle }) {
+  const mainConditions = [
+    { label: "Overall Condition", val: vehicle?.overallCondition },
+    { label: "Mechanical", val: vehicle?.mechanicalCondition },
+    { label: "Exterior", val: vehicle?.exteriorCondition },
+    { label: "Interior", val: vehicle?.interiorCondition },
+  ];
 
-  const {
-    exteriorRating,
-    interiorRating,
-    mechanicalRating,
-  } = vehicle;
+  const detailRows = [
+    { label: "Accident History", val: vehicle?.accidentHistory },
+    { label: "Paint Type", val: vehicle?.paintType },
+    { label: "Repainted", val: vehicle?.repainted },
+    { label: "Glass Condition", val: vehicle?.glassCondition },
+    { label: "Tires Condition", val: vehicle?.tiresCondition },
+    { label: "Sunroof", val: vehicle?.sunroof },
+    { label: "Smoke Odor", val: vehicle?.smokeOdor },
+    { label: "Pet Friendly", val: vehicle?.petFriendly },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-
-      <div>
-        <p className="text-[#94A3B8] text-xs uppercase tracking-wider mb-4 font-medium">
-          Condition Ratings
-        </p>
-
-        <div className="flex flex-col gap-4">
-          <RatingBar label="Exterior" value={exteriorRating ?? 0} />
-          <RatingBar label="Interior" value={interiorRating ?? 0} />
-          <RatingBar label="Mechanical" value={mechanicalRating ?? 0} />
+    <div className="space-y-6">
+      {/* Core Condition */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-5 rounded-full bg-[#D97706]" />
+          <h4 className="text-sm font-semibold text-[#0B1E3D]">
+            Core Condition
+          </h4>
         </div>
-      </div>
 
-      <div>
-        <p className="text-[#94A3B8] text-xs uppercase tracking-wider mb-3 font-medium">
-          Overall Assessment
-        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {mainConditions.map((item) => {
+            const theme = getStatusTheme(item.val);
 
-        {exteriorRating && interiorRating && mechanicalRating ? (() => {
-          const avg =
-            (exteriorRating + interiorRating + mechanicalRating) / 3;
+            return (
+              <div
+                key={item.label}
+                className={`rounded-xl border ${theme.border} bg-white p-4 transition-shadow hover:shadow-sm`}
+              >
+                <p className="text-xs font-medium text-slate-500 mb-3">
+                  {item.label}
+                </p>
 
-          const label =
-            avg >= 8
-              ? "Excellent"
-              : avg >= 6
-              ? "Good"
-              : avg >= 4
-              ? "Fair"
-              : "Poor";
+                <div
+                  className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${theme.bg}`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${theme.dot}`}
+                  />
+                  <span className={`text-sm font-semibold ${theme.text}`}>
+                    {formatEnumText(item.val)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-          const color =
-            avg >= 8
-              ? "success"
-              : avg >= 6
-              ? "warning"
-              : "danger";
+      {/* Additional Details */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-5 rounded-full bg-[#D97706]" />
+          <h4 className="text-sm font-semibold text-[#0B1E3D]">
+            Additional Details
+          </h4>
+        </div>
 
-          return (
-            <div className="flex items-center gap-3">
-              <Badge color={color}>{label}</Badge>
+        <div className="grid grid-cols-1 sm:grid-cols-2 overflow-hidden bg-white">
+          {detailRows.map((row) => {
+            const theme = getStatusTheme(row.val);
+            const hasValue =
+              row.val !== undefined &&
+              row.val !== null &&
+              row.val !== "";
 
-              <span className="text-[#94A3B8] text-sm">
-                Average score: {avg.toFixed(1)}/10
-              </span>
-            </div>
-          );
-        })() : (
-          <p className="text-[#94A3B8] text-sm">
-            Ratings not available yet.
-          </p>
-        )}
-      </div>
+            return (
+              <div
+                key={row.label}
+                className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 transition-colors hover:bg-slate-50"
+              >
+                <span className="text-sm font-medium text-slate-600">
+                  {row.label}
+                </span>
 
+                {hasValue ? (
+                  <span
+                    className={`inline-flex max-w-[60%] items-center rounded-md border px-2.5 py-1 text-right text-xs font-semibold ${theme.bg} ${theme.text} ${theme.border}`}
+                  >
+                    {formatEnumText(row.val)}
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-slate-400">
+                    N/A
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

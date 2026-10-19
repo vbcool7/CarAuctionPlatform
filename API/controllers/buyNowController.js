@@ -105,6 +105,16 @@ export const buyNow = async (req, res) => {
                 }],
             });
         } catch (orderErr) {
+
+            console.error('[auction-cron] Order create failed:', {
+                vehicleId: vehicle._id,
+                bidderId: winningBid.bidderId,
+                bidderType: winningBid.bidderType,
+                code: orderErr?.code,
+                message: orderErr?.message,
+                errors: orderErr?.errors,
+            });
+
             // Order nahi bana: car ko wapas live karo
             await Vehicle.updateOne(
                 { _id: vehicleId, auctionStatus: 'pending_payment' },

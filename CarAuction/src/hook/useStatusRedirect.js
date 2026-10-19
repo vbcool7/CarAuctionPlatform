@@ -8,6 +8,7 @@ const ROUTES = {
     sold: '/ended-auction-detail',
     unsold: '/ended-auction-detail',
     'reserve-not-met': '/ended-auction-detail',
+    pending_payment: '/won-auctions',
 };
 
 export const useStatusRedirect = (vehicle, ownBase) => {

@@ -31,7 +31,7 @@ import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAucti
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
 import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
 
-const BUYER_DEEP_LINKS = ['watchlist', 'bids'];
+const BUYER_DEEP_LINKS = ['watchlist', 'bids', 'payments'];
 
 function BuyerPanelPage() {
 

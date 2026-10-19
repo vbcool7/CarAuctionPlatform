@@ -1,83 +1,101 @@
 
 import React, { useState } from 'react';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { payoutsData } from '../SellerSharedComponents/SellerData';
-import { Building2, Calendar, DollarSign, Download, Eye, Hourglass, Landmark, MoreVertical, PieChart, Settings, Wallet } from 'lucide-react';
-import SearchBar from '../SellerSharedComponents/SearchBar';
-import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+import { ArrowUpRight, CheckCircle2, Download, PauseCircle, Wallet } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useGetMyPayouts, useRequestPayout } from '../../../hook/usePayout';
+import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
 
-const statsData = [
-    {
-        id: "total-earnings",
-        title: "Total Earnings",
-        value: "$48,750",
-        subtitle: "All Time",
-        subtitleColor: "text-green-600",
-        icon: Wallet,
-        iconBg: "bg-green-100",
-        iconColor: "text-green-600",
-    },
-    {
-        id: "total-payouts",
-        title: "Total Payouts",
-        value: "$42,500",
-        subtitle: "All Time",
-        subtitleColor: "text-blue-600",
-        icon: DollarSign,
-        iconBg: "bg-blue-100",
-        iconColor: "text-blue-600",
-    },
-    {
-        id: "pending-payout",
-        title: "Pending Payout",
-        value: "$6,250",
-        subtitle: "Will be paid soon",
-        subtitleColor: "text-amber-500",
-        icon: Hourglass,
-        iconBg: "bg-purple-100",
-        iconColor: "text-purple-600",
-    },
-    {
-        id: "payouts-this-year",
-        title: "Payouts This Year",
-        value: "$28,400",
-        subtitle: "2024",
-        subtitleColor: "text-amber-600",
-        icon: Calendar,
-        iconBg: "bg-amber-100",
-        iconColor: "text-amber-600",
-    },
-    {
-        id: "available-balance",
-        title: "Available Balance",
-        value: "$6,250",
-        subtitle: "Available for payout",
-        subtitleColor: "text-green-600",
-        icon: PieChart,
-        iconBg: "bg-rose-100",
-        iconColor: "text-rose-600",
-        extraClass: "sm:col-span-2 lg:col-span-1",
-    },
-];
+const BADGE = {
+    on_hold: 'bg-slate-100 text-slate-600 border-slate-200',
+    available: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    requested: 'bg-amber-50 text-amber-700 border-amber-200',
+    paid: 'bg-blue-50 text-blue-700 border-blue-200',
+    canceled: 'bg-red-50 text-red-600 border-red-200',
+};
 
-const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "active", label: "Active" },
-    { value: "sold", label: "Sold" },
-    { value: "pending", label: "Pending Approval" },
-    { value: "draft", label: "Draft" },
+const HINT = {
+    on_hold: 'Waiting for vehicle handover confirmation by our team.',
+    available: 'Ready. You can request this payout now.',
+    requested: 'Request sent. Our team will transfer to your bank account.',
+    canceled: 'Order was canceled and the buyer refunded.',
+};
+
+const tabs = [
+    { key: '', label: 'All' },
+    { key: 'on_hold', label: 'On Hold' },
+    { key: 'available', label: 'Available' },
+    { key: 'requested', label: 'Requested' },
+    { key: 'paid', label: 'Paid' },
 ];
 
 function Payouts({ setSelectedPayoutId, setCurrentPage }) {
 
-    const [search, setSearch] = useState();
-    const [status, setStatus] = useState('');
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [activeTab, setActiveTab] = useState('');
+    const [page, setPage] = useState(1);
+
+    const { data, isLoading, isError } = useGetMyPayouts(page, 10, activeTab);
+    const { mutate: requestPayout, isPending, variables: payingId } = useRequestPayout();
+
+    const s = data?.summary || {};
+    const payouts = data?.payouts || [];
+    const totalPages = data?.pagination?.totalPages || 1;
+
+    // handle payout request
+    const handleRequest = (p) => {
+        if (!window.confirm(`Request payout of ${formatPrice(p.netAmount)} to your registered bank account?`)) return;
+        requestPayout(p._id, {
+            onSuccess: () => toast.success('Payout requested'),
+            onError: (err) => toast.error(err.response?.data?.message || 'Could not request payout'),
+        });
+    };
+
+    // stats
+    const statsData = [
+        {
+            id: "on-hold",
+            title: "On Hold",
+            value: s.on_hold,
+            subtitle: "All Time",
+            subtitleColor: "text-green-600",
+            icon: PauseCircle,
+            iconBg: "bg-green-100",
+            iconColor: "text-green-600",
+        },
+        {
+            id: "available",
+            title: "Available",
+            value: s.available,
+            subtitle: "All Time",
+            subtitleColor: "text-blue-600",
+            icon: Wallet,
+            iconBg: "bg-blue-100",
+            iconColor: "text-blue-600",
+        },
+        {
+            id: "requested",
+            title: "Requested Payout",
+            value: s.requested,
+            subtitle: "Will be paid soon",
+            subtitleColor: "text-purple-500",
+            icon: ArrowUpRight,
+            iconBg: "bg-purple-100",
+            iconColor: "text-purple-600",
+        },
+        {
+            id: "paid",
+            title: "Paid",
+            value: s.paid,
+            subtitle: "2024",
+            subtitleColor: "text-amber-600",
+            icon: CheckCircle2,
+            iconBg: "bg-amber-100",
+            iconColor: "text-amber-600",
+        },
+    ];
 
     return (
-        <div className='pb-6 space-y-6'>
+        <div className="pb-6 space-y-6">
 
             {/* header */}
             <div className='w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0'>
@@ -91,15 +109,7 @@ function Payouts({ setSelectedPayoutId, setCurrentPage }) {
                 {/* Actions */}
                 <div className="flex items-center gap-2.5">
                     <button
-                        className="group inline-flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50/80 hover:border-amber-500 hover:text-amber-600 active:scale-[0.98] transition-all duration-200"
-                    >
-                        <Settings className="h-4 w-4 text-slate-500 group-hover:text-amber-600 transition-transform duration-300 group-hover:rotate-45" />
-                        Payout Settings
-                    </button>
-
-                    <button
-                        className="group inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-amber-600/20 hover:bg-amber-700 active:scale-[0.98] transition-all duration-200"
-                    >
+                        className="group inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm shadow-amber-600/20 hover:bg-amber-700 active:scale-[0.98] transition-all duration-200">
                         <Download className="h-4 w-4 text-white/90 transition-transform duration-300 group-hover:-translate-y-0.5" />
                         Export Report
                     </button>
@@ -107,7 +117,7 @@ function Payouts({ setSelectedPayoutId, setCurrentPage }) {
             </div>
 
             {/* stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 my-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 my-6">
                 {statsData.map((stat) => {
                     const IconComponent = stat.icon;
 
@@ -117,191 +127,235 @@ function Payouts({ setSelectedPayoutId, setCurrentPage }) {
                             className="bg-white p-4 rounded-2xl border border-slate-100 shadow-md flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-amber-200 cursor-pointer"
                         >
                             <div
-                                className={`w-10 h-10 md:w-12 md:h-12 rounded-full ${stat.iconBg} flex items-center justify-center shrink-0 transition-transform duration-300 hover:scale-105`}
-                            >
+                                className={`w-10 h-10 md:w-12 md:h-12 rounded-full ${stat.iconBg} flex items-center justify-center shrink-0 transition-transform duration-300 hover:scale-105`}>
                                 <IconComponent
                                     className={`w-5 h-5 md:w-6 md:h-6 ${stat.iconColor}`}
                                 />
                             </div>
 
                             <div>
-                                <p className="text-xs font-medium text-slate-400">
-                                    {stat.title}
-                                </p>
-
-                                <h3 className="text-lg md:text-xl font-bold text-[#0B1E3D] my-1">
-                                    {stat.value}
-                                </h3>
-
-                                <p className={`text-[11px] font-semibold ${stat.subtitleColor}`}>
-                                    {stat.subtitle}
-                                </p>
+                                <p className="text-xs font-medium text-slate-400">{stat.title}</p>
+                                <h3 className="text-lg md:text-xl font-bold text-[#0B1E3D] my-1">{formatPrice(stat.value)}</h3>
+                                <p className={`text-[11px] font-semibold ${stat.subtitleColor}`}>{stat.subtitle}</p>
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* filter */}
-            <div className="flex flex-wrap gap-3 py-4 px-4 border border-gray-300 bg-white/80 rounded-xl">
-                <div className='flex-1 min-w-50'>
-                    <SearchBar value={search} onChange={setSearch} placeholder="Search by payout ID..." />
-                </div>
-
-                {/* Date Range */}
-                <div className="w-full sm:w-auto relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 z-10 pointer-events-none" />
-
-                    <DatePicker
-                        selectsRange
-                        startDate={startDate}
-                        endDate={endDate}
-                        onChange={(dates) => {
-                            const [start, end] = dates;
-                            setStartDate(start);
-                            setEndDate(end);
+            {/* tabs */}
+            <div className='flex gap-9 border-b border-gray-200 overflow-x-auto no-scrollbar'>
+                {tabs.map((tab) => (
+                    <button
+                        key={tab.key}
+                        onClick={() => {
+                            setActiveTab(tab.key);
+                            setPage(1);
                         }}
-                        placeholderText="Select date range"
-                        dateFormat="MMM d, yyyy"
-                        className="h-10 w-57.5 pl-9 pr-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white outline-none focus:border-gray-400"
-                    />
-                </div>
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
-                </div>
+                        className={`py-3 text-xs md:text-sm font-medium whitespace-nowrap border-b-2 transition-colors cursor-pointer
+                                ${activeTab === tab.key
+                                ? 'border-[#D97706] text-[#D97706]'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        {tab.label} <span className='text-xs'></span>
+                    </button>
+                ))}
             </div>
+
+            {isLoading && <p className="text-sm">Loading payouts...</p>}
+            {isError && <p className="text-sm text-red-500">Failed to load payouts</p>}
+            {!isLoading && !isError && payouts.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 px-4 bg-white border border-slate-100 rounded-2xl text-center">
+                    <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                        <Wallet className="w-7 h-7 text-amber-600" />
+                    </div>
+
+                    <h3 className="text-sm font-bold text-[#0B1E3D] mb-1">
+                        No Payouts Yet
+                    </h3>
+
+                    <p className="text-xs text-slate-500 max-w-sm">
+                        Your payout records will appear here once a payout is generated for your sold vehicles.
+                    </p>
+                </div>
+            )}
 
             {/* list */}
-            <div className="overflow-x-auto border border-slate-200/80 rounded-xl shadow-xs bg-white">
-                <table className="w-full text-left table-fixed">
-                    <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
-                        <tr>
-                            <th className="px-6 py-4.5 w-30">Payout ID</th>
-                            <th className="px-6 py-4.5 w-35">Payout Date</th>
-                            <th className="px-6 py-4.5 w-45">Earning From</th>
-                            <th className="px-6 py-4.5 w-50">Payout Method</th>
-                            <th className="px-6 py-4.5 w-40">Amount</th>
-                            <th className="px-6 py-4.5 w-42">Status</th>
-                            <th className="px-6 py-4.5 w-40">Reference ID</th>
-                            <th className="px-6 py-4.5 w-42 ">Actions</th>
-                        </tr>
-                    </thead>
+            {payouts.map((p) => {
+                const v = p.vehicleId;
+                const name = v
+                    ? `${v.year ?? ''} ${formatLabel(v.make)} ${formatLabel(v.model)}`.trim()
+                    : p.listingId;
 
-                    <tbody>
-                        {payoutsData.map((payout) => (
-                            <tr
-                                key={payout.id}
-                                className="border-b border-gray-100 last:border-b-0 hover:bg-slate-50/60 transition-colors text-sm text-slate-700"
+                return (
+                    <div
+                        key={p._id}
+                        className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all space-y-4"
+                    >
+                        {/* 1. Header: Vehicle Name & Status Badge */}
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-base leading-snug">
+                                    {name}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-1.5">
+                                    <span className="font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[11px]">
+                                        {p.payoutId}
+                                    </span>
+                                    <span>·</span>
+                                    <span>{p.listingId}</span>
+                                    <span>·</span>
+                                    <span>{formatDateTime(p.createdAt)}</span>
+                                </p>
+                            </div>
+
+                            <span
+                                className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase border shrink-0 ${BADGE[p.status] || 'bg-slate-100 text-slate-600 border-slate-200'
+                                    }`}
                             >
+                                {formatLabel(p.status)}
+                            </span>
+                        </div>
 
-                                {/* Payout ID */}
-                                <td className="px-5 py-4 ">
-                                    <span className="font-semibold text-slate-900">
-                                        {payout.id}
-                                    </span>
-                                </td>
+                        {/* 2. Financial Breakdown Box */}
+                        <div className="grid grid-cols-3 gap-3 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 text-sm">
 
-                                {/* Payout Date */}
-                                <td className="px-5 py-4 ">
-                                    <p className="font-medium text-slate-800">
-                                        {payout.payoutDate}
-                                    </p>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        {payout.payoutTime}
-                                    </p>
-                                </td>
+                            {/* Sale Amount */}
+                            <div>
+                                <p className="text-xs text-slate-500 font-medium mb-0.5">Sale Amount</p>
+                                <p className="font-semibold text-slate-800">
+                                    {formatPrice(p.grossAmount)}
+                                </p>
+                            </div>
 
-                                {/* Earning From */}
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p className="font-medium text-slate-800">
-                                        {payout.earningsFrom}
-                                    </p>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        {payout.salesCount}
-                                    </p>
-                                </td>
+                            {/* Commission */}
+                            <div>
+                                <p className="text-xs text-slate-500 font-medium mb-0.5">
+                                    Commission ({p.commissionPercent}%)
+                                </p>
+                                <p className="font-semibold text-slate-700">
+                                    {formatPrice(p.commissionAmount)}
+                                </p>
+                            </div>
 
-                                {/* Payout Method */}
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 text-slate-600">
-                                            <Landmark className="w-4 h-4" />
-                                        </div>
+                            {/* You Receive */}
+                            <div>
+                                <p className="text-xs text-slate-500 font-medium mb-0.5">You Receive</p>
+                                <p className="font-extrabold text-[#D97706] text-base">
+                                    {formatPrice(p.netAmount)}
+                                </p>
+                            </div>
+                        </div>
 
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-slate-900 truncate">
-                                                {payout.payoutMethod}
-                                            </p>
-                                            <p className="text-xs text-slate-400 mt-0.5">
-                                                {payout.accountNumber}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </td>
+                        {/* 3. Footer Info & Action */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                            {/* Reference / Hints */}
+                            <div className="text-xs text-slate-500 space-y-0.5">
+                                {HINT[p.status] && <p>{HINT[p.status]}</p>}
 
-                                {/* Amount */}
-                                <td className="px-5 py-4 ">
-                                    <span className="font-bold text-slate-900">
-                                        {payout.amount}
-                                    </span>
-                                </td>
-
-                                {/* Status */}
-                                <td className="px-5 py-4 ">
-                                    <div>
-                                        {payout.status === "Completed" ? (
-                                            <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-emerald-50 text-emerald-600 rounded-md">
-                                                Completed
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-600 rounded-md">
-                                                Pending
+                                {p.status === 'paid' && (
+                                    <p className="text-emerald-600 font-medium flex items-center gap-1">
+                                        <span>✓ Paid on {formatDateTime(p.paidAt)}</span>
+                                        {p.transferReference && (
+                                            <span className="text-slate-400 font-normal">
+                                                (Ref: {p.transferReference})
                                             </span>
                                         )}
+                                    </p>
+                                )}
+                            </div>
 
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            {payout.statusSubtext}
-                                        </p>
-                                    </div>
-                                </td>
+                            {/* Action Button */}
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <button
+                                    onClick={() => {
+                                        setSelectedPayoutId(p._id)
+                                        setCurrentPage('payouts-detail')
+                                    }}
+                                    className="flex-1 sm:flex-initial text-slate-700 hover:bg-slate-100 border border-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl transition"
+                                >
+                                    View Details
+                                </button>
 
-                                {/* Reference ID */}
-                                <td className="px-5 py-4 ">
-                                    <span className="font-mono text-sm text-slate-600">
-                                        {payout.referenceId}
-                                    </span>
-                                </td>
+                                {p.status === 'available' && (
+                                    <button
+                                        onClick={() => handleRequest(p)}
+                                        disabled={isPending}
+                                        className="flex-1 sm:flex-initial bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm disabled:opacity-50"
+                                    >
+                                        {isPending && payingId === p._id ? 'Requesting...' : 'Request Payout'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
 
-                                {/* Actions */}
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center justify-end gap-2">
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
 
-                                        <button
-                                        onClick={() => {
-                                            setSelectedPayoutId(payout.id)
-                                            setCurrentPage('payouts-detail')
-                                        }}
-                                            className="inline-flex items-center gap-1.5 px-2 py-1.5 text-[12px] font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                                            View Details
-                                        </button>
+                    {/* Page Info */}
+                    <p className="hidden sm:block text-xs text-slate-500">
+                        Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                        <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                    </p>
 
-                                        <button
-                                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                                        >
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
+                    {/* Pagination */}
+                    <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
 
-                                    </div>
-                                </td>
+                        {/* Previous */}
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => p - 1)}
+                            disabled={page === 1}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Previous
+                        </button>
 
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        {/* Page Numbers */}
+                        {getPaginationRange(page, totalPages).map((num, idx) =>
+                            num === "..." ? (
+                                <span
+                                    key={`dot-${idx}`}
+                                    className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                >
+                                    ...
+                                </span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    key={num}
+                                    onClick={() => setPage(num)}
+                                    className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                                            ${page === num
+                                            ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                            : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                        }`}
+                                >
+                                    {num}
+                                </button>
+                            )
+                        )}
 
+                        {/* Next */}
+                        <button
+                            type="button"
+                            onClick={() => setPage((p) => p + 1)}
+                            disabled={page === totalPages}
+                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next
+                        </button>
+
+                    </div>
+                </div>
+            )}
         </div>
-    )
+    );
 }
 
-export default Payouts
+export default Payouts;

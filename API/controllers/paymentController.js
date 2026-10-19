@@ -237,10 +237,10 @@ const processPaidSession = async (session) => {
     if (order.status === 'paid' && order.stripePaymentIntentId === pi) {
         await finalizeSale(order, now);   // retry: bacha hua kaam poora karo, refund nahi
 
-        try { 
-            await createPayoutForOrder(order); 
-        } catch (e) { 
-            console.error('CRITICAL: payout creation failed', order.orderId, e); 
+        try {
+            await createPayoutForOrder(order);
+        } catch (e) {
+            console.error('CRITICAL: payout creation failed', order.orderId, e);
         }
 
         return { outcome: 'paid', orderId: order._id, note: 'Webhook retry' };
@@ -339,7 +339,7 @@ export const stripeWebhook = async (req, res) => {
 };
 
 // ============ 3) Order status (payment result page polling) ============
-const ORDER_FIELDS = 'orderId listingId vehicleId source amount currency status paymentDueAt paidAt expiredAt createdAt statusHistory';
+const ORDER_FIELDS = 'orderId listingId vehicleId source amount currency status paymentDueAt paidAt expiredAt createdAt statusHistory handover.status handover.confirmedAt bidId refund.amount refund.refundedAt';
 
 export const getMyOrder = async (req, res) => {
     try {
@@ -357,7 +357,24 @@ export const getMyOrder = async (req, res) => {
         const filter = mongoose.isValidObjectId(id) ? { _id: id } : { orderId: id };
         const order = await Order.findOne({ ...filter, buyerId: req.user.id, buyerType: userType })
             .select(ORDER_FIELDS)
-            .populate('vehicleId', 'make model year images')
+            .populate(
+                'vehicleId',
+                `
+        make model year trim vin mileage listingId
+        vehicleType bodyType fuelType transmission drivetrain
+        exteriorColor interiorColor country emirate city zipCode
+        titleStatus accidentHistory vehicleDescription
+        overallCondition mechanicalCondition
+        exteriorCondition interiorCondition
+        tiresCondition glassCondition
+        paintType repainted sunroof smokeOdor petFriendly
+        engineSize cylinders doors seats images documents
+        priceType buyNowPrice startingBidPrice currentBid
+        auctionType auctionStatus auctionStartDateTime
+        auctionEndDateTime auctionDuration
+    `
+            )
+            .populate('sellerId', 'fullName businessName')
             .lean();
 
         if (!order) {
@@ -392,14 +409,15 @@ export const getMyOrders = async (req, res) => {
 
         const page = Math.max(parseInt(req.query.page) || 1, 1);
         const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-        
+
         const filter = { buyerId: req.user.id, buyerType: userType };
         if (req.query.status) filter.status = req.query.status;
+        if (req.query.source) filter.source = req.query.source;;
 
         const [orders, total] = await Promise.all([
             Order.find(filter)
                 .select(ORDER_FIELDS)
-                .populate('vehicleId', 'make model year images')
+                .populate('vehicleId', 'make model year images mileage transmission fuelType emirate')
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)
@@ -419,6 +437,39 @@ export const getMyOrders = async (req, res) => {
         });
     } catch (err) {
         console.error('getMyOrders error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
+        });
+    }
+};
+
+// get order summary
+export const getMyOrdersSummary = async (req, res) => {
+    try {
+        const userType = roleToType(req.user.role);
+        if (!userType) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid role'
+            })
+        };
+
+        const rows = await Order.aggregate([
+            { $match: { buyerId: new mongoose.Types.ObjectId(req.user.id), buyerType: userType, source: req.query.source || { $in: ['auction', 'buy_now'] } } },
+            { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+        ]);
+
+        const summary = {};
+        rows.forEach((r) => { summary[r._id] = { count: r.count, total: r.total }; });
+
+        return res.status(200).json({
+            success: true,
+            summary
+        });
+
+    } catch (err) {
+        console.error('getMyOrdersSummary error:', err);
         return res.status(500).json({
             success: false,
             message: 'Server Error Occured'

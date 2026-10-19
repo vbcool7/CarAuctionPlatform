@@ -31,6 +31,7 @@ import SellerPanelPage from './Pages/SellerPanelPage';
 import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
 import RoleRoute from './Components/RoleRoute';
+import PaymentResult from './Components/PaymentResult';
 
 function App() {
   return (
@@ -80,6 +81,8 @@ function App() {
 
           <Route path='/reupload-buyer-docs/:buyer_id/:token/:group' element={<ReUploadBuyerDocs />} />
           <Route path='/reupload-seller-docs/:seller_id/:token/:document' element={<ReUploadSellerDocs />} />
+
+          <Route path='/payment-result' element={<PaymentResult />}/>
 
         </Route>
 
