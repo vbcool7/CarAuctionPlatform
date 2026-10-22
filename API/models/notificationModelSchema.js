@@ -27,6 +27,7 @@ const notificationSchema = new mongoose.Schema(
                 'payment_pending', 'payment_received', 'payment_expired',
                 'payout_requested', 'payout_paid', 'payout_rejected', 'handover_confirmed', 
                 'order_canceled', 
+                'purchase_pending', 'purchase_expired', 'purchase_canceled',
             ],
         },
 

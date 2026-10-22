@@ -25,7 +25,7 @@ function PaymentResult() {
     const { data, isLoading, isError, dataUpdateCount } = useOrderDetail(orderId, { poll: isSuccessReturn });
     const order = data?.order;
 
-    const dashboardPath = user?.role === 'seller' ? '/seller-dashboard' : '/buyer-dashboard?page=payments';
+    const dashboardPath = user?.role === 'seller' ? '/seller-dashboard?page=my-purchases' : '/buyer-dashboard?page=payments';
 
     const vehicleName = order?.vehicleId
         ? `${order.vehicleId.year ?? ''} ${formatLabel(order.vehicleId.make)} ${formatLabel(order.vehicleId.model)}`.trim()

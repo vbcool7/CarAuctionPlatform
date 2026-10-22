@@ -1,137 +1,109 @@
 
-import React, { useState } from 'react';
-import { Calendar, DollarSign, Download, LineChart, Tag, TrendingUp, Wallet } from 'lucide-react';
-import { salesHistoryData } from '../SellerSharedComponents/SellerData';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import React, { useEffect, useState } from 'react';
+import { Percent, Tag, TrendingUp, Wallet, LineChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+import { useGetMySales, useGetMySalesSummary } from '../../../hook/useSales';
+import { money, fmtDate, fmtTime, imgOf, STATUS_META, SOURCE_LABEL } from '../../../utils/salesUtils';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
 
-const statsData = [
-    {
-        id: "total-sales",
-        title: "Total Sales",
-        value: "24",
-        subtitle: "All Time",
-        subtitleColor: "text-green-600",
-        icon: TrendingUp,
-        iconBg: "bg-green-100",
-        iconColor: "text-green-600",
-    },
-    {
-        id: "total-sales-amount",
-        title: "Total Sales Amount",
-        value: "$118,750",
-        subtitle: "All Time",
-        subtitleColor: "text-purple-600",
-        icon: Tag,
-        iconBg: "bg-purple-100",
-        iconColor: "text-purple-600",
-    },
-    {
-        id: "average-selling-price",
-        title: "Average Selling Price",
-        value: "$24,698",
-        subtitle: "All Time",
-        subtitleColor: "text-amber-500",
-        icon: Wallet,
-        iconBg: "bg-amber-100",
-        iconColor: "text-amber-600",
-    },
-    {
-        id: "total-commission-paid",
-        title: "Total Commission Paid",
-        value: "$5,687",
-        subtitle: "All Time",
-        subtitleColor: "text-blue-600",
-        icon: DollarSign,
-        iconBg: "bg-blue-100",
-        iconColor: "text-blue-600",
-    },
-    {
-        id: "this-month-sales",
-        title: "This Month Sales",
-        value: "$12,450",
-        subtitle: "May 2024",
-        subtitleColor: "text-rose-500",
-        icon: LineChart,
-        iconBg: "bg-rose-100",
-        iconColor: "text-rose-600",
-        extraClass: "sm:col-span-2 lg:col-span-1",
-    },
-];
+const LIMIT = 10;
 
 const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "active", label: "Active" },
-    { value: "sold", label: "Sold" },
-    { value: "pending", label: "Pending Approval" },
-    { value: "draft", label: "Draft" },
+    { value: '', label: 'All Status' },
+    { value: 'pending', label: 'Pending Payment' },
+    { value: 'sold', label: 'Sold' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'expired', label: 'Expired' },
+    { value: 'cancelled', label: 'Cancelled' },
 ];
 
 const paymentTypeOptions = [
-    { value: "", label: "All Payment Types" },
-    { value: "live-auction", label: "Live Auction" },
-    { value: "fixed-price", label: "Fixed Price" },
+    { value: '', label: 'All Payment Types' },
+    { value: 'auction', label: 'Live Auction' },
+    { value: 'buy_now', label: 'Fixed Price' },
 ];
 
 function SalesHistory({ setCurrentPage, setSelectedSalesId }) {
 
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [status, setStatus] = useState('');
     const [paymentType, setPaymentType] = useState('');
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [page, setPage] = useState(1);
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setDebouncedSearch(search.trim());
+            setPage(1);
+        }, 400);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    const { data, isLoading, isError, isFetching } = useGetMySales(page, LIMIT, status, paymentType, debouncedSearch);
+    const { data: summaryData } = useGetMySalesSummary();
+
+    const sales = data?.sales || [];
+    const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0 };
+    const sm = summaryData?.summary || {};
+
+    const monthLabel = new Date().toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' });
+
+    const statsData = [
+        {
+            id: 'total-sales', title: 'Total Sales', value: sm.totalSales ?? 0, subtitle: 'All Time',
+            subtitleColor: 'text-green-600', icon: TrendingUp, iconBg: 'bg-green-100', iconColor: 'text-green-600',
+        },
+        {
+            id: 'total-sales-amount', title: 'Total Sales Amount', value: money(sm.totalSalesAmount), subtitle: 'All Time',
+            subtitleColor: 'text-purple-600', icon: Tag, iconBg: 'bg-purple-100', iconColor: 'text-purple-600',
+        },
+        {
+            id: 'average-selling-price', title: 'Average Selling Price', value: money(sm.averageSellingPrice), subtitle: 'All Time',
+            subtitleColor: 'text-amber-500', icon: Wallet, iconBg: 'bg-amber-100', iconColor: 'text-amber-600',
+        },
+        {
+            id: 'total-commission', title: 'Total Commission', value: money(sm.totalCommission), subtitle: 'All Time',
+            subtitleColor: 'text-blue-600', icon: Percent, iconBg: 'bg-blue-100', iconColor: 'text-blue-600',
+        },
+        {
+            id: 'this-month-sales', title: 'This Month Sales', value: money(sm.thisMonthSalesAmount),
+            subtitle: `${monthLabel} · ${sm.thisMonthSalesCount ?? 0} sold`,
+            subtitleColor: 'text-rose-500', icon: LineChart, iconBg: 'bg-rose-100', iconColor: 'text-rose-600',
+            extraClass: 'sm:col-span-2 lg:col-span-1',
+        },
+    ];
 
     return (
         <div className='pb-6 space-y-6'>
 
             {/* header */}
-            <div className='w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0'>
-                <div className='flex flex-col'>
-                    <h1 className='text-xl md:text-2xl font-bold'>Sales History</h1>
-                    <p className='text-xs md:text-sm text-gray-600 p-px'>
-                        Track your completed sales and auction transactions.
-                    </p>
-                </div>
-
-                <button
-                    className='inline-flex items-center gap-2 rounded-lg bg-[#D97706] px-3 py-2 sm:px-4 sm:py-2.5 text-sm font-semibold text-white hover:bg-[#B45309] transition-colors'>
-                    <Download className='h-4 w-4' />
-                    Export Report
-                </button>
+            <div className='flex flex-col'>
+                <h1 className='text-xl md:text-2xl font-bold'>Sales History</h1>
+                <p className='text-xs md:text-sm text-gray-600 p-px'>
+                    Track your sold vehicles, payments and payouts.
+                </p>
             </div>
 
             {/* stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 my-6">
                 {statsData.map((stat) => {
                     const IconComponent = stat.icon;
-
                     return (
                         <div
                             key={stat.id}
-                            className="bg-white p-4 rounded-2xl border border-slate-100 shadow-md flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-amber-200 cursor-pointer"
+                            className={`bg-white p-4 rounded-2xl border border-slate-100 shadow-md flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-amber-200 ${stat.extraClass || ''}`}
                         >
-                            <div
-                                className={`w-10 h-10 md:w-12 md:h-12 rounded-full ${stat.iconBg} flex items-center justify-center shrink-0 transition-transform duration-300 hover:scale-105`}
-                            >
-                                <IconComponent
-                                    className={`w-5 h-5 md:w-6 md:h-6 ${stat.iconColor}`}
-                                />
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-xs font-medium text-slate-400">{stat.title}</p>
+                                <div className={`w-9 h-9 rounded-full ${stat.iconBg} flex items-center justify-center shrink-0`}>
+                                    <IconComponent className={`w-4 h-4 ${stat.iconColor}`} />
+                                </div>
                             </div>
 
                             <div>
-                                <p className="text-xs font-medium text-slate-400">
-                                    {stat.title}
-                                </p>
-
-                                <h3 className="text-lg md:text-xl font-bold text-[#0B1E3D] my-1">
-                                    {stat.value}
-                                </h3>
-
-                                <p className={`text-[11px] font-semibold ${stat.subtitleColor}`}>
-                                    {stat.subtitle}
-                                </p>
+                                <h3 className="text-xl md:text-2xl font-bold text-[#0B1E3D] my-0.5">{stat.value}</h3>
+                                <p className={`text-[11px] font-semibold ${stat.subtitleColor}`}>{stat.subtitle}</p>
                             </div>
                         </div>
                     );
@@ -141,154 +113,218 @@ function SalesHistory({ setCurrentPage, setSelectedSalesId }) {
             {/* filter */}
             <div className="flex flex-wrap gap-3 py-4 px-4 border border-gray-300 bg-white/80 rounded-xl">
                 <div className='flex-1 min-w-50'>
-                    <SearchBar value={search} onChange={setSearch} placeholder="Search by vehicle, buyer or Invoice ID..." />
+                    <SearchBar value={search} onChange={setSearch} placeholder="Search by order ID or listing ID..." />
                 </div>
 
-                {/* Date Range */}
-                <div className="w-full sm:w-auto relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 z-10 pointer-events-none" />
-
-                    <DatePicker
-                        selectsRange
-                        startDate={startDate}
-                        endDate={endDate}
-                        onChange={(dates) => {
-                            const [start, end] = dates;
-                            setStartDate(start);
-                            setEndDate(end);
-                        }}
-                        placeholderText="Select date range"
-                        dateFormat="MMM d, yyyy"
-                        className="h-10 w-57.5 pl-9 pr-3 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white outline-none focus:border-gray-400"
+                <div className='w-full sm:w-auto'>
+                    <FilterDropdown
+                        label="All Status"
+                        options={statusOptions}
+                        value={status}
+                        onChange={(v) => { setStatus(v); setPage(1); }}
                     />
                 </div>
-                <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Status" options={statusOptions} value={status} onChange={setStatus} />
-                </div>
 
                 <div className='w-full sm:w-auto'>
-                    <FilterDropdown label="All Payment Types" options={paymentTypeOptions} value={paymentType} onChange={setPaymentType} />
+                    <FilterDropdown
+                        label="All Payment Types"
+                        options={paymentTypeOptions}
+                        value={paymentType}
+                        onChange={(v) => { setPaymentType(v); setPage(1); }}
+                    />
                 </div>
             </div>
 
             {/* list */}
-            <div className="overflow-x-auto border border-slate-200/80 rounded-xl shadow-xs bg-white">
+            <div className={`overflow-x-auto border border-slate-200/80 rounded-xl shadow-xs bg-white transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
                 <table className="w-full text-left table-fixed">
                     <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                         <tr>
                             <th className="px-6 py-4.5 w-65">Vehicle</th>
-                            <th className="px-6 py-4.5 w-45">Buyer</th>
+                            <th className="px-6 py-4.5 w-40">Buyer</th>
                             <th className="px-6 py-4.5 w-35">Sale Date</th>
-                            <th className="px-6 py-4.5 w-30">Sale Price</th>
-                            <th className="px-6 py-4.5 w-30">Commission</th>
+                            <th className="px-6 py-4.5 w-35">Sale Price</th>
+                            <th className="px-6 py-4.5 w-35">Commission</th>
                             <th className="px-6 py-4.5 w-40">Payout Amount</th>
                             <th className="px-6 py-4.5 w-40">Payout Date</th>
-                            <th className="px-6 py-4.5 w-40">Invoice No.</th>
-                            <th className="px-6 py-4.5 w-30">Status</th>
+                            <th className="px-6 py-4.5 w-30">Type</th>
+                            <th className="px-6 py-4.5 w-35">Status</th>
                             <th className="px-6 py-4.5 w-30">Actions</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        {salesHistoryData.map((sales) => (
-                            <tr
-                                key={sales.id}
-                                className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'
-                            >
-                                {/* Vehicle */}
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-3">
-                                        <img
-                                            src={sales.vehicleImage}
-                                            alt={sales.vehicle}
-                                            className="w-15 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-900">{sales.vehicle}</p>
-                                            <p className="text-xs text-slate-400">Stock ID: {sales.stockId}</p>
-                                        </div>
-                                    </div>
-                                </td>
+                        {isLoading ? (
+                            <tr><td colSpan={10} className="px-6 py-14 text-center text-sm text-slate-500">Loading sales...</td></tr>
+                        ) : isError ? (
+                            <tr><td colSpan={10} className="px-6 py-14 text-center text-sm text-red-600">Could not load sales. Please refresh the page.</td></tr>
+                        ) : sales.length === 0 ? (
+                            <tr><td colSpan={10} className="px-6 py-14 text-center text-sm text-slate-500">No sales found.</td></tr>
+                        ) : (
+                            sales.map((sale) => {
+                                const v = sale.vehicle || {};
+                                const title = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle';
+                                const image = imgOf(v);
+                                const meta = STATUS_META[sale.status] || STATUS_META.cancelled;
+                                const saleDate = sale.paidAt || sale.createdAt;
 
-                                {/* Buyer */}
-                                <td className="py-4 px-4">
-                                    <p className="text-sm font-medium text-slate-900">{sales.buyerName}</p>
-                                    <p className="text-xs text-slate-400">{sales.buyerEmail}</p>
-                                </td>
+                                return (
+                                    <tr key={sale._id} className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'>
+                                        {/* Vehicle */}
+                                        <td className="py-4 px-4">
+                                            <div className="flex items-center gap-3">
+                                                {image ? (
+                                                    <img src={image} alt={title} className="w-15 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                                                ) : (
+                                                    <div className="w-15 h-10 rounded-lg border border-slate-200 bg-slate-100 shrink-0" />
+                                                )}
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-900">{title}</p>
+                                                    <p className="text-xs text-slate-400">Stock ID: {sale.listingId || '—'}</p>
+                                                </div>
+                                            </div>
+                                        </td>
 
-                                {/* Sale Date & Time */}
-                                <td className="py-4 px-4">
-                                    <p className="text-sm text-slate-900">{sales.saleDate}</p>
-                                    <p className="text-xs text-slate-400">{sales.saleTime}</p>
-                                </td>
+                                        {/* Buyer (sirf naam) */}
+                                        <td className="py-4 px-4">
+                                            <p className="text-sm font-medium text-slate-900">{sale.buyerName}</p>
+                                        </td>
 
-                                {/* Sale Price */}
-                                <td className="py-4 px-4 text-sm font-semibold text-slate-900">
-                                    ${sales.salePrice.toLocaleString()}
-                                </td>
+                                        {/* Sale Date */}
+                                        <td className="py-4 px-4">
+                                            <p className="text-sm text-slate-900">{fmtDate(saleDate)}</p>
+                                            <p className="text-xs text-slate-400">
+                                                {sale.paidAt ? fmtTime(saleDate) : 'Awaiting payment'}
+                                            </p>
+                                        </td>
 
-                                {/* Commission */}
-                                <td className="pl-6 py-4 px-">
-                                    <p className="text-sm text-slate-900">${sales.commissionAmount.toLocaleString()}</p>
-                                    <p className="text-xs text-slate-400">({sales.commissionRate}%)</p>
-                                </td>
+                                        {/* Sale Price */}
+                                        <td className="py-4 px-4 text-sm font-semibold text-slate-900">{money(sale.amount)}</td>
 
-                                {/* Payout Amount */}
-                                <td className="py-4 px-4 text-sm font-semibold text-slate-900">
-                                    {sales.payoutAmount ? `$${sales.payoutAmount.toLocaleString()}` : "—"}
-                                </td>
+                                        {/* Commission */}
+                                        <td className="py-4 px-4">
+                                            {sale.payout ? (
+                                                <>
+                                                    <p className="text-sm text-slate-900">{money(sale.payout.commissionAmount)}</p>
+                                                    <p className="text-xs text-slate-400">({sale.payout.commissionPercent}%)</p>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm text-slate-400">—</span>
+                                            )}
+                                        </td>
 
-                                {/* payout Date & Time */}
-                                <td className="py-4 px-4">
-                                    <p className="text-sm text-slate-900">{sales.payoutDate}</p>
-                                    <p className="text-xs text-slate-400">{sales.payoutTime}</p>
-                                </td>
+                                        {/* Payout Amount */}
+                                        <td className="py-4 px-4 text-sm font-semibold text-slate-900">
+                                            {sale.payout ? money(sale.payout.netAmount) : '—'}
+                                        </td>
 
-                                {/* invoice */}
-                                <td className="py-4 px-4 text-[13px] font-semibold text-slate-900">
-                                    {sales.invoiceNo}
-                                </td>
+                                        {/* Payout Date (transfer hone ke baad) */}
+                                        <td className="py-4 px-4">
+                                            {sale.payout?.paidAt ? (
+                                                <>
+                                                    <p className="text-sm text-slate-900">{fmtDate(sale.payout.paidAt)}</p>
+                                                    <p className="text-xs text-slate-400">{fmtTime(sale.payout.paidAt)}</p>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm text-slate-400">—</span>
+                                            )}
+                                        </td>
 
-                                {/* status */}
-                                <td className="px-6 py-4.5">
-                                    <span
-                                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${sales.status === 'completed'
-                                                ? 'bg-green-100 text-green-700'
-                                                : sales.status === 'sold'
-                                                    ? 'bg-blue-100 text-blue-700'
-                                                    : sales.status === 'pending'
-                                                        ? 'bg-orange-100 text-orange-700'
-                                                        : sales.status === 'overdue'
-                                                            ? 'bg-red-100 text-red-700'
-                                                            : 'bg-gray-100 text-gray-600' // cancelled
-                                                }`}
-                                        >
-                                            {sales.status === 'sold' && 'Sold'}
-                                            {sales.status === 'pending' && 'Pending'}
-                                            {sales.status === 'completed' && 'Completed'}
-                                            {sales.status === 'overdue' && 'Overdue'}
-                                            {sales.status === 'cancelled' && 'Cancelled'}
-                                        </span>
-                                </td>
+                                        {/* Type */}
+                                        <td className="py-4 px-4 text-[13px] font-semibold text-slate-900">
+                                            {SOURCE_LABEL[sale.source] || sale.source}
+                                        </td>
 
-                                {/* Action / View Details */}
-                                <td className="py-4 px-4 text-right">
-                                    <button 
-                                    onClick={() => {
-                                        setSelectedSalesId(sales.id)
-                                        setCurrentPage('sales-history-detail')
-                                    }}
-                                    className="px-2 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
-                                        View Details
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                                        {/* Status */}
+                                        <td className="px-6 py-4.5">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${meta.cls}`}>
+                                                {meta.label}
+                                            </span>
+                                        </td>
+
+                                        {/* Action */}
+                                        <td className="py-4 px-4 text-right">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedSalesId(sale._id);
+                                                    setCurrentPage('sales-history-detail');
+                                                }}
+                                                className="px-2 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                                            >
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
                     </tbody>
                 </table>
-            </div>
 
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                        {/* Page Info */}
+                        <p className="hidden sm:block text-xs text-slate-500">
+                            Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                            <span className="font-semibold text-[#0B1E3D]">{pagination.totalPages}</span>
+                        </p>
+
+                        {/* Pagination */}
+                        <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                            {/* Previous */}
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => p - 1)}
+                                disabled={page === 1}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            >
+                                Previous
+                            </button>
+
+                            {/* Page Numbers */}
+                            {getPaginationRange(page, totalPages).map((num, idx) =>
+                                num === "..." ? (
+                                    <span
+                                        key={`dot-${idx}`}
+                                        className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                    >
+                                        ...
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        key={num}
+                                        onClick={() => setPage(num)}
+                                        className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                                ${page === num
+                                                ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                            }`}
+                                    >
+                                        {num}
+                                    </button>
+                                )
+                            )}
+
+                            {/* Next */}
+                            <button
+                                type="button"
+                                onClick={() => setPage((p) => p + 1)}
+                                disabled={page === totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                            >
+                                Next
+                            </button>
+
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
-    )
+    );
 }
 
-export default SalesHistory
+export default SalesHistory;

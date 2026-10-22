@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Car, Gavel, FileText, History, Wallet, Heart, MessageSquare, UserCog, HelpCircle, LogOut, CarFront, ChevronDown, Plus } from "lucide-react";
+import { LayoutDashboard, Car, Gavel, FileText, History, Wallet, Heart, MessageSquare, UserCog, HelpCircle, LogOut, CarFront, ChevronDown, Plus, ShoppingBag } from "lucide-react";
 
 import { useSellerGet } from '../../hook/useSeller';
 
@@ -28,6 +28,12 @@ const menuItems = [
         id: "bids-offers",
         icon: FileText,
         label: "My Bids & Offers",
+        active: false,
+    },
+    {
+        id: "my-purchases",
+        icon: ShoppingBag,
+        label: "My Purchases",
         active: false,
     },
     {

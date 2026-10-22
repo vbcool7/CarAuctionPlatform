@@ -4,22 +4,30 @@ import API from "../api/axiosInstance";
 
 // all sales
 export const useGetAllSales = (filters = {}) => {
-
-    const { page = 1, limit = 10, search = '', saleType = 'all', status = 'all', startDate = '', endDate = '', sortBy = 'newest', } = filters;
-
+ 
+    const {
+        page = 1,
+        limit = 10,
+        search = '',
+        saleType = '',
+        status = '',
+        sortBy = 'newest',
+        startDate = '',
+        endDate = '',
+    } = filters;
+ 
     return useQuery({
-        queryKey: ['allSales', page, limit, search, saleType, status, startDate, endDate, sortBy],
+        queryKey: ['allSales', page, limit, search, saleType, status, sortBy, startDate, endDate],
         queryFn: async () => {
-
-            const params = new URLSearchParams({ page, limit, sortBy });
-
-            if (search) params.set('search', search);
-            if (saleType !== 'all') params.set('saleType', saleType);
-            if (status !== 'all') params.set('status', status);
-            if (startDate) params.set('startDate', startDate);
-            if (endDate) params.set('endDate', endDate);
-
-            const res = await API.get(`/admin/all-sales?${params.toString()}`);
+            const params = { page, limit, sortBy };
+ 
+            if (search) params.search = search;
+            if (saleType) params.saleType = saleType;
+            if (status) params.status = status;
+            if (startDate) params.startDate = startDate;
+            if (endDate) params.endDate = endDate;
+ 
+            const res = await API.get('/admin/get-all-sales', { params });
             return res.data;
         },
         placeholderData: keepPreviousData,

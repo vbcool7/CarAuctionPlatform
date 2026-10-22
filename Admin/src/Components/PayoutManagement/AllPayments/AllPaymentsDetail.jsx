@@ -15,6 +15,7 @@ const TIMELINE_TEMPLATES = {
         { step: "Receipt Generated", state: "done", date: p.receiptDate, time: p.receiptTime, description: "Receipt generated for this payment" },
         { step: "Seller Payout Scheduled", state: "done", date: p.payoutDate, time: p.payoutTime, description: `Payout scheduled to seller via ${p.payoutMethod || p.method}` },
     ],
+
     Pending: (p) => [
         { step: "Payment Initiated", state: "active", date: p.initiatedDate, time: p.initiatedTime, description: `Payment initiated by ${p.initiatedBy}` },
         { step: "Payment Processing", state: "pending", date: null, time: null, description: "Pending" },
@@ -22,6 +23,7 @@ const TIMELINE_TEMPLATES = {
         { step: "Receipt Generation", state: "pending", date: null, time: null, description: "Pending" },
         { step: "Seller Payout", state: "pending", date: null, time: null, description: "Pending" },
     ],
+
     Failed: (p) => [
         { step: "Payment Initiated", state: "done", date: p.initiatedDate, time: p.initiatedTime, description: `Payment initiated by ${p.initiatedBy}` },
         { step: "Payment Processing", state: "done", date: p.processingDate, time: p.processingTime, description: `Processing with ${p.processor || "gateway"}` },
@@ -29,6 +31,7 @@ const TIMELINE_TEMPLATES = {
         { step: "Refund (if any)", state: "na", date: null, time: null, description: "Not applicable" },
         { step: "Seller Payout", state: "na", date: null, time: null, description: "Not applicable" },
     ],
+    
     Refunded: (p) => [
         { step: "Payment Initiated", state: "done", date: p.initiatedDate, time: p.initiatedTime, description: `Payment initiated by ${p.initiatedBy}` },
         { step: "Payment Processing", state: "done", date: p.processingDate, time: p.processingTime, description: "Payment captured successfully" },

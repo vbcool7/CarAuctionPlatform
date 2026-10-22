@@ -11,8 +11,9 @@ import {
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getUpcomingAuctionsCalendar, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction,
     getAllBids, getBidDetail, getBidStats, getTopBidders,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
-    getAllPayouts,
-    cancelAndRefundOrder, confirmHandover, markPayoutPaid, rejectPayoutRequest, 
+    getAllPayouts, getPayoutById, cancelAndRefundOrder, confirmHandover, markPayoutPaid, rejectPayoutRequest, 
+    getAllSales, 
+    adminDashboardStats, 
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -150,11 +151,18 @@ router.get('/top-bidders', authMiddleware(['admin', 'auctionManager']), requireP
 
 // ============================ PAYOUT
 router.get('/get-all-payouts', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), getAllPayouts);
+router.get('/payout-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), getPayoutById);
 router.patch('/confirm-handover/:orderId', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), confirmHandover);
 router.patch('/mark-payout-paid/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), markPayoutPaid);
 router.patch('/reject-payout-request/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayouts'), rejectPayoutRequest);
 
+// ============================ SALES
+   router.get('/get-all-sales', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllSales);
+
 // ============================ REFUND
 router.post('/cancel-refund/:id', authMiddleware(['admin']), cancelAndRefundOrder);
+
+// ============================ DASHBOARD STATS
+router.get('/admin-dashboard-stats', authMiddleware(['admin']), adminDashboardStats);
 
 export default router;

@@ -13,11 +13,11 @@ export const useCreateCheckoutSession = () => {
 };
 
 // get my orders
-export const useGetMyOrders = (page = 1, limit = 10, status = '', source = '') => {
+export const useGetMyOrders = (page = 1, limit = 10, status = '', source = '', handover = '', search = '') => {
     return useQuery({
-        queryKey: ['my-orders', page, limit, status, source],
+        queryKey: ['my-orders', page, limit, status, source, handover, search],
         queryFn: async () => {
-            const res = await API.get('/payment/get-my-orders', { params: { page, limit, status, source } });
+            const res = await API.get('/payment/get-my-orders', { params: { page, limit, status, source, handover, search } });
             return res.data;
         },
         placeholderData: (previousData) => previousData,

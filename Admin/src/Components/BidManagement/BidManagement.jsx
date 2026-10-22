@@ -317,9 +317,7 @@ function BidManagement({ setCurrentPage, setSelectedBidId }) {
                         className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
-
                 </div>
-
             </div>
 
             {/* main section */}

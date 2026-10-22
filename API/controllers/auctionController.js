@@ -218,7 +218,7 @@ export const runPaymentExpiry = async () => {
             await notifySafe({
                 recipientId: order.buyerId,
                 recipientType: order.buyerType,
-                type: 'payment_expired',
+                type: 'purchase_expired',
                 vehicleId: order.vehicleId,
                 title: 'Payment window expired',
                 message: `Payment for ${order.listingId} was not completed within 48 hours, so the purchase has expired.`,
@@ -252,94 +252,6 @@ export const runPaymentExpiry = async () => {
  
     return expiredCount;
 };
-
-// RESERVE PRICE - Moves live auctions to sold/unsold/reserve-not-met when end time passes
-// export const runAuctionEndUpdate = async () => {
-//     const now = new Date();
-
-//     const admin = await Admin.findOne();
-
-//     const vehiclesToClose = await Vehicle.find({
-//         auctionStatus: 'live',
-//         priceType: 'reserve_price',
-//         auctionEndDateTime: { $lte: now },
-//     });
-
-//     let updatedCount = 0;
-
-//     for (const vehicle of vehiclesToClose) {
-//         const winningBid = await Bid.findOne({
-//             vehicleId: vehicle._id,
-//             status: 'active',
-//         });
-
-//         let notifType, notifTitle, notifMessage;
-
-//         if (!winningBid) {
-//             vehicle.auctionStatus = 'unsold';
-//             notifType = 'auction_unsold';
-//             notifTitle = 'Auction Unsold';
-//             notifMessage = `${vehicle.listingId} was not sold because no bids were received.`;
-
-//         } else if (vehicle.currentBid < vehicle.reservePrice) {
-//             vehicle.auctionStatus = 'reserve-not-met';
-//             notifType = 'reserve_not_met';
-//             notifTitle = 'Reserve Price Not Met';
-//             notifMessage = `${vehicle.listingId} did not meet the reserve price.`;
-
-//         } else {
-//             vehicle.auctionStatus = 'sold';
-//             vehicle.soldOn = new Date();
-
-//             winningBid.status = 'won';
-//             await winningBid.save();
-
-//             // payout create 
-//             try {
-//                 await createPayoutForSale({
-//                     vehicleId: vehicle._id,
-//                     sellerId: vehicle.sellerId,
-//                     buyerId: winningBid.bidderId,
-//                     buyerType: winningBid.bidderType,
-//                     saleAmount: winningBid.amount,
-//                     saleType: 'Bid',
-//                     sourceId: winningBid._id,
-//                 });
-//             } catch (payoutErr) {
-//                 console.error('CRITICAL: Payout creation failed for vehicle', vehicle._id, payoutErr);
-//             }
-
-//             notifType = 'auction_sold';
-//             notifTitle = 'Your vehicle has been sold';
-//             notifMessage = `${vehicle.listingId} was sold for AED ${winningBid.amount}.`;
-//         }
-
-//         await vehicle.save();
-//         updatedCount++;
-
-//         await createNotification({
-//             recipientId: vehicle.sellerId,
-//             recipientType: 'Seller',
-//             type: notifType,
-//             vehicleId: vehicle._id,
-//             title: notifTitle,
-//             message: notifMessage,
-//         });
-
-//         // ---- ADMIN NOTIFICATION (naya, sirf sold case me) ----
-//         if (notifType === 'auction_sold' && admin) {
-//             await createNotification({
-//                 recipientId: admin._id,
-//                 recipientType: 'Admin',
-//                 type: 'auction_sold',
-//                 vehicleId: vehicle._id,
-//                 title: 'Vehicle Sold',
-//                 message: `${vehicle.listingId} was sold for AED ${winningBid.amount}.`,
-//             });
-//         }
-//     }
-//     return updatedCount;
-// };
 
 // FIXED PRICE - Moves live fixed_price vehicles to 'unsold' when the auction window expires without a purchase
 export const runFixedPriceExpiry = async () => {

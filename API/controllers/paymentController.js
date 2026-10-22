@@ -19,7 +19,7 @@ const notifySafe = async (payload) => {
 };
 
 const MIN_CHECKOUT_MS = 31 * 60 * 1000;      // Stripe session min 30 min jeeta hai
-const MAX_CHECKOUT_MS = 24 * 60 * 60 * 1000; // Stripe session max 24 ghante
+const MAX_CHECKOUT_MS = 23 * 60 * 60 * 1000; // Stripe session max 24 ghante
 
 const roleToType = (role) => (role === 'buyer' ? 'Buyer' : role === 'seller' ? 'Seller' : null);
 
@@ -133,14 +133,13 @@ export const createCheckoutSession = async (req, res) => {
 };
 
 // ============ Webhook: payment confirm (raw body chahiye) ============
-export const refundPayment = async (req, res) => {
+const refundPayment = async (paymentIntentId, reason) => {
     try {
         await getStripe().refunds.create(
             { payment_intent: paymentIntentId, metadata: { reason } },
             { idempotencyKey: `refund_${paymentIntentId}` }
         );
         return true;
-
     } catch (err) {
         console.error('[payment] refund failed for', paymentIntentId, err.message);
         return false;
@@ -213,11 +212,13 @@ const processPaidSession = async (session) => {
             vehicleId: paid.vehicleId, title: 'Payment successful',
             message: `We received your payment of AED ${paid.amount} for ${paid.listingId}.`,
         });
+
         await notifySafe({
             recipientId: paid.sellerId, recipientType: 'Seller', type: 'auction_sold',
             vehicleId: paid.vehicleId, title: 'Your vehicle has been sold',
             message: `${paid.listingId} was sold for AED ${paid.amount}.`,
         });
+
         await adminNotify('Vehicle Sold', `${paid.listingId} was sold for AED ${paid.amount} (Order ${paid.orderId}).`);
 
         if (!vehicleUpdated) {
@@ -225,12 +226,13 @@ const processPaidSession = async (session) => {
         }
 
         // payout create
-        // return { outcome: 'paid', orderId: paid._id };
         try {
             await createPayoutForOrder(paid);
         } catch (payoutErr) {
             console.error('CRITICAL: payout creation failed for order', paid.orderId, payoutErr);
         }
+
+        return { outcome: 'paid', orderId: paid._id };
     }
 
     // Order pending nahi tha. Ye same payment ka webhook RETRY hai ya alag (late / duplicate) payment?
@@ -252,13 +254,14 @@ const processPaidSession = async (session) => {
     await notifySafe({
         recipientId: order.buyerId,
         recipientType: order.buyerType,
-        type: 'payment_expired',
+        type: 'purchase_expired',
         vehicleId: order.vehicleId,
         title: refunded ? 'Payment refunded' : 'Payment received after expiry',
         message: refunded
             ? `Your payment for ${order.listingId} arrived after the order was no longer valid, so it is being refunded.`
             : `Your payment for ${order.listingId} arrived after the order was no longer valid. Support will refund you.`,
     });
+
     await adminNotify(
         refunded ? 'Late/duplicate payment refunded' : 'Late/duplicate payment - REFUND MANUALLY',
         `Order ${order.orderId} (${order.status}). PaymentIntent ${pi}.`
@@ -412,7 +415,15 @@ export const getMyOrders = async (req, res) => {
 
         const filter = { buyerId: req.user.id, buyerType: userType };
         if (req.query.status) filter.status = req.query.status;
-        if (req.query.source) filter.source = req.query.source;;
+        if (req.query.source) filter.source = req.query.source;
+
+        if (req.query.handover === 'confirmed' || req.query.handover === 'pending') {
+            filter['handover.status'] = req.query.handover;
+        }
+        if (typeof req.query.search === 'string' && req.query.search.trim()) {
+            const q = req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.$or = [{ orderId: new RegExp(q, 'i') }, { listingId: new RegExp(q, 'i') }];
+        }
 
         const [orders, total] = await Promise.all([
             Order.find(filter)

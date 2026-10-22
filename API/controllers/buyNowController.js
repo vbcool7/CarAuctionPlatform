@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Order, { PAYMENT_WINDOW_MS } from '../models/orderModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
+import Seller from '../models/sellerModelSchema.js';
 
 import { createNotification } from '../services/notificationService.js';
 
@@ -32,11 +33,25 @@ export const buyNow = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Valid vehicleId is required' });
         }
 
-        // buyer approved + active hona chahiye (authMiddleware buyer ka DB check nahi karta)
         if (buyerType === 'Buyer') {
             const buyer = await Buyer.findById(userId).select('status accountStatus').lean();
+
             if (!buyer || buyer.status !== 'approved' || buyer.accountStatus === 'suspended') {
-                return res.status(403).json({ success: false, message: 'Your account is not eligible to buy' });
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account is not eligible to buy'
+                });
+            }
+        }
+
+        if (buyerType === 'Seller') {
+            const seller = await Seller.findById(userId).select('status accountStatus').lean();
+
+            if (!seller || seller.status !== 'approved' || seller.accountStatus === 'suspended') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Your account is not eligible to buy'
+                });
             }
         }
 
@@ -88,6 +103,7 @@ export const buyNow = async (req, res) => {
 
         const dueAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
         let order;
+
         try {
             order = await Order.create({
                 vehicleId: vehicle._id,
@@ -104,15 +120,14 @@ export const buyNow = async (req, res) => {
                     note: `Buy Now started at AED ${vehicle.buyNowPrice}`,
                 }],
             });
-        } catch (orderErr) {
 
-            console.error('[auction-cron] Order create failed:', {
+        } catch (orderErr) {
+            console.error('[buyNow] Order create failed:', {
                 vehicleId: vehicle._id,
-                bidderId: winningBid.bidderId,
-                bidderType: winningBid.bidderType,
+                buyerId: userId,
+                buyerType,
                 code: orderErr?.code,
                 message: orderErr?.message,
-                errors: orderErr?.errors,
             });
 
             // Order nahi bana: car ko wapas live karo
@@ -132,7 +147,7 @@ export const buyNow = async (req, res) => {
         await notifySafe({
             recipientId: userId,
             recipientType: buyerType,
-            type: 'payment_pending',
+            type: 'purchase_pending',
             vehicleId: vehicle._id,
             title: 'Complete your purchase',
             message: `${vehicle.listingId} is reserved for you at AED ${vehicle.buyNowPrice}. Complete payment before ${dueText} (UAE time).`,
