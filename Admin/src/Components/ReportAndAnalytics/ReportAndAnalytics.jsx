@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
-import { BadgeDollarSign, BadgePercent, Calendar, CarFront, ChartNoAxesCombined, ChevronDown, CircleCheck, Clock3, Info, Timer } from 'lucide-react';
-import { Users, Gavel, Wallet, TrendingUp, ArrowUp } from 'lucide-react';
+import { BadgeDollarSign, BadgePercent, Calendar, CarFront, ChartNoAxesCombined, Users, ArrowUp, ChevronDown, CircleCheck, Clock3, Timer } from 'lucide-react';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa';
 import { LineChart, Line, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
@@ -454,16 +453,12 @@ function ReportAndAnalytics({ setCurrentPage }) {
 
     return (
         <div className='space-y-'>
+
             {/* Header */}
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex-1">
-                    <h1 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl">
-                        Report & Analytics
-                    </h1>
-
-                    <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-                        Comprehensive insights and analytics for your auction platform.
-                    </p>
+                    <h1 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl">Report & Analytics</h1>
+                    <p className="mt-2 text-xs text-slate-500 sm:text-sm">Comprehensive insights and analytics for your auction platform.</p>
                 </div>
 
                 {/* buttons */}
@@ -503,15 +498,14 @@ function ReportAndAnalytics({ setCurrentPage }) {
                     <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
 
                         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <h3 className="text-[13px] font-bold text-[#0B1E3D] sm:text-base">
-                                Revenue Overview (AED)
-                            </h3>
+                            <h3 className="text-[13px] font-bold text-[#0B1E3D] sm:text-base">Revenue Overview (AED)</h3>
 
                             <button className="flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 sm:w-auto sm:justify-start sm:py-1.5">
                                 <span>{range}</span>
                                 <ChevronDown className="h-3.5 w-3.5" />
                             </button>
                         </div>
+
                         {/* Chart */}
                         <div className="h-56 w-full md:h-64">
                             <ResponsiveContainer width="100%" height="100%">
@@ -570,9 +564,7 @@ function ReportAndAnalytics({ setCurrentPage }) {
                     {/* ============== User Growth ============= */}
                     <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
                         <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-base font-bold text-[#0B1E3D]">
-                                User Growth
-                            </h3>
+                            <h3 className="text-base font-bold text-[#0B1E3D]">User Growth</h3>
 
                             <button className="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
                                 <span>{range}</span>
@@ -644,9 +636,7 @@ function ReportAndAnalytics({ setCurrentPage }) {
                     {/* ============== Bid Activity ============= */}
                     <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
                         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <h3 className="text-[13px] font-bold text-[#0B1E3D] sm:text-base">
-                                Bid Activity
-                            </h3>
+                            <h3 className="text-[13px] font-bold text-[#0B1E3D] sm:text-base">Bid Activity</h3>
 
                             <button className="flex w-full items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 sm:w-auto sm:justify-start sm:py-1.5">
                                 <span>{bidActivity}</span>
@@ -744,9 +734,7 @@ function ReportAndAnalytics({ setCurrentPage }) {
                 />
 
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm md:p-5">
-                    <h3 className="text-sm font-semibold text-[#0B1E3D] md:text-base">
-                        Key Insights
-                    </h3>
+                    <h3 className="text-sm font-semibold text-[#0B1E3D] md:text-base">Key Insights</h3>
 
                     <div className="mt-4 space-y-4">
                         {insights.map((item) => {

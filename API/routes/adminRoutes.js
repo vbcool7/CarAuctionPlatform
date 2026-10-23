@@ -11,8 +11,10 @@ import {
     getAllAuctions, getAuctionDetail, getAllAuctionStats, getUpcomingAuctionsCalendar, getLiveAuctionStats, getUpcomingAuctionStats, getCompletedAuctionStats, getCanceledAuctionStats, rescheduleAuction,
     getAllBids, getBidDetail, getBidStats, getTopBidders,
     addManager, getAllManagers, getManagerById, editManagerPermissions, toggleManagerStatus,
-    getAllPayouts, getPayoutById, cancelAndRefundOrder, confirmHandover, markPayoutPaid, rejectPayoutRequest, 
+    getAllPayouts, getPayoutById, confirmHandover, markPayoutPaid, rejectPayoutRequest, 
+    cancelAndRefundOrder, getAllRefunds, getRefundById,
     getAllSales, 
+    getAllPayments, getPaymentById,
     adminDashboardStats, 
 } from '../controllers/adminController.js';
 
@@ -161,6 +163,12 @@ router.patch('/reject-payout-request/:id', authMiddleware(['admin', 'auctionMana
 
 // ============================ REFUND
 router.post('/cancel-refund/:id', authMiddleware(['admin']), cancelAndRefundOrder);
+router.get('/get-all-refunds', authMiddleware(['admin']), getAllRefunds);
+router.get('/refund-detail/:id', authMiddleware(['admin']), getRefundById);
+
+// ============================ PAYMENT
+router.get('/get-all-payments', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllPayments);
+router.get('/payment-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getPaymentById);
 
 // ============================ DASHBOARD STATS
 router.get('/admin-dashboard-stats', authMiddleware(['admin']), adminDashboardStats);

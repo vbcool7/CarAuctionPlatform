@@ -1,82 +1,75 @@
 
 import React from 'react';
-import { ChevronRight, Download, CheckCircle, RefreshCw, Mail, User, Clock, FileText, XCircle, Circle } from 'lucide-react';
-import { allRefunds } from '../../Data';
-import { payoutsList } from '../../Data';
+import { ChevronRight, ArrowLeft, CheckCircle, XCircle, Clock, Circle, AlertTriangle, ExternalLink } from 'lucide-react';
 
-function RefundBreakdown({ record, total }) {
-    const { winningAmount, platformFeePercent, platformFee, paymentProcessingFee, otherDeductions } = record.breakdown;
+import { formatLabel, formatPrice, fmtDate, fmtTime } from '../../utils/formatter';
+import { useGetRefundDetail } from '../../../hooks/useRefund';;
+
+const STATUS_META = {
+    completed: { label: 'Completed', cls: 'bg-green-100 text-green-700' },
+    pending: { label: 'Pending', cls: 'bg-amber-100 text-amber-700' },
+    failed: { label: 'Failed', cls: 'bg-red-100 text-red-700' },
+};
+
+const KIND_LABEL = {
+    admin: 'Admin Cancel',
+    late: 'Late Payment',
+    duplicate: 'Duplicate Payment',
+    mismatch: 'Amount Mismatch',
+    auto_failed: 'Auto-Refund Failed',
+};  
+
+const humanize = (s) => String(s || '').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+
+const FAILED_STATUSES = ['refund_failed'];
+
+function Row({ label, value }) {
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">Refund Breakdown</h3>
-            <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                    <span className="text-slate-500">Winning Amount</span>
-                    <span className="font-medium text-slate-700">${winningAmount.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500">Platform Fee ({platformFeePercent}%)</span>
-                    <span className="font-medium text-red-500">-${platformFee.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500">Payment Processing Fee</span>
-                    <span className="font-medium text-red-500">-${paymentProcessingFee.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-500">Other Deductions</span>
-                    <span className="text-red-500 font-medium">-${otherDeductions.toLocaleString()}.00</span>
-                </div>
-            </div>
-            <div className="border-t border-slate-100 mt-3 pt-3 flex justify-between">
-                <span className="text-sm font-semibold text-[#0B1E3D]">Total Refund</span>
-                <span className="text-sm font-semibold text-green-600">${total.toLocaleString()}.00</span>
-            </div>
+        <div className="flex justify-between gap-4">
+            <span className="text-slate-500 shrink-0">{label}</span>
+            <span className="font-medium text-slate-700 text-right break-all">{value || '—'}</span>
         </div>
-    )
+    );
 }
 
-function RefundsDetail({ refundId, setCurrentPage }) {
+function RefundsDetail({ refundId, setCurrentPage, setSelectedPaymentId }) {
 
-    const record = allRefunds.find(r => r.refundId === refundId);
+    const { data, isLoading, isError } = useGetRefundDetail(refundId);
+    const record = data?.refund;
 
-    if (!record) {
+    const backBtn = (
+        <button
+            onClick={() => setCurrentPage('refunds')}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-[#D97706] hover:bg-amber-50 hover:text-[#D97706]"
+        >
+            <ArrowLeft size={16} />
+            <span>Back to Refunds</span>
+        </button>
+    );
+
+    if (isLoading) return <p className="p-10 text-center">Loading refund....</p>;
+
+    if (isError || !record) {
         return (
             <div className="p-6">
                 <p className="text-sm text-slate-500">Refund not found.</p>
-                <button
-                    onClick={() => setCurrentPage('refunds')}
-                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:border-[#D97706] hover:bg-amber-50 hover:text-[#D97706]"
-                >
-                    <ArrowLeft size={16} />
-                    <span>Back to Refunds</span>
-                </button>
+                {backBtn}
             </div>
         );
     }
 
-    const originalPayout = payoutsList.find(p => p.payoutId === record.payoutId);
-    const total = record.breakdown.winningAmount - record.breakdown.platformFee - record.breakdown.paymentProcessingFee - record.breakdown.otherDeductions;
+    const status = STATUS_META[record.status] || STATUS_META.pending;
+    const order = record.order;
 
-    const statusClasses = {
-        Completed: "bg-green-100 text-green-700",
-        Pending: "bg-amber-100 text-amber-700",
-        Cancelled: "bg-purple-100 text-purple-700",
-        Failed: "bg-red-100 text-red-700"
-    }[record.status] || "bg-slate-100 text-slate-600";
-
-    const ACTION_CONFIG = {
-        Pending: { label: "Approve Refund", icon: CheckCircle, onClick: () => console.log("Approve refund", record.refundId) },
-        Failed: { label: "Retry Refund", icon: RefreshCw, onClick: () => console.log("Retry refund", record.refundId) },
-        Cancelled: null,
-        Completed: { label: record.userType === "Buyer" ? "Contact Buyer" : "Contact Seller", icon: Mail, onClick: () => console.log("Contact", record.userName) }
+    const openPayment = () => {
+        if (!order?._id) return;
+        setSelectedPaymentId(order._id);
+        setCurrentPage('all-payments-detail');
     };
-    const action = ACTION_CONFIG[record.status];
-
-    const REFUND_STEPS = ["Refund Requested", "Under Review", "Approved", "Refund Processed", "Completed"];
-    const reachedCount = record.timeline.length;
 
     return (
         <div className='pb-6'>
+
             {/* Header */}
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between pb-6">
                 <div>
@@ -90,7 +83,7 @@ function RefundsDetail({ refundId, setCurrentPage }) {
                         </span>
 
                         <span className="mx-1 text-slate-300"><ChevronRight size={16} /></span>
-                        <span className=" text-slate-500">Payment Management</span>
+                        <span className="text-slate-500">Payment Management</span>
 
                         <span className="mx-1 text-slate-300"><ChevronRight size={16} /></span>
                         <span
@@ -100,194 +93,219 @@ function RefundsDetail({ refundId, setCurrentPage }) {
                         </span>
 
                         <span className="mx-1 text-slate-300"><ChevronRight size={16} /></span>
-                        <span className="font-medium text-[#D97706]">
-                            Refund Detail
-                        </span>
+                        <span className="font-medium text-[#D97706]">Refund Detail</span>
                     </div>
                 </div>
 
-                {/* btns */}
-                <div className="">
-                    <button className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-transparent p-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
-                        <Download size={16} />
-                        <span className="text-[13px]">Download Receipt</span>
+                {order?._id && (
+                    <button
+                        onClick={openPayment}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-transparent p-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
+                        <ExternalLink size={16} />
+                        <span className="text-[13px]">View Payment</span>
                     </button>
-                </div>
+                )}
             </div>
 
+            {/* Failed alert */}
+            {record.status === 'failed' && !record.resolved && (
+                <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <AlertTriangle size={18} className="mt-0.5 text-red-500 shrink-0" />
+                    <div className="text-sm text-red-700">
+                        <p className="font-semibold">This refund did not go through. The buyer has not been refunded.</p>
+                        {record.failureNote && <p className="mt-1 text-[13px]">Gateway: {record.failureNote}</p>}
+                        {record.retryable
+                            ? <p className="mt-1 text-[13px]">The order is still paid. Open the payment and use Cancel &amp; Refund to try again.</p>
+                            : <p className="mt-1 text-[13px]">Check this payment in the Stripe dashboard and handle it manually.</p>}
+                    </div>
+                </div>
+            )}
+
+            {record.resolved && (
+                <div className="mb-6 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <CheckCircle size={18} className="mt-0.5 text-green-600 shrink-0" />
+                    <p className="text-sm text-green-700">This attempt failed, but the order was later canceled and refunded on retry.</p>
+                </div>
+            )}
+
             {/* Summary strip */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm grid grid-cols-2 md:grid-cols-5 gap-6 mb-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                 <div>
-                    <p className="text-[11px] text-slate-500">Refund ID</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.refundId}</p>
-                    <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${statusClasses}`}>{record.status}</span>
+                    <p className="text-[11px] text-slate-500">Order ID</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D]">{order?.orderId || '—'}</p>
+                    <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${status.cls}`}>{status.label}</span>
                 </div>
                 <div>
                     <p className="text-[11px] text-slate-500">Refund Type</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.refundType}</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D]">{KIND_LABEL[record.kind] || record.kind}</p>
                     <p className="mt-2 text-[11px] text-slate-500">Refund Amount</p>
-                    <p className="text-sm font-semibold text-green-600">${total.toLocaleString()}.00 USD</p>
+                    <p className="text-sm font-semibold text-green-600">
+                        {record.amount != null ? formatPrice(record.amount) : '—'}
+                    </p>
                 </div>
                 <div>
-                    <p className="text-[11px] text-slate-500">Original Payment Id</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.payoutId}</p>
-                    <p className="mt-2 text-[11px] text-slate-500">Payment Date</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.date}, {record.time}</p>
+                    <p className="text-[11px] text-slate-500">Original Payment</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D]">{order ? formatPrice(order.amount) : '—'}</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Paid On</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D]">
+                        {order?.paidAt ? `${fmtDate(order.paidAt)}, ${fmtTime(order.paidAt)}` : '—'}
+                    </p>
                 </div>
                 <div>
-                    <p className="text-[11px] text-slate-500">Refund Method</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.method}</p>
-                    <p className="mt-2 text-[11px] text-slate-500">Transaction ID</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.transactionId || '—'}</p>
+                    <p className="text-[11px] text-slate-500">Refund Date</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D]">{fmtDate(record.createdAt)}, {fmtTime(record.createdAt)}</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Stripe Refund ID</p>
+                    <p className="text-sm font-semibold text-[#0B1E3D] break-all">{record.stripeRefundId || '—'}</p>
                 </div>
-                <div>
-                    <p className="text-[11px] text-slate-500">Status</p>
-                    <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${statusClasses}`}>{record.status}</span>
-                    <p className="mt-2 text-[11px] text-slate-500">Completed Date</p>
-                    <p className="text-sm font-semibold text-[#0B1E3D]">{record.status === 'Completed' ? `${record.completedDate}, ${record.completedTime}` : '—'}</p>
-                </div>
-
             </div>
 
             {/* 3-column grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Left column */}
+                {/* Left */}
                 <div className="space-y-6">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">User / Seller Information</h3>
-                        <div className="flex items-center gap-3">
-                            <img
-                                src={record.avatarUrl}
-                                className="h-12 w-12 rounded-full object-cover" />
-
-                            <div>
-                                <p className="text-sm font-semibold text-[#0B1E3D]">{record.userName}</p>
-                                <p className="text-[11px] text-slate-500">{record.userEmail}</p>
-                                <p className="text-[11px] text-slate-500">{record.userPhone}</p>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 space-y-2 text-[12px]">
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">User ID</span>
-                                <span className='font-medium text-slate-700'>{record.userId}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">User Type</span>
-                                <span className='font-medium text-slate-700'>{record.userType}</span>
-                            </div>
-                            {record.businessName &&
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Business Name</span>
-                                    <span className='font-medium text-slate-700'>{record.businessName}</span>
-                                </div>
-                            }
-                            {record.tradeLicenseNo &&
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Trade License No.</span>
-                                    <span className='font-medium text-slate-700'>{record.tradeLicenseNo}</span>
-                                </div>
-                            }
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">Joined On</span>
-                                <span className='font-medium text-slate-700'>{record.joinedOn}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <RefundBreakdown record={record} total={total} />
-                </div>
-
-                {/* Middle column */}
-                <div className="space-y-6">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
-                            Refund Timeline
-                        </h3>
-                        <div className="space-y-4">
-                            {REFUND_STEPS.map((stepLabel, i) => {
-                                const done = i < reachedCount;
-                                const stuckHere = (record.status === 'Failed' || record.status === 'Cancelled') && i === record.stoppedAtStep;
-                                const entry = record.timeline[i];
-                                return (
-                                    <div
-                                        key={stepLabel}
-                                        className="flex items-start gap-3">
-                                        {stuckHere ? <XCircle size={18} className="text-red-500 mt-0.5" />
-                                            : done ? <CheckCircle size={18} className="text-green-500 mt-0.5" />
-                                                : <Circle size={18} className="text-slate-300 mt-0.5" />}
-                                        <div className="flex-1">
-                                            <p className={`text-[14px] font-medium ${done || stuckHere ? 'text-[#0B1E3D]' : 'text-slate-400'}`}>
-                                                {stepLabel}
-                                            </p>
-                                            {entry && <p className="text-[11px] text-slate-500">{entry.date}, {entry.time}</p>}
-                                        </div>
+                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">Buyer Information</h3>
+                        {record.buyer ? (
+                            <>
+                                <div className="flex items-center gap-3">
+                                    {record.buyer.image ? (
+                                        <img src={record.buyer.image} alt="" className="h-12 w-12 rounded-full object-cover" />
+                                    ) : (
+                                        <div className="h-12 w-12 rounded-full bg-slate-100" />
+                                    )}
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-[#0B1E3D] truncate">{record.buyer.name || '—'}</p>
+                                        <p className="text-[11px] text-slate-500 truncate">{record.buyer.email || '—'}</p>
+                                        <p className="text-[11px] text-slate-500">{record.buyer.phone || '—'}</p>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+
+                                <div className="mt-4 space-y-2 text-[12px]">
+                                    <Row label="User ID" value={record.buyer.readableId} />
+                                    <Row label="User Type" value={formatLabel(record.buyer.type)} />
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-sm text-slate-400">Buyer record not found.</p>
+                        )}
                     </div>
+
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">
-                            Reason for Refund
-                        </h3>
+                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">Refund Amount</h3>
+                        <div className="space-y-2 text-sm">
+                            <Row label="Original Payment" value={order ? formatPrice(order.amount) : null} />
+                            <Row label="Refunded" value={record.amount != null ? formatPrice(record.amount) : null} />
+                        </div>
+                        <p className="mt-3 text-[11px] text-slate-400">Refunds are always for the full order amount. No fees are deducted.</p>
+                    </div>
+                </div>
+
+                {/* Middle */}
+                <div className="space-y-6">
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">Timeline</h3>
+                        {record.timeline.length > 0 ? (
+                            <div className="space-y-4">
+                                {record.timeline.map((t, i) => {
+                                    const bad = FAILED_STATUSES.includes(t.status);
+                                    const good = ['refunded_admin', 'refunded_late', 'refunded_duplicate', 'amount_mismatch', 'paid', 'canceled', 'handover_confirmed'].includes(t.status);
+                                    return (
+                                        <div key={`${t.source}-${i}`} className="flex items-start gap-3">
+                                            {bad ? <XCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
+                                                : good ? <CheckCircle size={18} className="text-green-500 mt-0.5 shrink-0" />
+                                                    : <Clock size={18} className="text-slate-400 mt-0.5 shrink-0" />}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[14px] font-medium text-[#0B1E3D]">
+                                                    {humanize(t.status)}
+                                                    <span className="ml-2 text-[10px] font-semibold uppercase text-slate-400">{t.source === 'gateway' ? 'Gateway' : humanize(t.by)}</span>
+                                                </p>
+                                                <p className="text-[11px] text-slate-500">{fmtDate(t.at)}, {fmtTime(t.at)}</p>
+                                                {t.note && <p className="text-[12px] text-slate-500 mt-0.5 break-words">{t.note}</p>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 text-slate-400">
+                                <Circle size={18} />
+                                <p className="text-sm">No timeline available.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h3 className="mb-4 text-sm font-semibold text-[#0B1E3D]">Reason for Refund</h3>
                         <div className="space-y-3 text-sm">
-                            <div><p className="text-[11px] text-slate-500">Reason</p><p className="text-[#0B1E3D]">{record.reason || '—'}</p></div>
-                            <div><p className="text-[11px] text-slate-500">Details</p><p className="text-[#0B1E3D]">{record.details || '—'}</p></div>
-                            <div><p className="text-[11px] text-slate-500">Notes</p><p className="text-[#0B1E3D]">{record.notes || '—'}</p></div>
+                            <div>
+                                <p className="text-[11px] text-slate-500">Reason</p>
+                                <p className="text-[#0B1E3D] break-words">{record.reason || '—'}</p>
+                            </div>
+                            {record.refundedByName && (
+                                <div>
+                                    <p className="text-[11px] text-slate-500">Refunded By</p>
+                                    <p className="text-[#0B1E3D]">{record.refundedByName}</p>
+                                </div>
+                            )}
+                            {record.failureNote && (
+                                <div>
+                                    <p className="text-[11px] text-slate-500">Gateway Error</p>
+                                    <p className="text-red-600 break-words">{record.failureNote}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Right column */}
+                {/* Right */}
                 <div className="space-y-6">
                     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">Payment Details (Original)</h3>
-                        {originalPayout ? (
+                        {order ? (
                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Payment ID</span>
-                                    <span className="font-medium text-slate-700">{originalPayout.payoutId}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Type</span>
-                                    <span className="font-medium text-slate-700">{originalPayout.payoutType}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Method</span>
-                                    <span className="font-medium text-slate-700">{originalPayout.method}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Paid On</span>
-                                    <span className="font-medium text-slate-700">{originalPayout.date}, {originalPayout.time}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Transaction ID</span>
-                                    <span className="font-medium text-slate-700">{originalPayout.referenceId}</span>
-                                </div>
+                                <Row label="Order ID" value={order.orderId} />
+                                <Row label="Listing ID" value={order.listingId} />
+                                <Row label="Sale Type" value={order.source === 'auction' ? 'Auction' : 'Buy Now'} />
+                                <Row label="Order Status" value={formatLabel(order.status)} />
+                                <Row label="Payment Intent" value={record.stripePaymentIntentId} />
                             </div>
-                        ) : <p className="text-sm text-slate-400">Original payout record not found.</p>}
+                        ) : (
+                            <p className="text-sm text-slate-400">No order is linked to this refund event.</p>
+                        )}
                     </div>
 
-                    {/* document */}
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">Documents</h3>
-                        <div className="flex items-center gap-3 border border-slate-200 rounded-lg p-3">
-                            <FileText size={20} className="text-red-500" />
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-[#0B1E3D]">{record.document.name}</p>
-                                <p className="text-[11px] text-slate-500">{record.document.type} • {record.document.size}</p>
+                    {record.vehicle && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">Vehicle</h3>
+                            <div className="flex items-center gap-3">
+                                <div className="w-20 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                    {record.vehicle.image && (
+                                        <img src={record.vehicle.image} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-[#0B1E3D] truncate">
+                                        {`${record.vehicle.year || ''} ${formatLabel(record.vehicle.make)} ${formatLabel(record.vehicle.model)}`.trim()}
+                                    </p>
+                                    <p className="text-[11px] text-slate-500">{record.vehicle.listingId}</p>
+                                </div>
                             </div>
-                            <Download size={16} className="text-slate-400 cursor-pointer" />
+                            {record.seller && (
+                                <div className="mt-4 text-[12px]">
+                                    <Row label="Seller" value={record.seller.name} />
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    
-                    {/* action button */}
-                    {action && (
+                    )}
+
+                    {record.retryable && order?._id && (
                         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                             <h3 className="text-sm font-semibold text-[#0B1E3D] mb-4">Actions</h3>
-                            <button onClick={action.onClick} className="flex items-center justify-center gap-2 w-full rounded-lg border border-[#D97706] text-[#D97706] py-2 text-sm font-medium hover:bg-amber-50">
-                                <action.icon size={16} /> {action.label}
+                            <button
+                                onClick={openPayment}
+                                className="flex items-center justify-center gap-2 w-full rounded-lg border border-[#D97706] text-[#D97706] py-2 text-sm font-medium hover:bg-amber-50">
+                                <ExternalLink size={16} /> Open Payment to Retry Refund
                             </button>
                         </div>
                     )}

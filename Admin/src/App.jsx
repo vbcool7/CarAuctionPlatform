@@ -339,7 +339,7 @@ function App() {
 
                 {/* payout management - refunds */}
                 {currentPage === 'refunds' && <Refunds setSelectedRefundId={setSelectedRefundId} setCurrentPage={setCurrentPage} />}
-                {currentPage === 'refunds-detail' && <RefundsDetail refundId={selectedRefundId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'refunds-detail' && <RefundsDetail refundId={selectedRefundId} setSelectedPaymentId={setSelectedPaymentId} setCurrentPage={setCurrentPage} />}
 
                 {/* payout management - transactions */}
                 {currentPage === 'transactions' && <Transactions setSelectedTransactionId={setSelectedTransactionId} setCurrentPage={setCurrentPage} />}

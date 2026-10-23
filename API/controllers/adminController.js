@@ -4066,58 +4066,6 @@ export const getTopBidders = async (req, res) => {
 // ============================================ PAYOUT
 
 // get payouts
-// export const getAllPayouts = async (req, res) => {
-//     try {
-//         const page = Math.max(parseInt(req.query.page) || 1, 1);
-//         const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-
-//         const filter = {};
-
-//         if (req.query.status) {
-//             filter.status = req.query.status
-//         }
-
-//         const [payouts, total] = await Promise.all([
-//             Payout.find(filter)
-//                 .populate('sellerId', 'sellerId fullName businessName email phone profileImage')
-//                 .populate('vehicleId', 'listingId make model year images')
-//                 .populate('orderId', 'orderId amount paidAt handover status')
-//                 .sort({ createdAt: -1 })
-//                 .skip((page - 1) * limit)
-//                 .limit(limit)
-//                 .lean(),
-//             Payout.countDocuments(filter),
-//         ]);
-
-//         const sums = await Payout.aggregate([{ $group: { _id: '$status', total: { $sum: '$netAmount' }, count: { $sum: 1 } } }]);
-//         const summary = {};
-//         sums.forEach((s) => {
-//             summary[s._id] = {
-//                 total: s.total, count: s.count
-//             };
-//         });
-
-//         return res.status(200).json({
-//             success: true,
-//             payouts,
-//             summary,
-//             pagination: {
-//                 page,
-//                 limit,
-//                 total,
-//                 totalPages: Math.ceil(total / limit)
-//             },
-//         });
-
-//     } catch (err) {
-//         console.log("getAllPayouts error :", err);
-//         res.status(500).json({
-//             success: false,
-//             message: "Server Error Occured"
-//         });
-//     }
-// };
-
 export const getAllPayouts = async (req, res) => {
     try {
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -4778,6 +4726,677 @@ export const cancelAndRefundOrder = async (req, res) => {
     }
 };
 
+const REFUND_OUTCOMES = ['refunded_admin', 'refunded_late', 'refunded_duplicate', 'amount_mismatch', 'refund_failed'];
+const REFUND_KINDS = ['admin', 'late', 'duplicate', 'mismatch', 'auto_failed'];
+const REFUND_STATUSES = ['completed', 'pending', 'failed'];
+
+const refundKindOf = (e) => {
+    if (e.type === 'refund.admin') return 'admin';
+    if (e.outcome === 'refunded_late') return 'late';
+    if (e.outcome === 'refunded_duplicate') return 'duplicate';
+    if (e.outcome === 'amount_mismatch') return 'mismatch';
+    return 'auto_failed';
+};
+
+const refundStatusOf = (e, order) => {
+    if (e.outcome === 'refund_failed') return 'failed';
+    if (e.outcome === 'refunded_admin') {
+        const s = order?.refund?.status;
+        if (s === 'succeeded') return 'completed';
+        if (s === 'failed' || s === 'canceled') return 'failed';
+        return 'pending';
+    }
+    return 'completed';
+};
+
+const REFUND_KIND_EXPR = {
+    $switch: {
+        branches: [
+            { case: { $eq: ['$type', 'refund.admin'] }, then: 'admin' },
+            { case: { $eq: ['$outcome', 'refunded_late'] }, then: 'late' },
+            { case: { $eq: ['$outcome', 'refunded_duplicate'] }, then: 'duplicate' },
+            { case: { $eq: ['$outcome', 'amount_mismatch'] }, then: 'mismatch' },
+        ],
+        default: 'auto_failed',
+    },
+};
+
+const REFUND_STATUS_EXPR = {
+    $switch: {
+        branches: [
+            { case: { $eq: ['$outcome', 'refund_failed'] }, then: 'failed' },
+            {
+                case: { $eq: ['$outcome', 'refunded_admin'] },
+                then: {
+                    $switch: {
+                        branches: [
+                            { case: { $eq: ['$order.refund.status', 'succeeded'] }, then: 'completed' },
+                            { case: { $in: ['$order.refund.status', ['failed', 'canceled']] }, then: 'failed' },
+                        ],
+                        default: 'pending',
+                    },
+                },
+            },
+        ],
+        default: 'completed',
+    },
+};
+
+const refundBasePipeline = () => [
+    { $match: { outcome: { $in: REFUND_OUTCOMES } } },
+    { $lookup: { from: 'orders', localField: 'orderId', foreignField: '_id', as: 'order' } },
+    { $unwind: { path: '$order', preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            kind: REFUND_KIND_EXPR,
+            refundStatus: REFUND_STATUS_EXPR,
+            // admin refund fail hua tha, baad me retry se order canceled ho gaya
+            resolved: {
+                $and: [
+                    { $eq: ['$type', 'refund.admin'] },
+                    { $eq: ['$outcome', 'refund_failed'] },
+                    { $eq: ['$order.status', 'canceled'] },
+                ],
+            },
+            orderCode: '$order.orderId',
+            listingCode: '$order.listingId',
+            stripeRefundId: { $cond: [{ $eq: ['$outcome', 'refunded_admin'] }, '$order.refund.stripeRefundId', null] },
+        },
+    },
+];
+
+const refundParty = (doc, type) => (doc
+    ? { name: payPartyName(doc, type), email: doc.email || null, type }
+    : null);
+
+// get all refunds
+export const getAllRefunds = async (req, res) => {
+    try {
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+        const { status, kind, sortBy, startDate, endDate } = req.query;
+        const search = clean(req.query.search);
+
+        const match = {};
+        if (REFUND_STATUSES.includes(status)) match.refundStatus = status;
+        if (REFUND_KINDS.includes(kind)) match.kind = kind;
+
+        if (isYMD(startDate) || isYMD(endDate)) {
+            match.createdAt = {};
+            if (isYMD(startDate)) match.createdAt.$gte = new Date(`${startDate}T00:00:00+04:00`);
+            if (isYMD(endDate)) match.createdAt.$lte = new Date(`${endDate}T23:59:59.999+04:00`);
+        }
+
+        if (search) {
+            const rx = new RegExp(escRx(search), 'i');
+            const [vehicleIds, sellerIds, buyerIds] = await Promise.all([
+                Vehicle.find({ $or: [{ listingId: rx }, { make: rx }, { model: rx }] }).distinct('_id'),
+                Seller.find({ $or: [{ sellerId: rx }, { fullName: rx }, { businessName: rx }, { email: rx }] }).distinct('_id'),
+                Buyer.find({ $or: [{ buyerId: rx }, { firstName: rx }, { lastName: rx }, { companyName: rx }, { email: rx }] }).distinct('_id'),
+            ]);
+
+            const orderIds = await Order.find({
+                $or: [
+                    { orderId: rx },
+                    { listingId: rx },
+                    { 'refund.stripeRefundId': rx },
+                    { vehicleId: { $in: vehicleIds } },
+                    { sellerId: { $in: sellerIds } },
+                    { buyerId: { $in: [...buyerIds, ...sellerIds] } },
+                ],
+            }).distinct('_id');
+
+            match.$or = [{ orderId: { $in: orderIds } }, { paymentIntentId: rx }];
+        }
+
+        const dir = sortBy === 'oldest' ? 1 : -1;
+
+        const [result] = await PaymentEvent.aggregate([
+            ...refundBasePipeline(),
+            {
+                $facet: {
+                    rows: [
+                        { $match: match },
+                        { $sort: { createdAt: dir, _id: dir } },
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                        { $project: { order: 0 } },
+                    ],
+                    total: [{ $match: match }, { $count: 'n' }],
+
+                    // stats poore platform ke (filter ke hisaab se nahi)
+                    byStatus: [
+                        { $group: { _id: { status: '$refundStatus', resolved: '$resolved' }, count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+                    ],
+
+                    // sirf jo paisa actually wapas gaya / ja raha (failed nahi)
+                    byKind: [
+                        { $match: { refundStatus: { $ne: 'failed' } } },
+                        { $group: { _id: '$kind', count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+                    ],
+                    recent: [
+                        { $sort: { createdAt: -1, _id: -1 } },
+                        { $limit: 5 },
+                        { $project: { order: 0 } },
+                    ],
+                },
+            },
+        ]);
+
+        const total = result.total[0]?.n || 0;
+
+        // buyer + vehicle sirf is page ke orders ke liye
+        const orderIds = [...new Set(result.rows.map((r) => r.orderId).filter(Boolean).map(String))];
+        const orders = orderIds.length
+            ? await Order.find({ _id: { $in: orderIds } })
+                .populate('vehicleId', 'listingId make model year images')
+                .populate({ path: 'buyerId', select: 'firstName lastName fullName companyName businessName email' })
+                .lean()
+            : [];
+        const orderMap = new Map(orders.map((o) => [String(o._id), o]));
+
+        const refunds = result.rows.map((r) => {
+            const o = orderMap.get(String(r.orderId));
+            const failed = r.outcome === 'refund_failed';
+            return {
+                _id: r._id,
+                orderObjectId: r.orderId || null,
+                orderId: r.orderCode || null,
+                listingId: r.listingCode || null,
+                kind: r.kind,
+                status: r.refundStatus,
+                resolved: !!r.resolved,
+                amount: r.amount != null ? r.amount / 100 : null,
+                currency: r.currency ? String(r.currency).toUpperCase() : 'AED',
+                reason: failed ? null : (r.note || null),
+                failureNote: failed ? (r.note || null) : null,
+                stripeRefundId: r.stripeRefundId || null,
+                createdAt: r.createdAt,
+                vehicle: o?.vehicleId
+                    ? { make: o.vehicleId.make, model: o.vehicleId.model, year: o.vehicleId.year, image: payFirstImage(o.vehicleId.images) }
+                    : null,
+                buyer: o?.buyerId ? refundParty(o.buyerId, o.buyerType) : null,
+            };
+        });
+
+        // stats
+        const stats = {
+            total: { count: 0, amount: 0 },
+            completed: { count: 0, amount: 0 },
+            pending: { count: 0, amount: 0 },
+            failed: { count: 0, amount: 0, resolved: 0 },   // failed = abhi bhi open wale
+        };
+
+        for (const s of result.byStatus) {
+            const { status: st, resolved } = s._id;
+            stats.total.count += s.count;
+            if (st === 'failed') {
+                if (resolved) stats.failed.resolved += s.count;
+                else {
+                    stats.failed.count += s.count;
+                    stats.failed.amount += s.amount / 100;
+                }
+            } else if (stats[st]) {
+                stats[st].count += s.count;
+                stats[st].amount += s.amount / 100;
+            }
+        }
+        stats.total.amount = stats.completed.amount + stats.pending.amount;
+
+        const kinds = {};
+        REFUND_KINDS.forEach((k) => { kinds[k] = { count: 0, amount: 0 }; });
+
+        for (const k of result.byKind) {
+            if (kinds[k._id]) kinds[k._id] = { count: k.count, amount: k.amount / 100 };
+        }
+
+        const recent = result.recent.map((r) => ({
+            _id: r._id,
+            orderId: r.orderCode || null,
+            kind: r.kind,
+            status: r.refundStatus,
+            amount: r.amount != null ? r.amount / 100 : null,
+            createdAt: r.createdAt,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            refunds,
+            stats,
+            kinds,
+            recent,
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        });
+
+    } catch (err) {
+        console.error('getAllRefunds error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// get refund detail
+export const getRefundById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) return bad(res, 'Invalid refund id');
+
+        const event = await PaymentEvent.findOne({ _id: id, outcome: { $in: REFUND_OUTCOMES } }).lean();
+        if (!event) return bad(res, 'Refund not found', 404);
+
+        const order = event.orderId
+            ? await Order.findById(event.orderId)
+                .populate('vehicleId', 'listingId make model year images')
+                .populate('sellerId', 'sellerId fullName businessName email phone profileImage')
+                .populate({
+                    path: 'buyerId',
+                    select: 'buyerId sellerId firstName lastName fullName companyName businessName email mobile phone profileImageUrl profileImage',
+                })
+                .populate('refund.refundedBy', 'name')
+                .lean()
+            : null;
+
+        const events = event.orderId
+            ? await PaymentEvent.find({ orderId: event.orderId, outcome: { $in: ['paid', ...REFUND_OUTCOMES] } })
+                .sort({ createdAt: 1 }).lean()
+            : [event];
+
+        const status = refundStatusOf(event, order);
+        const kind = refundKindOf(event);
+        const failed = event.outcome === 'refund_failed';
+        const resolved = kind === 'admin' && failed && order?.status === 'canceled';
+
+        const b = order?.buyerId;
+        const isSellerBuyer = order?.buyerType === 'Seller';
+        const s = order?.sellerId;
+
+        const timeline = [
+            ...(order?.statusHistory || []).map((h) => ({ source: 'order', status: h.status, at: h.at, by: h.by, note: h.note || null })),
+            ...events.map((e) => ({ source: 'gateway', status: e.outcome, at: e.createdAt, by: 'gateway', note: e.note || null })),
+        ].sort((x, y) => new Date(x.at) - new Date(y.at));
+
+        const refund = {
+            _id: event._id,
+            kind,
+            status,
+            resolved,
+            outcome: event.outcome,
+            amount: event.amount != null ? event.amount / 100 : null,
+            currency: event.currency ? String(event.currency).toUpperCase() : 'AED',
+            createdAt: event.createdAt,
+            reason: failed ? null : (event.note || null),
+            failureNote: failed ? (event.note || null) : null,
+            stripePaymentIntentId: event.paymentIntentId || null,
+            stripeRefundId: event.outcome === 'refunded_admin' ? (order?.refund?.stripeRefundId || null) : null,
+            refundedByName: event.outcome === 'refunded_admin' ? (order?.refund?.refundedBy?.name || null) : null,
+            refundedAt: event.outcome === 'refunded_admin' ? (order?.refund?.refundedAt || null) : null,
+
+            // sirf tab jab refund fail hua aur order abhi bhi paid hai -> payment detail se Cancel & Refund dobara chal sakta hai
+            retryable: failed && !resolved && order?.status === 'paid',
+
+            order: order
+                ? {
+                    _id: order._id,
+                    orderId: order.orderId,
+                    listingId: order.listingId,
+                    source: order.source,
+                    status: order.status,
+                    amount: order.amount,
+                    currency: order.currency,
+                    paidAt: order.paidAt || null,
+                    createdAt: order.createdAt,
+                }
+                : null,
+
+            vehicle: order?.vehicleId
+                ? {
+                    listingId: order.vehicleId.listingId,
+                    make: order.vehicleId.make,
+                    model: order.vehicleId.model,
+                    year: order.vehicleId.year,
+                    image: payFirstImage(order.vehicleId.images),
+                }
+                : null,
+
+            buyer: b
+                ? {
+                    type: order.buyerType,
+                    readableId: isSellerBuyer ? b.sellerId : b.buyerId,
+                    name: payPartyName(b, order.buyerType),
+                    email: b.email || null,
+                    phone: (isSellerBuyer ? b.phone : b.mobile) || null,
+                    image: (isSellerBuyer ? b.profileImage : b.profileImageUrl) || null,
+                }
+                : null,
+
+            seller: s
+                ? {
+                    readableId: s.sellerId,
+                    name: payPartyName(s, 'Seller'),
+                    email: s.email || null,
+                }
+                : null,
+
+            timeline,
+        };
+
+        return res.status(200).json({ success: true, refund });
+
+    } catch (err) {
+        console.error('getRefundById error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// ============================================ ALL PAYMENTS
+
+const PAY_STATUSES = ['pending_payment', 'paid', 'expired', 'canceled'];
+const PAY_ALERT_OUTCOMES = ['amount_mismatch', 'refunded_late', 'refunded_duplicate', 'refund_failed'];
+
+const payPartyName = (doc, type) => {
+    if (!doc) return null;
+    if (type === 'Seller') return doc.businessName || doc.fullName || null;
+    return doc.companyName || `${doc.firstName || ''} ${doc.lastName || ''}`.trim() || null;
+};
+
+const payFirstImage = (images) => {
+    const img = Array.isArray(images) ? images[0] : null;
+    return typeof img === 'string' ? img : (img?.url || null);
+};
+
+// refund_failed jo admin-cancel ke baad resolve ho chuka (order canceled) wo alert nahi
+const payIsAlert = (event, orderStatus) =>
+    PAY_ALERT_OUTCOMES.includes(event.outcome) &&
+    !(event.outcome === 'refund_failed' && orderStatus === 'canceled');
+
+// get all payments
+export const getAllPayments = async (req, res) => {
+    try {
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+        const { status, saleType, sortBy, startDate, endDate } = req.query;
+        const search = clean(req.query.search);
+
+        const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+        const escRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        const filter = {};
+
+        if (PAY_STATUSES.includes(status)) filter.status = status;
+        if (saleType === 'auction' || saleType === 'buy_now') filter.source = saleType;
+
+        if (isYMD(startDate) || isYMD(endDate)) {
+            filter.createdAt = {};
+            if (isYMD(startDate)) filter.createdAt.$gte = new Date(`${startDate}T00:00:00+04:00`);
+            if (isYMD(endDate)) filter.createdAt.$lte = new Date(`${endDate}T23:59:59.999+04:00`);
+        }
+
+        if (search) {
+            const rx = new RegExp(escRx(search), 'i');
+            const [vehicleIds, sellerIds, buyerIds] = await Promise.all([
+                Vehicle.find({ $or: [{ listingId: rx }, { make: rx }, { model: rx }] }).distinct('_id'),
+                Seller.find({ $or: [{ sellerId: rx }, { fullName: rx }, { businessName: rx }, { email: rx }] }).distinct('_id'),
+                Buyer.find({ $or: [{ buyerId: rx }, { firstName: rx }, { lastName: rx }, { companyName: rx }, { email: rx }] }).distinct('_id'),
+            ]);
+
+            filter.$or = [
+                { orderId: rx },
+                { listingId: rx },
+                { vehicleId: { $in: vehicleIds } },
+                { sellerId: { $in: sellerIds } },
+                { buyerId: { $in: [...buyerIds, ...sellerIds] } },
+            ];
+        }
+
+        const dir = sortBy === 'oldest' ? 1 : -1;
+
+        const [orders, total] = await Promise.all([
+            Order.find(filter)
+                .populate('vehicleId', 'listingId make model year images fuelType transmission drivetrain')
+                .populate('sellerId', 'fullName businessName')
+                .populate({ path: 'buyerId', select: 'firstName lastName fullName companyName businessName email' })
+                .sort({ createdAt: dir, _id: dir })
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean(),
+            Order.countDocuments(filter),
+        ]);
+
+        // is page ke orders me gateway alert (auto-refund etc.)
+        const alertEvents = orders.length
+            ? await PaymentEvent.find({ orderId: { $in: orders.map((o) => o._id) }, outcome: { $in: PAY_ALERT_OUTCOMES } })
+                .sort({ createdAt: -1 })
+                .select('orderId outcome')
+                .lean()
+            : [];
+
+        const statusByOrder = new Map(orders.map((o) => [String(o._id), o.status]));
+        const alertByOrder = new Map();
+
+        for (const e of alertEvents) {
+            const key = String(e.orderId);
+
+            if (!alertByOrder.has(key) && payIsAlert(e, statusByOrder.get(key))) {
+                alertByOrder.set(key, e.outcome);
+            }
+        }
+
+        const payments = orders.map((o) => ({
+            _id: o._id,
+            orderId: o.orderId,
+            listingId: o.listingId,
+            source: o.source,
+            status: o.status,
+            amount: o.amount,
+            currency: o.currency,
+            createdAt: o.createdAt,
+            paidAt: o.paidAt || null,
+            paymentDueAt: o.paymentDueAt || null,
+            handoverStatus: o.handover?.status || 'pending',
+            refundStatus: o.refund?.status || null,
+            alert: alertByOrder.get(String(o._id)) || null,
+            vehicle: o.vehicleId
+                ? {
+                    make: o.vehicleId.make,
+                    model: o.vehicleId.model,
+                    year: o.vehicleId.year,
+                    image: payFirstImage(o.vehicleId.images),
+                    fuelType: o.vehicleId.fuelType,
+                    transmission: o.vehicleId.transmission,
+                    drivetrain: o.vehicleId.drivetrain,
+
+                }
+                : null,
+            buyer: o.buyerId
+                ? { name: payPartyName(o.buyerId, o.buyerType), email: o.buyerId.email || null, type: o.buyerType }
+                : null,
+            seller: o.sellerId ? { name: payPartyName(o.sellerId, 'Seller') } : null,
+        }));
+
+        const [byStatus, bySource, recent] = await Promise.all([
+            Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 }, amount: { $sum: '$amount' } } }]),
+            Order.aggregate([
+                { $match: { status: 'paid' } },
+                { $group: { _id: '$source', count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+            ]),
+            Order.find()
+                .sort({ updatedAt: -1 })
+                .limit(5)
+                .select('orderId listingId status amount currency updatedAt')
+                .lean(),
+        ]);
+
+        const stats = { total: { count: 0 } };
+        PAY_STATUSES.forEach((s) => { stats[s] = { count: 0, amount: 0 }; });
+        byStatus.forEach((s) => {
+            if (!stats[s._id]) return;
+            stats[s._id] = { count: s.count, amount: s.amount };
+            stats.total.count += s.count;
+        });
+
+        const sources = { auction: { count: 0, amount: 0 }, buy_now: { count: 0, amount: 0 } };
+        bySource.forEach((s) => {
+            if (sources[s._id]) sources[s._id] = { count: s.count, amount: s.amount };
+        });
+
+        return res.status(200).json({
+            success: true,
+            payments,
+            stats,
+            sources,
+            recent,
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        });
+
+    } catch (err) {
+        console.error('getAllPayments error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+// get payment by id
+export const getPaymentById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = /^[0-9a-fA-F]{24}$/.test(id) ? { _id: id } : { orderId: id };
+
+        const order = await Order.findOne(query)
+            .populate('vehicleId', 'listingId make model year images')
+            .populate('sellerId', 'sellerId fullName businessName email phone profileImage')
+            .populate({
+                path: 'buyerId',
+                select: 'buyerId sellerId firstName lastName fullName companyName businessName email mobile phone profileImageUrl profileImage accountStatus',
+            })
+            .populate('handover.confirmedBy', 'name')
+            .populate('refund.refundedBy', 'name')
+            .lean();
+
+        if (!order) return bad(res, 'Payment not found', 404);
+
+        const [payout, events] = await Promise.all([
+            Payout.findOne({ orderId: order._id }).lean(),
+            PaymentEvent.find({ orderId: order._id }).sort({ createdAt: 1 }).lean(),
+        ]);
+
+        const b = order.buyerId;
+        const isSellerBuyer = order.buyerType === 'Seller';
+        const s = order.sellerId;
+
+        const timeline = [
+            ...(order.statusHistory || []).map((h) => ({ source: 'order', status: h.status, at: h.at, by: h.by, note: h.note || null })),
+            ...(payout?.history || []).map((h) => ({ source: 'payout', status: h.status, at: h.at, by: h.by, note: h.note || null })),
+        ].sort((x, y) => new Date(x.at) - new Date(y.at));
+
+        const payment = {
+            _id: order._id,
+            orderId: order.orderId,
+            listingId: order.listingId,
+            source: order.source,
+            status: order.status,
+            amount: order.amount,
+            currency: order.currency,
+
+            createdAt: order.createdAt,
+            paidAt: order.paidAt || null,
+            paymentDueAt: order.paymentDueAt || null,
+            expiredAt: order.expiredAt || null,
+            canceledAt: order.canceledAt || null,
+
+            stripePaymentIntentId: order.stripePaymentIntentId || null,
+            stripeSessionId: order.stripeSessionId || null,
+
+            handover: {
+                status: order.handover?.status || 'pending',
+                confirmedAt: order.handover?.confirmedAt || null,
+                confirmedByName: order.handover?.confirmedBy?.name || null,
+                confirmedByRole: order.handover?.confirmedByRole || null,
+                note: order.handover?.note || null,
+            },
+
+            refund: order.refund?.status
+                ? {
+                    status: order.refund.status,
+                    amount: order.refund.amount ?? null,
+                    reason: order.refund.reason || null,
+                    refundedAt: order.refund.refundedAt || null,
+                    refundedByName: order.refund.refundedBy?.name || null,
+                    stripeRefundId: order.refund.stripeRefundId || null,
+                }
+                : null,
+
+            vehicle: order.vehicleId
+                ? {
+                    listingId: order.vehicleId.listingId,
+                    make: order.vehicleId.make,
+                    model: order.vehicleId.model,
+                    year: order.vehicleId.year,
+                    image: payFirstImage(order.vehicleId.images),
+                }
+                : null,
+
+            buyer: b
+                ? {
+                    type: order.buyerType,
+                    readableId: isSellerBuyer ? b.sellerId : b.buyerId,
+                    name: payPartyName(b, order.buyerType),
+                    email: b.email || null,
+                    phone: (isSellerBuyer ? b.phone : b.mobile) || null,
+                    image: (isSellerBuyer ? b.profileImage : b.profileImageUrl) || null,
+                    accountStatus: b.accountStatus || null,
+                }
+                : null,
+
+            seller: s
+                ? {
+                    readableId: s.sellerId,
+                    name: payPartyName(s, 'Seller'),
+                    email: s.email || null,
+                    phone: s.phone || null,
+                    image: s.profileImage || null,
+                }
+                : null,
+
+            payout: payout
+                ? {
+                    _id: payout._id,
+                    payoutId: payout.payoutId,
+                    status: payout.status,
+                    grossAmount: payout.grossAmount,
+                    commissionPercent: payout.commissionPercent,
+                    commissionAmount: payout.commissionAmount,
+                    netAmount: payout.netAmount,
+                    paidAt: payout.paidAt || null,
+                    transferReference: payout.transferReference || null,
+                }
+                : null,
+
+            timeline,
+
+            // PaymentEvent.amount minor units (fils) me hai
+            events: events.map((e) => ({
+                _id: e._id,
+                type: e.type,
+                outcome: e.outcome,
+                amount: e.amount != null ? e.amount / 100 : null,
+                currency: e.currency ? String(e.currency).toUpperCase() : null,
+                note: e.note || null,
+                createdAt: e.createdAt,
+            })),
+
+            alert: events.find((e) => payIsAlert(e, order.status))?.outcome || null,
+        };
+
+        return res.status(200).json({
+            success: true,
+            payment
+        });
+
+    } catch (err) {
+        console.error('getPaymentById error:', err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
 // ============================================ ADMIN DASHBOARD
 
 const UAE_OFFSET_MS = 4 * 60 * 60 * 1000;
@@ -4917,6 +5536,299 @@ export const adminDashboardStats = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server Error Occured"
+        });
+    }
+};
+
+// ============================================ REPORT & ANALYTICS
+
+const PAID_ORDER_STATUSES = ['paid'];
+
+const getWeekStartUae = (date) => {
+    const shifted = new Date(date.getTime() + UAE_OFFSET_MS);
+    const daysSinceMonday = (shifted.getUTCDay() + 6) % 7;
+    shifted.setUTCDate(shifted.getUTCDate() - daysSinceMonday);
+    shifted.setUTCHours(0, 0, 0, 0);
+    return new Date(shifted.getTime() - UAE_OFFSET_MS);
+};
+
+const getRangeReport = (rangeKey, now) => {
+    const offset = rangeKey === 'last_week' ? 1 : rangeKey === 'two_weeks_ago' ? 2 : 0;
+    const start = new Date(getWeekStartUae(now).getTime() - offset * 7 * DAY_MS);
+    return { start, end: new Date(start.getTime() + 7 * DAY_MS) };
+};
+
+const toUaeDateKey = (date) => {
+    const shifted = new Date(date.getTime() + UAE_OFFSET_MS);
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+};
+
+const getPercent = (part, whole) => whole ? Math.round((part / whole) * 1000) / 10 : 0;
+const getInitials = (name = '') => name.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+
+const getRangeMatch = (field, range) => ({ [field]: { $gte: range.start, $lt: range.end } });
+
+export const getReportAnalytics = async () => {
+    try {
+        const validRanges = ['this_week', 'last_week', 'two_weeks_ago'];
+        const rangeKey = validRanges.includes(req.query.range) ? req.query.range : 'this_week';
+        const range = getRangeReport(rangeKey, new Date());
+        const paidRange = { status: { $in: PAID_ORDER_STATUSES }, ...getRangeMatch('paidAt', range) };
+        const createdOrderRange = getRangeMatch('createdAt', range);
+
+        const [
+            activeBuyers, activeSellers, totalBuyers, totalSellers,
+            closedAuctions, soldOrders, platformCommission,
+            averageBid, revenueByDay, bidsByDay, usersByDay,
+            vehicleApproval, vehicleCategories, recentPaidPurchases,
+            transactionEvents, recentPayouts, topPurchasers,
+            topSellerSales, peakBidHour, averageAuctionDuration,
+            periodOrderCounts, distinctSuccessfulBuyers, distinctBidders,
+        ] = await Promise.all([
+            Buyer.countDocuments({ accountStatus: { $ne: 'suspended' } }),
+            Seller.countDocuments({ accountStatus: { $ne: 'suspended' } }),
+            Buyer.countDocuments(),
+            Seller.countDocuments(),
+            Vehicle.countDocuments({
+                auctionEndDateTime: { $gte: range.start, $lt: range.end },
+                auctionStatus: { $in: ['sold', 'unsold', 'reserve-not-met', 'canceled'] },
+            }),
+            Order.countDocuments(paidRange),
+
+            Payout.aggregate([
+                { $match: { status: { $ne: 'canceled' }, createdAt: { $gte: range.start, $lt: range.end } } },
+                { $group: { _id: null, amount: { $sum: '$commissionAmount' } } },
+            ]),
+
+            Bid.aggregate([
+                { $match: getRangeMatch('createdAt', range) },
+                { $group: { _id: null, average: { $avg: '$amount' } } },
+            ]),
+
+            Order.aggregate([
+                { $match: paidRange },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt', timezone: 'Asia/Dubai' } },
+                        revenue: { $sum: '$amount' },
+                    }
+                },
+            ]),
+
+            Bid.aggregate([
+                { $match: getRangeMatch('createdAt', range) },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Dubai' } },
+                        bids: { $sum: 1 },
+                    }
+                },
+            ]),
+
+            Promise.all([
+                Buyer.aggregate([
+                    { $match: getRangeMatch('createdAt', range) },
+                    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Dubai' } }, users: { $sum: 1 } } },
+                ]),
+                Seller.aggregate([
+                    { $match: getRangeMatch('createdAt', range) },
+                    { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Dubai' } }, users: { $sum: 1 } } },
+                ]),
+            ]),
+
+            Promise.all([
+                Vehicle.countDocuments({ adminStatus: 'approved' }),
+                Vehicle.countDocuments({ adminStatus: 'pending' }),
+                Vehicle.countDocuments({ adminStatus: 'rejected' }),
+            ]),
+            Vehicle.aggregate([
+                { $match: { adminStatus: 'approved' } },
+                { $group: { _id: '$vehicleType', value: { $sum: 1 } } },
+                { $sort: { value: -1 } },
+            ]),
+
+            Order.find(paidRange)
+                .sort({ amount: -1 }).limit(5)
+                .populate('vehicleId', 'make model year images listingId')
+                .select('orderId listingId amount currency paidAt vehicleId')
+                .lean(),
+            PaymentEvent.find({}).sort({ createdAt: -1 }).limit(8)
+                .select('eventId type amount currency outcome createdAt')
+                .lean(),
+            Payout.find({ status: { $in: ['requested', 'paid'] } })
+                .sort({ createdAt: -1 }).limit(8)
+                .select('payoutId status netAmount currency transferReference createdAt')
+                .lean(),
+
+            Order.aggregate([
+                { $match: { status: 'paid', ...getRangeMatch('paidAt', range) } },
+                {
+                    $group: {
+                        _id: { buyerId: '$buyerId', buyerType: '$buyerType' },
+                        spent: { $sum: '$amount' },
+                    }
+                },
+                { $sort: { spent: -1 } }, { $limit: 5 },
+            ]),
+            Order.aggregate([
+                { $match: { status: 'paid', ...getRangeMatch('paidAt', range) } },
+                {
+                    $group: {
+                        _id: '$sellerId',
+                        sales: { $sum: '$amount' },
+                        auctions: { $sum: { $cond: [{ $eq: ['$source', 'auction'] }, 1, 0] } },
+                    }
+                },
+                { $sort: { sales: -1 } }, { $limit: 5 },
+            ]),
+
+            Bid.aggregate([
+                { $match: getRangeMatch('createdAt', range) },
+                { $group: { _id: { $hour: { date: '$createdAt', timezone: 'Asia/Dubai' } }, bids: { $sum: 1 } } },
+                { $sort: { bids: -1 } }, { $limit: 1 },
+            ]),
+
+            Vehicle.aggregate([
+                { $match: { auctionStartDateTime: { $exists: true }, auctionEndDateTime: { $exists: true }, auctionEndDateTime: { $gte: range.start, $lt: range.end } } },
+                { $group: { _id: null, averageMs: { $avg: { $subtract: ['$auctionEndDateTime', '$auctionStartDateTime'] } } } },
+            ]),
+            Order.aggregate([
+                { $match: createdOrderRange },
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+            ]),
+            Order.distinct('buyerId', paidRange),
+            Bid.distinct('bidderId', getRangeMatch('createdAt', range)),
+        ]);
+
+        const mapByDate = (rows) => new Map(rows.map((row) => [row._id, row]));
+        const revenueMap = mapByDate(revenueByDay);
+        const bidMap = mapByDate(bidsByDay);
+        const buyerGrowthMap = mapByDate(usersByDay[0]);
+        const sellerGrowthMap = mapByDate(usersByDay[1]);
+        const revenueChart = [];
+        const bidChart = [];
+        const userGrowthChart = [];
+
+        for (let i = 0; i < 7; i += 1) {
+            const date = new Date(range.start.getTime() + i * DAY_MS);
+            const key = toUaeDateKey(date);
+            revenueChart.push({ date: key, name: formatDay(date), revenue: revenueMap.get(key)?.revenue || 0 });
+            bidChart.push({ date: key, dateLabel: formatDay(date), bids: bidMap.get(key)?.bids || 0 });
+            userGrowthChart.push({ date: key, dateLabel: formatDay(date), users: (buyerGrowthMap.get(key)?.users || 0) + (sellerGrowthMap.get(key)?.users || 0) });
+        }
+
+        const topBuyerIds = topPurchasers.map((item) => item._id.buyerId);
+        const buyerDocs = await Buyer.find({ _id: { $in: topBuyerIds } }).select('firstName lastName companyName').lean();
+        const sellerBuyerDocs = await Seller.find({ _id: { $in: topBuyerIds } }).select('fullName businessName').lean();
+        const purchaserNames = new Map([
+            ...buyerDocs.map((item) => [String(item._id), item.companyName || `${item.firstName || ''} ${item.lastName || ''}`.trim()]),
+            ...sellerBuyerDocs.map((item) => [String(item._id), item.businessName || item.fullName]),
+        ]);
+
+        const topSellerIds = topSellerSales.map((item) => item._id);
+        const sellerDocs = await Seller.find({ _id: { $in: topSellerIds } }).select('fullName businessName').lean();
+        const sellerNames = new Map(sellerDocs.map((item) => [String(item._id), item.businessName || item.fullName]));
+
+        const successfulCount = periodOrderCounts.find((item) => item._id === 'paid')?.count || 0;
+        const attemptsCount = periodOrderCounts.reduce((sum, item) => sum + item.count, 0);
+
+        const peakHour = peakBidHour[0]?._id;
+        const formatHour = (hour) => {
+            if (hour === undefined) return 'Not enough data';
+            const start = `${String(hour % 12 || 12).padStart(2, '0')}:00 ${hour < 12 ? 'AM' : 'PM'}`;
+            const endHour = (hour + 1) % 24;
+            const end = `${String(endHour % 12 || 12).padStart(2, '0')}:00 ${endHour < 12 ? 'AM' : 'PM'}`;
+            return `${start} - ${end}`;
+        };
+        const averageDurationHours = averageAuctionDuration[0]?.averageMs
+            ? Math.round(averageAuctionDuration[0].averageMs / (60 * 60 * 1000) * 10) / 10
+            : null;
+
+        const transactionRows = [
+            ...transactionEvents.map((event) => ({
+                id: event.eventId || String(event._id),
+                type: /refund/i.test(event.type) || String(event.outcome).startsWith('refunded') ? 'Refund' : 'Payment',
+                amount: typeof event.amount === 'number' ? event.amount / 100 : 0,
+                status: event.outcome === 'paid' || event.outcome === 'refunded_admin' || String(event.outcome).startsWith('refunded') ? 'Completed' : event.outcome,
+                createdAt: event.createdAt,
+            })),
+
+            ...recentPayouts.map((payout) => ({
+                id: payout.payoutId || String(payout._id),
+                type: 'Payout',
+                amount: payout.netAmount || 0,
+                status: payout.status === 'paid' ? 'Completed' : 'Pending',
+                createdAt: payout.createdAt,
+            })),
+        ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+
+        const totalApprovedVehicles = vehicleCategories.reduce((sum, item) => sum + item.value, 0);
+        const categoryColors = ['#2563EB', '#10B981', '#F59E0B', '#6D28D9', '#94A3B8'];
+        const categorySegments = vehicleCategories.slice(0, 5).map((item, index) => ({
+            name: item._id || 'Other', value: item.value, color: categoryColors[index % categoryColors.length],
+        }));
+
+        const buyerBidCounts = await Promise.all(topPurchasers.map(async (item) => {
+            const bidType = item._id.buyerType;
+            const count = await Bid.countDocuments({ bidderId: item._id.buyerId, bidderType: bidType, ...getRangeMatch('createdAt', range) });
+            return [String(item._id.buyerId), count];
+        }));
+        const buyerBidCountMap = new Map(buyerBidCounts);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                range: rangeKey,
+                summary: {
+                    auctionSuccessRate: `${getPercent(soldOrders, closedAuctions)}%`,
+                    platformProfit: platformCommission[0]?.amount || 0,
+                    activeUsers: activeBuyers + activeSellers,
+                    totalUsers: totalBuyers + totalSellers,
+                    averageBidValue: Math.round(averageBid[0]?.average || 0),
+                },
+                revenueOverview: revenueChart,
+                vehicleCategories: categorySegments,
+                userGrowth: userGrowthChart,
+                approvalSummary: {
+                    approved: vehicleApproval[0], pending: vehicleApproval[1], rejected: vehicleApproval[2],
+                    total: vehicleApproval.reduce((sum, count) => sum + count, 0),
+                },
+                bidActivity: bidChart.map(({ dateLabel, bids }) => ({ date: dateLabel, bids })),
+
+                paymentProviders: [{ name: 'Stripe', value: 1, color: '#2563EB' }],
+                topBuyers: topPurchasers.map((item, index) => {
+                    const name = purchaserNames.get(String(item._id.buyerId)) || 'User';
+                    return { rank: index + 1, name, initials: getInitials(name), spent: item.spent, bids: buyerBidCountMap.get(String(item._id.buyerId)) || 0 };
+                }),
+                topSellers: topSellerSales.map((item, index) => {
+                    const name = sellerNames.get(String(item._id)) || 'Seller';
+                    return { rank: index + 1, name, initials: getInitials(name), sales: item.sales, auctions: item.auctions };
+                }),
+                highestSellingVehicles: recentPaidPurchases.map((order) => ({
+                    id: String(order._id),
+                    name: order.vehicleId ? `${order.vehicleId.make} ${order.vehicleId.model} ${order.vehicleId.year}` : order.listingId,
+                    image: order.vehicleId?.images?.[0]?.url || '',
+                    price: order.amount,
+                    date: order.paidAt,
+                })),
+                recentTransactions: transactionRows,
+                insights: {
+                    revenueForecast: null,
+                    bestCategory: vehicleCategories[0]?._id || 'Not enough data',
+                    peakBiddingHours: formatHour(peakHour),
+                    averageAuctionDurationHours: averageDurationHours,
+                    conversionRate: getPercent(successfulCount, attemptsCount),
+                    buyerSuccessRate: getPercent(distinctSuccessfulBuyers.length, distinctBidders.length),
+                    approvedVehicleCount: totalApprovedVehicles,
+                },
+            },
+        });
+
+    } catch (err) {
+        console.error('getReportAnalytics error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch report analytics'
         });
     }
 };

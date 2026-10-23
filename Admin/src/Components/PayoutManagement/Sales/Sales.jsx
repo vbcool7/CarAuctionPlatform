@@ -168,7 +168,7 @@ function Sales({ setCurrentPage }) {
           </div>
         </div>
       </div>
-
+      
       {/* stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {salesStats.map((stat, index) => {
@@ -176,20 +176,21 @@ function Sales({ setCurrentPage }) {
           return (
             <div
               key={index}
-              className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm flex items-center justify-between"
+              className="group relative bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 flex items-center justify-between"
             >
-              <div>
-                <span className="text-xs font-semibold text-slate-500 block mb-0.5">
+              <div className="min-w-0 pr-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1 truncate">
                   {stat.title}
                 </span>
-                <h4 className="py-1 text-base font-bold text-slate-900 tracking-tight">
+                <h4 className="text-xl font-bold text-slate-900 tracking-tight truncate">
                   {stat.value}
                 </h4>
-                <span className={`text-[11px] font-medium mt-1 block ${stat.subTextColor}`}>
+                <span className={`text-[11px] font-medium mt-1.5 block truncate ${stat.subTextColor}`}>
                   {stat.subTitle}
                 </span>
               </div>
-              <div className={`w-11.5 h-11.5 rounded-xl flex items-center justify-center shrink-0 ${stat.theme} ${stat.iconColor}`}>
+
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 shadow-sm ${stat.theme} ${stat.iconColor}`}>
                 <Icon className="w-5.5 h-5.5" />
               </div>
             </div>
