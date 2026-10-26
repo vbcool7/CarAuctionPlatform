@@ -5104,7 +5104,6 @@ const payFirstImage = (images) => {
     return typeof img === 'string' ? img : (img?.url || null);
 };
 
-// refund_failed jo admin-cancel ke baad resolve ho chuka (order canceled) wo alert nahi
 const payIsAlert = (event, orderStatus) =>
     PAY_ALERT_OUTCOMES.includes(event.outcome) &&
     !(event.outcome === 'refund_failed' && orderStatus === 'canceled');
@@ -5397,6 +5396,514 @@ export const getPaymentById = async (req, res) => {
     }
 };
 
+// ============================================ TRANSACTIONS
+
+const TXN_KINDS = ['payment', 'refund', 'payout'];
+const TXN_STATUSES = ['completed', 'pending', 'failed'];
+const TXN_EVENT_OUTCOMES = ['paid', 'received', 'refunded_late', 'refunded_duplicate', 'amount_mismatch', 'refunded_admin', 'refund_failed'];
+
+// ---- JS side (detail page) ----
+const txnEntriesOf = (e) => {
+    if (e.type === 'refund.admin') return ['refund'];
+    if (e.outcome === 'paid' || e.outcome === 'received') return ['payment'];
+    return ['payment', 'refund'];
+};
+
+// 'received' = webhook aaya par processing poori nahi hui -> pending.
+// Auto refunds ka final Stripe status store nahi hota -> 'completed' (not synced). Admin refund ka status Order.refund.status se.
+const txnEventStatus = (e, kind, order) => {
+    if (kind === 'payment') return e.outcome === 'received' ? 'pending' : 'completed';
+    if (e.outcome === 'refund_failed') return 'failed';
+    if (e.outcome === 'refunded_admin') {
+        const s = order?.refund?.status;
+        if (s === 'succeeded') return 'completed';
+        if (s === 'failed' || s === 'canceled') return 'failed';
+        return 'pending';
+    }
+    return 'completed';
+}
+
+const txnMask = (v) => (v ? `••••${String(v).slice(-4)}` : null);
+
+const txnParty = (doc, type) => (doc
+    ? { name: payPartyName(doc, type), email: doc.email || null, type }
+    : null);
+
+const TXN_STATUS_EXPR = {
+    $switch: {
+        branches: [
+            { case: { $eq: ['$entries', 'payment'] }, then: { $cond: [{ $eq: ['$outcome', 'received'] }, 'pending', 'completed'] } },
+            { case: { $eq: ['$outcome', 'refund_failed'] }, then: 'failed' },
+            {
+                case: { $eq: ['$outcome', 'refunded_admin'] },
+                then: {
+                    $switch: {
+                        branches: [
+                            { case: { $eq: ['$order.refund.status', 'succeeded'] }, then: 'completed' },
+                            { case: { $in: ['$order.refund.status', ['failed', 'canceled']] }, then: 'failed' },
+                        ],
+                        default: 'pending',
+                    },
+                },
+            },
+        ],
+        default: 'completed',
+    },
+};
+
+const txnPipeline = () => [
+    { $match: { outcome: { $in: TXN_EVENT_OUTCOMES } } },
+    { $lookup: { from: Order.collection.name, localField: 'orderId', foreignField: '_id', as: 'order' } },
+    { $unwind: { path: '$order', preserveNullAndEmptyArrays: true } },
+    {
+        $addFields: {
+            entries: {
+                $cond: [
+                    { $eq: ['$type', 'refund.admin'] },
+                    ['refund'],
+                    { $cond: [{ $in: ['$outcome', ['paid', 'received']] }, ['payment'], ['payment', 'refund']] },
+                ],
+            },
+        },
+    },
+    { $unwind: '$entries' },
+    {
+        $project: {
+            _id: 0,
+            key: { $concat: ['e:', { $toString: '$_id' }, ':', '$entries'] },
+            kind: '$entries',
+            status: TXN_STATUS_EXPR,
+            // admin refund fail hua tha, baad me retry se order canceled ho gaya
+            resolved: {
+                $and: [
+                    { $eq: ['$entries', 'refund'] },
+                    { $eq: ['$type', 'refund.admin'] },
+                    { $eq: ['$outcome', 'refund_failed'] },
+                    { $eq: ['$order.status', 'canceled'] },
+                ],
+            },
+            amount: { $divide: [{ $ifNull: ['$amount', 0] }, 100] },
+            at: '$createdAt',
+            orderRef: '$orderId',
+            orderCode: '$order.orderId',
+            listingCode: '$order.listingId',
+            reference: {
+                $cond: [
+                    { $and: [{ $eq: ['$entries', 'refund'] }, { $eq: ['$outcome', 'refunded_admin'] }] },
+                    { $ifNull: ['$order.refund.stripeRefundId', { $ifNull: ['$paymentIntentId', null] }] },
+                    { $ifNull: ['$paymentIntentId', null] },
+                ],
+            },
+            payoutCode: { $literal: null },
+        },
+    },
+    {
+        $unionWith: {
+            coll: Payout.collection.name,
+            pipeline: [
+                { $match: { status: { $in: ['requested', 'paid'] } } },
+                { $lookup: { from: Order.collection.name, localField: 'orderId', foreignField: '_id', as: 'order' } },
+                { $unwind: { path: '$order', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 0,
+                        key: { $concat: ['p:', { $toString: '$_id' }] },
+                        kind: { $literal: 'payout' },
+                        status: { $cond: [{ $eq: ['$status', 'paid'] }, 'completed', 'pending'] },
+                        resolved: { $literal: false },
+                        amount: '$netAmount',
+                        at: { $ifNull: ['$paidAt', { $ifNull: ['$requestedAt', '$createdAt'] }] },
+                        orderRef: '$orderId',
+                        orderCode: '$order.orderId',
+                        listingCode: '$listingId',
+                        reference: { $ifNull: ['$transferReference', null] },
+                        payoutCode: '$payoutId',
+                    },
+                },
+            ],
+        },
+    },
+];
+
+export const getAllTransactions = async (req, res) => {
+    try {
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+
+        const { status, kind, sortBy, startDate, endDate } = req.query;
+        const search = clean(req.query.search);
+
+        const match = {};
+        if (TXN_STATUSES.includes(status)) match.status = status;
+        if (TXN_KINDS.includes(kind)) match.kind = kind;
+
+        if (isYMD(startDate) || isYMD(endDate)) {
+            match.at = {};
+            if (isYMD(startDate)) match.at.$gte = new Date(`${startDate}T00:00:00+04:00`);
+            if (isYMD(endDate)) match.at.$lte = new Date(`${endDate}T23:59:59.999+04:00`);
+        }
+
+        if (search) {
+            const rx = new RegExp(escRx(search), 'i');
+            const [vehicleIds, sellerIds, buyerIds] = await Promise.all([
+                Vehicle.find({ $or: [{ listingId: rx }, { make: rx }, { model: rx }] }).distinct('_id'),
+                Seller.find({ $or: [{ sellerId: rx }, { fullName: rx }, { businessName: rx }, { email: rx }] }).distinct('_id'),
+                Buyer.find({ $or: [{ buyerId: rx }, { firstName: rx }, { lastName: rx }, { companyName: rx }, { email: rx }] }).distinct('_id'),
+            ]);
+
+            const orderIds = await Order.find({
+                $or: [
+                    { orderId: rx },
+                    { listingId: rx },
+                    { vehicleId: { $in: vehicleIds } },
+                    { sellerId: { $in: sellerIds } },
+                    { buyerId: { $in: [...buyerIds, ...sellerIds] } },
+                ],
+            }).distinct('_id');
+
+            // reference = Stripe pi_ / re_ id ya bank transfer reference, payoutCode = PAYOUT-xxxxx
+            match.$or = [{ orderRef: { $in: orderIds } }, { reference: rx }, { payoutCode: rx }];
+        }
+
+        const dir = sortBy === 'oldest' ? 1 : -1;
+
+        const [result] = await PaymentEvent.aggregate([
+            ...txnPipeline(),
+            {
+                $facet: {
+                    rows: [
+                        { $match: match },
+                        { $sort: { at: dir, key: dir } },
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                    ],
+                    total: [{ $match: match }, { $count: 'n' }],
+
+                    summary: [
+                        { $group: { _id: { kind: '$kind', status: '$status', resolved: '$resolved' }, count: { $sum: 1 }, amount: { $sum: '$amount' } } },
+                    ],
+                    recent: [
+                        { $sort: { at: -1, key: -1 } },
+                        { $limit: 5 },
+                    ],
+                },
+            },
+        ]);
+
+        const total = result.total[0]?.n || 0;
+
+        // buyer, seller, and vehicle details only for the orders on this page
+        const orderIds = [...new Set(result.rows.map((r) => r.orderRef).filter(Boolean).map(String))];
+        const orders = orderIds.length
+            ? await Order.find({ _id: { $in: orderIds } })
+                .populate('vehicleId', 'listingId make model year images')
+                .populate({ path: 'buyerId', select: 'firstName lastName fullName companyName businessName email' })
+                .populate('sellerId', 'fullName businessName email')
+                .lean()
+            : [];
+
+        const orderMap = new Map(orders.map((o) => [String(o._id), o]));
+
+        const transactions = result.rows.map((r) => {
+            const o = orderMap.get(String(r.orderRef));
+            const isPayout = r.kind === 'payout';
+            return {
+                key: r.key,
+                kind: r.kind,
+                direction: r.kind === 'payment' ? 'in' : 'out',
+                status: r.status,
+                resolved: !!r.resolved,
+                amount: r.amount,
+                currency: 'AED',
+                at: r.at,
+                orderId: r.orderCode || null,
+                listingId: r.listingCode || null,
+                reference: r.reference || null,
+                payoutCode: r.payoutCode || null,
+                // payment / refund -> buyer, payout -> seller
+                party: isPayout ? txnParty(o?.sellerId, 'Seller') : txnParty(o?.buyerId, o?.buyerType),
+                vehicle: o?.vehicleId
+                    ? { make: o.vehicleId.make, model: o.vehicleId.model, year: o.vehicleId.year }
+                    : null,
+            };
+        });
+
+        // ---- stats ----
+        const stats = {
+            total: { count: 0 },
+            completed: { count: 0 },
+            pending: { count: 0, amount: 0 },
+            failed: { count: 0, open: 0 },
+            received: { count: 0, amount: 0 },   // payment, completed
+            refunded: { count: 0, amount: 0 },   // refund, completed + pending
+            paidOut: { count: 0, amount: 0 },    // payout, completed
+        };
+        const kinds = {};
+        TXN_KINDS.forEach((k) => { kinds[k] = { count: 0, amount: 0 }; });
+
+        for (const s of result.summary) {
+
+            const { kind: k, status: st, resolved } = s._id;
+            stats.total.count += s.count;
+
+            if (st === 'failed') {
+                stats.failed.count += s.count;
+                if (!resolved) stats.failed.open += s.count;
+                continue;   // failed rows me paisa hila hi nahi
+            }
+
+            if (st === 'completed') stats.completed.count += s.count;
+            if (st === 'pending') {
+                stats.pending.count += s.count;
+                stats.pending.amount += s.amount;
+            }
+
+            if (kinds[k]) {
+                kinds[k].count += s.count;
+                kinds[k].amount += s.amount;
+            }
+
+            if (k === 'payment' && st === 'completed') {
+                stats.received.count += s.count;
+                stats.received.amount += s.amount;
+            }
+            if (k === 'refund') {
+                stats.refunded.count += s.count;
+                stats.refunded.amount += s.amount;
+            }
+            if (k === 'payout' && st === 'completed') {
+                stats.paidOut.count += s.count;
+                stats.paidOut.amount += s.amount;
+            }
+        }
+
+        const recent = result.recent.map((r) => ({
+            key: r.key,
+            kind: r.kind,
+            status: r.status,
+            amount: r.amount,
+            at: r.at,
+            ref: r.payoutCode || r.orderCode || null,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            message: "Transaction data fetched",
+            transactions,
+            stats,
+            kinds,
+            recent,
+            pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        });
+
+    } catch (err) {
+        console.log("getAllTransactions Error :", err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
+const txnLoadOrder = (orderId) => (orderId
+    ? Order.findById(orderId)
+        .populate('vehicleId', 'listingId make model year images trim mileage fuelType transmission bodyType exteriorColor interiorColor vin condition')
+        .populate('sellerId', 'sellerId fullName businessName email phone profileImage')
+        .populate({
+            path: 'buyerId',
+            select: 'buyerId sellerId firstName lastName fullName companyName businessName email mobile phone profileImageUrl profileImage',
+        })
+        .populate('refund.refundedBy', 'name')
+        .lean()
+    : Promise.resolve(null));
+
+// get transaction detail
+export const getTransactionById = async (req, res) => {
+    try {
+        const parts = String(req.params.key || '').split(':');
+        const isEvent = parts.length === 3 && parts[0] === 'e' && ['payment', 'refund'].includes(parts[2]);
+        const isPayout = parts.length === 2 && parts[0] === 'p';
+
+        if ((!isEvent && !isPayout) || !mongoose.isValidObjectId(parts[1])) return bad(res, 'Invalid transaction id');
+
+        let kind;
+        let event = null;
+        let payout = null;
+        let order = null;
+
+        if (isEvent) {
+            kind = parts[2];
+            event = await PaymentEvent.findOne({ _id: parts[1], outcome: { $in: TXN_EVENT_OUTCOMES } }).lean();
+            if (!event || !txnEntriesOf(event).includes(kind)) return bad(res, 'Transaction not found', 404);
+            order = await txnLoadOrder(event.orderId);
+        } else {
+            kind = 'payout';
+            payout = await Payout.findOne({ _id: parts[1], status: { $in: ['requested', 'paid'] } })
+                .populate('paidBy', 'name')
+                .lean();
+            if (!payout) return bad(res, 'Transaction not found', 404);
+            order = await txnLoadOrder(payout.orderId);
+        }
+
+        const b = order?.buyerId;
+        const isSellerBuyer = order?.buyerType === 'Seller';
+        const s = order?.sellerId;
+        const listingId = order?.listingId || payout?.listingId || null;
+
+        // ---- status / amount / date ----
+        const status = isEvent ? txnEventStatus(event, kind, order) : (payout.status === 'paid' ? 'completed' : 'pending');
+        const failed = isEvent && kind === 'refund' && event.outcome === 'refund_failed';
+        const resolved = failed && event.type === 'refund.admin' && order?.status === 'canceled';
+
+        const amount = isEvent ? (event.amount != null ? event.amount / 100 : null) : payout.netAmount;
+        const at = isEvent ? event.createdAt : (payout.paidAt || payout.requestedAt || payout.createdAt);
+
+        const reference = isEvent
+            ? (kind === 'refund' && event.outcome === 'refunded_admin'
+                ? (order?.refund?.stripeRefundId || event.paymentIntentId || null)
+                : (event.paymentIntentId || null))
+            : (payout.transferReference || null);
+
+        // ---- timeline ----
+        let timeline;
+        if (isEvent) {
+            const events = order
+                ? await PaymentEvent.find({ orderId: order._id, outcome: { $in: TXN_EVENT_OUTCOMES } }).sort({ createdAt: 1 }).lean()
+                : [event];
+
+            timeline = [
+                ...(order?.statusHistory || []).map((h) => ({ source: 'order', status: h.status, at: h.at, by: h.by, note: h.note || null })),
+                ...events.map((e) => ({ source: 'gateway', status: e.outcome, at: e.createdAt, by: 'gateway', note: e.note || null })),
+            ];
+        } else {
+            timeline = (payout.history || []).map((h) => ({ source: 'payout', status: h.status, at: h.at, by: h.by, note: h.note || null }));
+        }
+        timeline.sort((x, y) => new Date(x.at) - new Date(y.at));
+
+        const saleLabel = order?.source === 'auction' ? 'Auction' : order?.source === 'buy_now' ? 'Buy Now' : null;
+        const description = kind === 'payment'
+            ? `Payment received for ${listingId || 'order'}${saleLabel ? ` (${saleLabel})` : ''}`
+            : kind === 'refund'
+                ? `Refund to buyer for ${listingId || 'order'}`
+                : `Seller payout for ${listingId || 'order'}`;
+
+        const txn = {
+            key: req.params.key,
+            kind,
+            direction: kind === 'payment' ? 'in' : 'out',
+            status,
+            resolved,
+            amount,
+            currency: isEvent && event.currency ? String(event.currency).toUpperCase() : 'AED',
+            at,
+            reference,
+            description,
+            note: isEvent && !failed ? (event.note || null) : null,
+            failureNote: failed ? (event.note || null) : null,
+            gateway: isEvent
+                ? {
+                    outcome: event.outcome,
+                    eventId: event.eventId || null,
+                    sessionId: event.sessionId || null,
+                    paymentIntentId: event.paymentIntentId || null,
+                    stripeRefundId: kind === 'refund' && event.outcome === 'refunded_admin' ? (order?.refund?.stripeRefundId || null) : null,
+                    refundedByName: kind === 'refund' && event.outcome === 'refunded_admin' ? (order?.refund?.refundedBy?.name || null) : null,
+                }
+                : null,
+
+            // refund row ka detail page isi id se khulta hai
+            refundId: isEvent && kind === 'refund' ? String(event._id) : null,
+
+            payout: isPayout
+                ? {
+                    _id: payout._id,
+                    payoutId: payout.payoutId,
+                    status: payout.status,
+                    grossAmount: payout.grossAmount,
+                    commissionPercent: payout.commissionPercent,
+                    commissionAmount: payout.commissionAmount,
+                    netAmount: payout.netAmount,
+                    requestedAt: payout.requestedAt || null,
+                    paidAt: payout.paidAt || null,
+                    paidByName: payout.paidBy?.name || null,
+                    transferReference: payout.transferReference || null,
+                    bank: payout.bankSnapshot?.bankName || payout.bankSnapshot?.accountHolderName
+                        ? {
+                            accountHolderName: payout.bankSnapshot.accountHolderName || null,
+                            bankName: payout.bankSnapshot.bankName || null,
+                            iban: txnMask(payout.bankSnapshot.ibanNumber),
+                            accountNumber: txnMask(payout.bankSnapshot.accountNumber),
+                            swiftCode: payout.bankSnapshot.swiftCode || null,
+                        }
+                        : null,
+                }
+                : null,
+
+            order: order
+                ? {
+                    _id: order._id,
+                    orderId: order.orderId,
+                    listingId: order.listingId,
+                    source: order.source,
+                    status: order.status,
+                    amount: order.amount,
+                    paidAt: order.paidAt || null,
+                }
+                : null,
+
+            vehicle: order?.vehicleId
+                ? {
+                    listingId: order.vehicleId.listingId,
+                    make: order.vehicleId.make,
+                    model: order.vehicleId.model,
+                    year: order.vehicleId.year,
+                    image: payFirstImage(order.vehicleId.images),
+
+                    trim: order.vehicleId.trim || null,
+                    mileage: order.vehicleId.mileage ?? null,
+                    fuelType: order.vehicleId.fuelType || null,
+                    transmission: order.vehicleId.transmission || null,
+                    bodyType: order.vehicleId.bodyType || null,
+                    exteriorColor: order.vehicleId.exteriorColor || null,
+                    interiorColor: order.vehicleId.interiorColor || null,
+                    vin: order.vehicleId.vin || null,
+                    condition: order.vehicleId.condition || null,
+                }
+                : null,
+
+            buyer: b
+                ? {
+                    type: order.buyerType,
+                    readableId: isSellerBuyer ? b.sellerId : b.buyerId,
+                    name: payPartyName(b, order.buyerType),
+                    email: b.email || null,
+                    phone: (isSellerBuyer ? b.phone : b.mobile) || null,
+                    image: (isSellerBuyer ? b.profileImage : b.profileImageUrl) || null,
+                }
+                : null,
+
+            seller: s
+                ? {
+                    readableId: s.sellerId,
+                    name: payPartyName(s, 'Seller'),
+                    email: s.email || null,
+                    phone: s.phone || null,
+                    image: s.profileImage || null,
+                }
+                : null,
+
+            timeline,
+        };
+
+        return res.status(200).json({
+            success: true,
+            message: "Fetched transaction details",
+            transaction: txn
+        });
+
+    } catch (err) {
+        console.log("getTransactionById Error :", err);
+        return bad(res, 'Server Error Occured', 500);
+    }
+};
+
 // ============================================ ADMIN DASHBOARD
 
 const UAE_OFFSET_MS = 4 * 60 * 60 * 1000;
@@ -5568,7 +6075,7 @@ const getInitials = (name = '') => name.split(/\s+/).filter(Boolean).map((part) 
 
 const getRangeMatch = (field, range) => ({ [field]: { $gte: range.start, $lt: range.end } });
 
-export const getReportAnalytics = async () => {
+export const getReportAnalytics = async (req, res) => {
     try {
         const validRanges = ['this_week', 'last_week', 'two_weeks_ago'];
         const rangeKey = validRanges.includes(req.query.range) ? req.query.range : 'this_week';
@@ -5586,22 +6093,22 @@ export const getReportAnalytics = async () => {
             periodOrderCounts, distinctSuccessfulBuyers, distinctBidders,
         ] = await Promise.all([
             Buyer.countDocuments({ accountStatus: { $ne: 'suspended' } }),
-            Seller.countDocuments({ accountStatus: { $ne: 'suspended' } }),
+            Seller.countDocuments({ isComplete: true, accountStatus: { $ne: "suspended" },}),
             Buyer.countDocuments(),
-            Seller.countDocuments(),
+            Seller.countDocuments({ isComplete: true }),
             Vehicle.countDocuments({
                 auctionEndDateTime: { $gte: range.start, $lt: range.end },
                 auctionStatus: { $in: ['sold', 'unsold', 'reserve-not-met', 'canceled'] },
             }),
+            
             Order.countDocuments(paidRange),
 
             Payout.aggregate([
-                { $match: { status: { $ne: 'canceled' }, createdAt: { $gte: range.start, $lt: range.end } } },
+                { $match: { status: { $ne: 'canceled' }} },
                 { $group: { _id: null, amount: { $sum: '$commissionAmount' } } },
             ]),
 
             Bid.aggregate([
-                { $match: getRangeMatch('createdAt', range) },
                 { $group: { _id: null, average: { $avg: '$amount' } } },
             ]),
 
@@ -5647,7 +6154,7 @@ export const getReportAnalytics = async () => {
                 { $sort: { value: -1 } },
             ]),
 
-            Order.find(paidRange)
+            Order.find({ status: "paid" })
                 .sort({ amount: -1 }).limit(5)
                 .populate('vehicleId', 'make model year images listingId')
                 .select('orderId listingId amount currency paidAt vehicleId')
@@ -5825,7 +6332,7 @@ export const getReportAnalytics = async () => {
         });
 
     } catch (err) {
-        console.error('getReportAnalytics error:', error);
+        console.error('getReportAnalytics error:', err);
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch report analytics'

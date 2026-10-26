@@ -15,7 +15,9 @@ import {
     cancelAndRefundOrder, getAllRefunds, getRefundById,
     getAllSales, 
     getAllPayments, getPaymentById,
-    adminDashboardStats, 
+    getAllTransactions, getTransactionById,
+    adminDashboardStats,
+    getReportAnalytics,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -170,7 +172,14 @@ router.get('/refund-detail/:id', authMiddleware(['admin']), getRefundById);
 router.get('/get-all-payments', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllPayments);
 router.get('/payment-detail/:id', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getPaymentById);
 
+// ============================ TRANSACTION
+router.get('/get-all-transactions', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllTransactions);
+router.get('/transaction-detail/:key', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getTransactionById);
+
 // ============================ DASHBOARD STATS
 router.get('/admin-dashboard-stats', authMiddleware(['admin']), adminDashboardStats);
+
+// ============================ REPORT ANALYTICS
+router.get('/report-analytics', authMiddleware(['admin', 'auctionManager']), requirePermission('manageReports'), getReportAnalytics);
 
 export default router;

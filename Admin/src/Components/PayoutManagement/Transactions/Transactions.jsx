@@ -1,129 +1,176 @@
 
-import React, { useState } from 'react';
-import { Calendar, Check, CheckCircle, Clock, DollarSign, Download, RotateCcw, XCircle, X, ArrowLeftRight, CreditCard, Eye, Landmark, MoreHorizontal, MoreVertical } from 'lucide-react';
-import { FaPaypal, FaUniversity, FaExchangeAlt, FaWallet } from "react-icons/fa";
-import { SiWise } from "react-icons/si";
-import { allTransactions } from '../../Data';
+import React, { useEffect, useState } from 'react';
+import {
+    AlertTriangle, ArrowDownLeft, ArrowUpRight, Check, CheckCircle, Clock, CreditCard, DollarSign,
+    Eye, Landmark, RotateCcw, X, Wallet,
+} from 'lucide-react';
 
 import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../../SharedComponents/SummaryDonutCard';
+import DateRangePicker from '../../SharedComponents/DateRangePicker';
+import { formatLabel, formatPrice, toYMD, fmtDate, fmtTime } from '../../utils/formatter';
 
-const allTransactionStats = [
-    {
-        title: "Total Transactions",
-        value: "1,026",
-        subTitle: "↑ 18.6% from last month",
-        subTextColor: "text-green-600",
-        icon: DollarSign,
-        theme: "bg-purple-50",
-        iconColor: "text-purple-600",
-    },
-    {
-        title: "Successful Transactions",
-        value: "812",
-        subTitle: "79.2% of total",
-        subTextColor: "text-slate-500",
-        icon: CheckCircle,
-        theme: "bg-green-50",
-        iconColor: "text-green-600",
-    },
-    {
-        title: "Pending Transactions",
-        value: "124",
-        subTitle: "12.1% of total",
-        subTextColor: "text-slate-500",
-        icon: Clock,
-        theme: "bg-amber-50",
-        iconColor: "text-amber-500",
-    },
-    {
-        title: "Failed Transactions",
-        value: "58",
-        subTitle: "5.7% of total",
-        subTextColor: "text-slate-500",
-        icon: XCircle,
-        theme: "bg-red-50",
-        iconColor: "text-red-500",
-    },
-    {
-        title: "Refunded Transactions",
-        value: "32",
-        subTitle: "3.1% of total",
-        subTextColor: "text-slate-500",
-        icon: RotateCcw,
-        theme: "bg-blue-50",
-        iconColor: "text-blue-600",
-    },
-];
+import { getPaginationRange } from '../../utils/getPaginationRange';
+import { useGetAllTransactions } from '../../../hooks/useTransaction';
 
-const transactionMethods = [
-    { id: 1, name: "Bank Transfer", amount: "$214,680.00", percentage: 60, icon: FaUniversity, iconColor: "text-purple-600", theme: "bg-purple-50 text-purple-600", color: "bg-purple-600" },
-    { id: 2, name: "PayPal", amount: "$76,540.00", percentage: 21, icon: FaPaypal, iconColor: "text-blue-600", theme: "bg-blue-50 text-blue-600", color: "bg-blue-600" },
-    { id: 3, name: "Wire Transfer", amount: "$41,250.00", percentage: 11, icon: FaExchangeAlt, iconColor: "text-orange-600", theme: "bg-orange-50 text-orange-600", color: "bg-orange-500" },
-    { id: 4, name: "Wise", amount: "$13,210.50", percentage: 3, icon: SiWise, iconColor: "text-emerald-600", theme: "bg-emerald-50 text-emerald-600", color: "bg-emerald-500" },
-    { id: 5, name: "Other", amount: "$7,000.00", percentage: 2, icon: FaWallet, iconColor: "text-slate-600", theme: "bg-slate-50 text-slate-600", color: "bg-slate-400" },
-];
+const STATUS_META = {
+    completed: { label: 'Completed', style: 'border-green-200 bg-green-50 text-green-700' },
+    pending: { label: 'Pending', style: 'border-amber-200 bg-amber-50 text-amber-600' },
+    failed: { label: 'Failed', style: 'border-red-200 bg-red-50 text-red-600' },
+};
 
-const recentActivity = [
-    {
-        title: "Payout completed",
-        desc: "TXN-2024-001026 to Michael Johnson",
-        amount: "$45,500.00",
-        time: "10:30 AM",
-        icon: Check,
-        iconBg: "bg-green-600 text-white"
-    },
-    {
-        title: "Payout pending",
-        desc: "TXN-2024-001024 to David Brown",
-        amount: "$18,200.00",
-        time: "11:20 AM",
-        icon: Clock,
-        iconBg: "bg-amber-500 text-white"
-    },
-    {
-        title: "Payout failed",
-        desc: "TXN-2024-001020 to Robert Taylor",
-        amount: "$9,750.00",
-        time: "12:10 PM",
-        icon: X,
-        iconBg: "bg-red-500 text-white"
-    },
-    {
-        title: "Refund processed",
-        desc: "TXN-2024-001019 to Linda Martinez",
-        amount: "$500.00",
-        time: "11:05 AM",
-        icon: RotateCcw,
-        iconBg: "bg-purple-600 text-white"
-    },
-];
+const KIND_META = {
+    payment: { label: 'Payment Received', style: 'bg-green-50 text-green-700', bar: 'bg-green-600', sign: '+', amountCls: 'text-green-600', method: 'Card (Stripe)', Icon: CreditCard, DirIcon: ArrowDownLeft },
+    refund: { label: 'Refund', style: 'bg-purple-50 text-purple-600', bar: 'bg-purple-600', sign: '-', amountCls: 'text-red-600', method: 'Card (Stripe)', Icon: CreditCard, DirIcon: ArrowUpRight },
+    payout: { label: 'Seller Payout', style: 'bg-blue-50 text-blue-600', bar: 'bg-blue-600', sign: '-', amountCls: 'text-blue-600', method: 'Bank Transfer', Icon: Landmark, DirIcon: ArrowUpRight },
+};
 
-// tabs
+const ACTIVITY_TITLE = {
+    payment: { completed: 'Payment received', pending: 'Payment processing', failed: 'Payment failed' },
+    refund: { completed: 'Refund processed', pending: 'Refund pending', failed: 'Refund failed' },
+    payout: { completed: 'Payout completed', pending: 'Payout requested', failed: 'Payout failed' },
+};
+
+const ACTIVITY_ICON = {
+    completed: { icon: Check, iconBg: 'bg-green-600' },
+    pending: { icon: Clock, iconBg: 'bg-amber-500' },
+    failed: { icon: X, iconBg: 'bg-red-500' },
+};
+
 const tabs = [
-    { id: 'all', label: 'All Transactions' },
-    { id: 'successful', label: 'Successful' },
-    { id: 'pending', label: 'Pending' },
-    { id: 'failed', label: 'Failed' },
-    { id: 'refunded', label: 'Refunded' },
+    { id: 'all', label: 'All Transactions', status: '' },
+    { id: 'completed', label: 'Completed', status: 'completed' },
+    { id: 'pending', label: 'Pending', status: 'pending' },
+    { id: 'failed', label: 'Failed', status: 'failed' },
+];
+
+const filterConfig = [
+    {
+        label: 'All Transaction Types',
+        key: 'kind',
+        options: [
+            { label: 'All Transaction Types', value: '' },
+            { label: 'Payment Received', value: 'payment' },
+            { label: 'Refund', value: 'refund' },
+            { label: 'Seller Payout', value: 'payout' },
+        ],
+    },
+    {
+        label: 'Sort By',
+        key: 'sortBy',
+        options: [
+            { label: 'Newest', value: 'newest' },
+            { label: 'Oldest', value: 'oldest' },
+        ],
+    },
 ];
 
 function Transactions({ setCurrentPage, setSelectedTransactionId }) {
 
-    const [activeTab, setActiveTab] = useState("all");
-    const [selectedTransactionType, setSelectedTransactionType] = useState("");
-    const [selectedStatus, setSelectedStatus] = useState("");
-    const [selectedMethod, setSelectedMethod] = useState("");
+    const [page, setPage] = useState(1);
+    const [status, setStatus] = useState('');
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({ kind: '', sortBy: 'newest' });
+
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    const { data, isLoading, isError, isPlaceholderData } = useGetAllTransactions({
+        page,
+        limit: 10,
+        search: debouncedSearch,
+        status,
+        kind: filters.kind,
+        sortBy: filters.sortBy,
+        startDate: startDate ? toYMD(startDate) : '',
+        endDate: endDate ? toYMD(endDate) : '',
+    });
+
+    const transactions = data?.transactions ?? [];
+    const stats = data?.stats ?? {};
+    const kinds = data?.kinds ?? {};
+    const recent = data?.recent ?? [];
+    const totalPages = data?.pagination?.totalPages || 1;
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [status, filters, debouncedSearch, startDate, endDate]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    if (isLoading) return <p className="p-10 text-center">Loading transactions....</p>;
+    if (isError) return <p className="p-10 text-center text-red-500">Failed to load transactions</p>;
+
+    // stats
+    const statsData = [
+        {
+            title: 'Total Transactions',
+            value: Number(stats.total?.count || 0).toLocaleString(),
+            subTitle: stats.failed?.open ? `${stats.failed.open} need attention` : 'No open failures',
+            icon: DollarSign,
+            theme: 'bg-purple-50',
+            iconColor: 'text-purple-600',
+        },
+        {
+            title: 'Money Received',
+            value: formatPrice(stats.received?.amount),
+            subTitle: `${stats.received?.count || 0} payments`,
+            icon: CheckCircle,
+            theme: 'bg-green-50',
+            iconColor: 'text-green-600',
+        },
+        {
+            title: 'Refunded',
+            value: formatPrice(stats.refunded?.amount),
+            subTitle: `${stats.refunded?.count || 0} refunds`,
+            icon: RotateCcw,
+            theme: 'bg-blue-50',
+            iconColor: 'text-blue-600',
+        },
+        {
+            title: 'Paid to Sellers',
+            value: formatPrice(stats.paidOut?.amount),
+            subTitle: `${stats.paidOut?.count || 0} payouts`,
+            icon: Wallet,
+            theme: 'bg-indigo-50',
+            iconColor: 'text-indigo-600',
+        },
+        {
+            title: 'Pending',
+            value: Number(stats.pending?.count || 0).toLocaleString(),
+            subTitle: `${formatPrice(stats.pending?.amount)} in transit`,
+            icon: Clock,
+            theme: 'bg-amber-50',
+            iconColor: 'text-amber-500',
+        },
+    ];
+
+    const volumeTotal = Object.values(kinds).reduce((sum, k) => sum + Number(k?.amount || 0), 0);
+    const kindRows = Object.keys(KIND_META)
+        .map((key) => ({
+            key,
+            ...KIND_META[key],
+            count: kinds[key]?.count || 0,
+            amount: kinds[key]?.amount || 0,
+            percentage: volumeTotal ? Math.round((Number(kinds[key]?.amount || 0) / volumeTotal) * 100) : 0,
+        }))
+        .filter((r) => r.count > 0);
 
     return (
         <div>
             {/* Header */}
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between pb-6">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">
-                        Transactions
-                    </h1>
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">Transactions</h1>
 
                     <div className="mt-2 flex items-center text-[11px] md:text-[13px]">
                         <span
@@ -133,56 +180,37 @@ function Transactions({ setCurrentPage, setSelectedTransactionId }) {
                         </span>
 
                         <span className="mx-2 text-slate-300">/</span>
-
                         <span className="text-slate-500">Payment Management</span>
 
                         <span className="mx-2 text-slate-300">/</span>
                         <span className="font-medium text-[#D97706]">Transactions</span>
                     </div>
                 </div>
-
-                {/* btns */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <button className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-transparent p-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
-                        <Download size={16} />
-                        <span className="text-[13px]">Export Report</span>
-                    </button>
-
-                    <button className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-transparent p-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-[#D97706] hover:text-[#D97706] hover:bg-amber-50">
-                        <Download size={16} />
-                        <span className="text-[13px]">Download Transactions</span>
-                    </button>
-
-                    <button
-                        className="flex items-center justify-center gap-1.5 rounded-lg bg-[#D97706] px-4 py-2 font-medium text-white shadow-md shadow-amber-500/20 transition-all duration-200 hover:bg-[#B45F04] hover:scale-[1.02]">
-                        <span className="text-sm">More Actions</span>
-                    </button>
-                </div>
             </div>
 
             {/* stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-                {allTransactionStats.map((stat, index) => {
+                {statsData.map((stat, index) => {
                     const Icon = stat.icon;
                     return (
                         <div
                             key={index}
-                            className="group relative bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 flex items-center justify-between"
+                            className="group relative bg-white rounded-2xl border border-slate-100 px-4 py-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-300 flex items-center justify-between overflow-hidden"
                         >
                             <div className="min-w-0 pr-2">
                                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1 truncate">
                                     {stat.title}
                                 </span>
-                                <h4 className="text-xl font-bold text-slate-900 tracking-tight truncate">
+                                <h4 className="text-lg font-bold text-slate-900 tracking-tight truncate">
                                     {stat.value}
                                 </h4>
-                                <span className={`text-[11px] font-medium mt-1.5 block truncate ${stat.subTextColor}`}>
+                                <span className="text-[11px] font-medium mt-1.5 block text-slate-500 truncate">
                                     {stat.subTitle}
                                 </span>
                             </div>
 
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 shadow-sm ${stat.theme} ${stat.iconColor}`}>
-                                <Icon className="w-5.5 h-5.5" />
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 shadow-sm ${stat.theme} ${stat.iconColor}`}>
+                                <Icon className="w-4.5 h-4.5" />
                             </div>
                         </div>
                     );
@@ -193,85 +221,68 @@ function Transactions({ setCurrentPage, setSelectedTransactionId }) {
             <div className="my-6 bg-white border border-slate-200 rounded-xl p-4 space-y-4">
 
                 <div className="flex flex-wrap xl:flex-nowrap items-center gap-3">
-
-                    {/* Search */}
                     <div className="flex-1 sm:w-70">
-                        <SearchBar />
-                    </div>
-
-                    {/* all payment types */}
-                    <div className="w-full sm:w-47">
-                        <FilterDropdown
-                            label="All Transaction Types"
-                            options={[
-                                { label: "Type A", value: "type-a" },
-                                { label: "Type B", value: "type-b" }
-                            ]}
-                            value={selectedTransactionType}
-                            onChange={setSelectedTransactionType}
+                        <SearchBar
+                            placeholder="Search by order ID, payout ID, listing ID, buyer, seller or reference..."
+                            value={search}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    {/* status */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Status"
-                            options={[
-                                { label: "Completed", value: "completed" },
-                                { label: "Pending", value: "pending" },
-                                { label: "Failed", value: "failed" }
-                            ]}
-                            value={selectedStatus}
-                            onChange={setSelectedStatus}
-                        />
-                    </div>
-
-                    {/* methods */}
-                    <div className="w-full sm:w-42">
-                        <FilterDropdown
-                            label="All Methods"
-                            options={[
-                                { label: "Bank Transfer", value: "bank-transfer" },
-                                { label: "PayPal", value: "paypal" }
-                            ]}
-                            value={selectedMethod}
-                            onChange={setSelectedMethod}
-                        />
-                    </div>
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div key={key} className="w-full sm:w-47">
+                            <FilterDropdown
+                                label={label}
+                                options={options}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onChange={(update) => {
+                            setStartDate(update[0]);
+                            setEndDate(update[1]);
+                        }}
+                    />
 
-                    {/* Date Range */}
-                    <div className="w-full sm:w-auto flex items-center gap-2 h-9.5 px-3 md:px-4 border border-slate-300 rounded-lg bg-white text-[13px] md:text-sm text-slate-600">
-                        <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
-                        <span className="truncate">
-                            May 01, 2024 - May 31, 2024
-                        </span>
-                    </div>
-
-                    {/* Clear Filters */}
-                    <button className="text-xs md:text-sm font-medium text-[#D97706] hover:underline">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSearch('');
+                            setDebouncedSearch('');
+                            setStatus('');
+                            setFilters({ kind: '', sortBy: 'newest' });
+                            setStartDate(null);
+                            setEndDate(null);
+                            setPage(1);
+                        }}
+                        className="flex items-center gap-1.5 h-9 px-1.5 text-xs font-semibold text-amber-600 underline underline-offset-4 decoration-amber-300 hover:text-amber-700 hover:decoration-amber-600 transition-all">
                         Clear Filters
                     </button>
                 </div>
-
             </div>
 
             {/* main section */}
             <div className="grid grid-cols-1 xl:grid-cols-3 pb-6 gap-6">
 
                 {/* -------------------------- LEFT -------------------------- */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="xl:col-span-2 space-y-6">
 
                     {/* tabs */}
                     <div className="flex gap-10 border-b border-slate-100 my-6 overflow-x-auto no-scrollbar">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`pb-3 text-[14px] font-medium whitespace-nowrap border-b-2 transition-colors 
-                                                ${activeTab === tab.id
+                                type="button"
+                                onClick={() => setStatus(tab.status)}
+                                className={`pb-3 text-[14px] font-medium whitespace-nowrap border-b-2 transition-colors
+                                    ${status === tab.status
                                         ? 'border-[#D97706] text-[#D97706]'
                                         : 'border-transparent text-slate-500 hover:text-slate-700'
                                     }`}>
@@ -280,300 +291,288 @@ function Transactions({ setCurrentPage, setSelectedTransactionId }) {
                         ))}
                     </div>
 
-                    {/* Transaction Table */}
+                    {/* table */}
                     <div className="overflow-x-auto border border-gray-200 rounded-lg">
                         <table className="w-full text-left table-fixed">
                             <thead className="bg-gray-100 border-b border-gray-200 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4 w-45">Transaction ID</th>
-                                    <th className="px-6 py-4 w-60">User</th>
-                                    <th className="px-6 py-4 w-40">Type</th>
+                                    <th className="px-6 py-4 w-48">Transaction</th>
+                                    <th className="px-6 py-4 w-56">Party</th>
+                                    <th className="px-6 py-4 w-46">Type</th>
                                     <th className="px-6 py-4 w-40">Amount</th>
-                                    <th className="px-6 py-4 w-45">Payment Method</th>
-                                    <th className="px-6 py-4 w-35">Status</th>
-                                    <th className="px-6 py-4 w-40">Transaction Date</th>
-                                    <th className="px-6 py-4 w-45">Reference ID</th>
-                                    <th className="px-6 py-4 w-30">Actions</th>
+                                    <th className="px-6 py-4 w-40">Method</th>
+                                    <th className="px-6 py-4 w-36">Status</th>
+                                    <th className="px-6 py-4 w-36">Date</th>
+                                    <th className="px-6 py-4 w-24">Actions</th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-amber-50">
-                                {allTransactions.map((transaction, index) => (
-                                    <tr
-                                        key={transaction.transactionId || index}
-                                        className="hover:bg-gray-50/50 transition-colors"
-                                    >
+                            <tbody
+                                className={`divide-y divide-amber-50 transition-opacity ${isPlaceholderData ? 'opacity-50 pointer-events-none' : ''}`}>
+                                {transactions.length > 0 ? (
+                                    transactions.map((t) => {
+                                        const meta = STATUS_META[t.status] || STATUS_META.pending;
+                                        const kindMeta = KIND_META[t.kind] || KIND_META.payment;
+                                        const MethodIcon = kindMeta.Icon;
+                                        const DirIcon = kindMeta.DirIcon;
 
-                                        {/* Transaction ID */}
-                                        <td className="px-6 py-4 leading-tight">
-                                            <div className="text-[13px] font-semibold text-slate-800">
-                                                {transaction.transactionId || "---"}
-                                            </div>
-                                        </td>
+                                        return (
+                                            <tr 
+                                            key={t.key} 
+                                            className="hover:bg-gray-50/50 transition-colors">
 
-                                        {/* User */}
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <img
-                                                    src={transaction.avatarUrl}
-                                                    alt={transaction.userName}
-                                                    className="w-7 h-7 object-cover rounded-full shrink-0"
-                                                />
-
-                                                <div className="min-w-0">
-                                                    <div className="text-gray-700 font-semibold text-[13px] truncate">
-                                                        {transaction.userName || "---"}
+                                                {/* id + reference */}
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[13px] font-semibold text-slate-800 truncate">
+                                                        {t.kind === 'payout' ? (t.payoutCode || '---') : (t.orderId || '---')}
                                                     </div>
+                                                    <div className="text-[11px] text-slate-400 mt-0.5 truncate" title={t.reference || ''}>
+                                                        {t.reference || t.listingId || '---'}
+                                                    </div>
+                                                </td>
 
+                                                {/* party */}
+                                                <td className="px-6 py-4">
+                                                    <div className="text-[13px] font-semibold text-gray-700 truncate">
+                                                        {t.party?.name || 'Unknown user'}
+                                                    </div>
                                                     <div className="text-[11px] text-gray-500 truncate">
-                                                        {transaction.userEmail || "---"}
+                                                        {t.party?.email || '—'}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        {/* Type */}
-                                        <td className="px-6 py-4">
-                                            <span className="text-[13px] font-medium text-slate-700">
-                                                {transaction.transactionType || "---"}
-                                            </span>
-                                        </td>
-
-                                        {/* Amount */}
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`text-[13px] font-bold ${transaction.transactionType === "Refund"
-                                                    ? "text-red-600"
-                                                    : "text-green-600"
-                                                    }`}
-                                            >
-                                                {transaction.amount || "---"}
-                                            </span>
-                                        </td>
-
-                                        {/* Payment Method */}
-                                        <td className="px-6 py-4 text-[13px] text-slate-700">
-                                            <div className="flex items-center gap-2">
-
-                                                <span className="w-6 h-6 rounded-md flex items-center justify-center bg-slate-100 text-slate-600 shrink-0">
-                                                    {transaction.method === "Bank Transfer" && (
-                                                        <Landmark className="w-3.5 h-3.5" />
+                                                    {t.vehicle && (
+                                                        <div className="text-[11px] text-slate-400 truncate">
+                                                            {`${t.vehicle.year || ''} ${formatLabel(t.vehicle.make)} ${formatLabel(t.vehicle.model)}`.trim()}
+                                                        </div>
                                                     )}
+                                                </td>
 
-                                                    {transaction.method === "Wire Transfer" && (
-                                                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                                                {/* type */}
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${kindMeta.style}`}>
+                                                        <DirIcon size={12} />
+                                                        {kindMeta.label}
+                                                    </span>
+                                                </td>
+
+                                                {/* amount */}
+                                                <td className="px-6 py-4">
+                                                    <span className={`text-[13px] font-bold ${t.status === 'failed' ? 'text-slate-400 line-through' : kindMeta.amountCls}`}>
+                                                        {t.status === 'failed' ? '' : kindMeta.sign}{formatPrice(t.amount)}
+                                                    </span>
+                                                </td>
+
+                                                {/* method */}
+                                                <td className="px-6 py-4 text-[13px] text-slate-700">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-6 h-6 rounded-md flex items-center justify-center bg-slate-100 text-slate-600 shrink-0">
+                                                            <MethodIcon className="w-3.5 h-3.5" />
+                                                        </span>
+                                                        <span className="font-semibold text-slate-800 truncate">{kindMeta.method}</span>
+                                                    </div>
+                                                </td>
+
+                                                {/* status */}
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded text-[11px] font-medium border ${meta.style}`}>
+                                                        {meta.label}
+                                                    </span>
+                                                    {t.resolved && (
+                                                        <div className="mt-1 text-[11px] font-medium text-green-600">Resolved on retry</div>
                                                     )}
-
-                                                    {transaction.method === "PayPal" && (
-                                                        <FaPaypal className="text-blue-600" />
+                                                    {t.status === 'failed' && !t.resolved && (
+                                                        <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-red-600">
+                                                            <AlertTriangle size={12} className="shrink-0" />
+                                                            <span>Needs attention</span>
+                                                        </div>
                                                     )}
+                                                </td>
 
-                                                    {transaction.method === "Wise" && (
-                                                        <SiWise className="text-emerald-600" />
-                                                    )}
+                                                {/* date */}
+                                                <td className="px-6 py-4 text-[13px] leading-tight">
+                                                    <div className="font-semibold text-slate-800">{fmtDate(t.at)}</div>
+                                                    <div className="text-[11px] text-slate-400 mt-0.5">{fmtTime(t.at)}</div>
+                                                </td>
 
-                                                    {![
-                                                        "Bank Transfer",
-                                                        "Wire Transfer",
-                                                        "PayPal",
-                                                        "Wise",
-                                                    ].includes(transaction.method) && (
-                                                            <CreditCard className="w-3.5 h-3.5" />
-                                                        )}
-                                                </span>
-
-                                                <span className="font-semibold text-slate-800 truncate">
-                                                    {transaction.method || "---"}
-                                                </span>
+                                                {/* actions */}
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedTransactionId(t.key);
+                                                            setCurrentPage('transactions-detail');
+                                                        }}
+                                                        title="View transaction"
+                                                        className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                                                        <Eye size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan={8} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <p className="text-sm font-medium text-gray-500">No Data Found</p>
+                                                <p className="text-xs text-gray-400 mt-1">There are no transactions to display.</p>
                                             </div>
                                         </td>
-
-                                        {/* Status */}
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`px-2 py-1 rounded text-[11px] font-medium border ${transaction.status === "Completed"
-                                                    ? "border-green-200 bg-green-50 text-green-700"
-                                                    : transaction.status === "Failed"
-                                                        ? "border-red-200 bg-red-50 text-red-600"
-                                                        : transaction.status === "Processing"
-                                                            ? "border-blue-200 bg-blue-50 text-blue-600"
-                                                            : transaction.status === "Refunded"
-                                                                ? "border-purple-200 bg-purple-50 text-purple-600"
-                                                                : "border-amber-200 bg-amber-50 text-amber-600"
-                                                    }`}
-                                            >
-                                                {transaction.status || "---"}
-                                            </span>
-                                        </td>
-
-                                        {/* Transaction Date */}
-                                        <td className="px-6 py-4 text-[13px] leading-tight">
-                                            <div className="font-semibold text-slate-800">
-                                                {transaction.date || "---"}
-                                            </div>
-
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                {transaction.time || "---"}
-                                            </div>
-                                        </td>
-
-                                        {/* Reference ID */}
-                                        <td className="px-6 py-4">
-                                            <span className="text-[12px] font-medium text-slate-600">
-                                                {transaction.referenceId || "---"}
-                                            </span>
-                                        </td>
-
-                                        {/* Actions */}
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedTransactionId(transaction.transactionId)
-                                                        setCurrentPage('transactions-detail')
-                                                    }}
-                                                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
-                                                    title="View Transaction"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-
-                                                <button
-                                                    className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
-                                                    title="More Actions"
-                                                >
-                                                    <MoreVertical size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
+
+                    <p className="text-[11px] text-slate-400">
+                        Auto-refunds show as Completed once the refund is created; their final Stripe status is not synced yet. Gateway fees are not recorded.
+                    </p>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                            <p className="hidden sm:block text-xs text-slate-500">
+                                Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                                <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                            </p>
+
+                            <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p - 1)}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Previous
+                                </button>
+
+                                {getPaginationRange(page, totalPages).map((num, idx) =>
+                                    num === "..." ? (
+                                        <span key={`dot-${idx}`} className="px-2 py-1.5 text-xs font-medium text-slate-400">...</span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            key={num}
+                                            onClick={() => setPage(num)}
+                                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all ${page === num
+                                                ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                                }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    )
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* -------------------------- RIGHT -------------------------- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6 content-start">
 
                     <SummaryDonutCard
                         title="Transaction Overview"
-                        centerValue="1,026"
+                        centerValue={String(stats.total?.count || 0)}
                         centerLabel="Total"
                         showPercentage={true}
                         segments={[
-                            { name: 'Successful', value: 812, color: '#00B050' },
-                            { name: 'Pending', value: 124, color: '#FF9900' },
-                            { name: 'Failed', value: 58, color: '#FF3B30' },
-                            { name: 'Refunded', value: 32, color: '#8B5CF6' },
+                            { name: 'Completed', value: stats.completed?.count || 0, color: '#00B050' },
+                            { name: 'Pending', value: stats.pending?.count || 0, color: '#FF9900' },
+                            { name: 'Failed', value: stats.failed?.count || 0, color: '#FF3B30' },
                         ]}
                     />
 
-                    {/* trans methods */}
+                    {/* volume by type */}
                     <div className="w-full bg-white rounded-xl border border-slate-100 p-4 md:p-5 shadow-sm">
-                        <h3 className="font-bold text-slate-900 text-[13px] md:text-sm mb-5">
-                            Transaction Methods
-                        </h3>
+                        <h3 className="font-bold text-slate-900 text-[13px] md:text-sm mb-1">Volume by Type</h3>
+                        <p className="text-[11px] text-slate-400 mb-5">Completed + pending only</p>
 
-                        <div className="space-y-4">
-                            {transactionMethods.map((payout, index) => {
-                                const Icon = payout.icon;
-                                return (
-                                    <div key={index} className="w-full">
-
-                                        {/* Top Row */}
-                                        <div className="flex items-center gap-2 sm:gap-3">
-
-                                            {/* Icon */}
-                                            <div
-                                                className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center rounded-lg ${payout.theme}`}>
-                                                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        {kindRows.length > 0 ? (
+                            <div className="space-y-4">
+                                {kindRows.map((row) => {
+                                    const RowIcon = row.Icon;
+                                    return (
+                                        <div key={row.key} className="w-full">
+                                            <div className="flex items-center gap-2 sm:gap-3">
+                                                <div className={`w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center rounded-lg ${row.style}`}>
+                                                    <RowIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                </div>
+                                                <span className="flex-1 min-w-0 text-[11px] sm:text-xs font-medium text-slate-700 truncate">
+                                                    {row.label} <span className="text-slate-400">({row.count})</span>
+                                                </span>
+                                                <span className="text-[10px] sm:text-xs font-bold text-slate-800 whitespace-nowrap">
+                                                    {formatPrice(row.amount)}
+                                                </span>
+                                                <span className="w-8 sm:w-10 text-right text-[10px] sm:text-xs font-semibold text-slate-600">
+                                                    {row.percentage}%
+                                                </span>
                                             </div>
 
-                                            {/* Name */}
-                                            <span className="flex-1 min-w-0 text-[11px] sm:text-xs font-medium text-slate-700 truncate">
-                                                {payout.name}
-                                            </span>
-
-                                            {/* Amount */}
-                                            <span className="text-[10px] sm:text-xs font-bold text-slate-800 whitespace-nowrap">
-                                                {payout.amount}
-                                            </span>
-
-                                            {/* Percentage */}
-                                            <span className="w-8 sm:w-10 text-right text-[10px] sm:text-xs font-semibold text-slate-600">
-                                                {payout.percentage}%
-                                            </span>
+                                            <div className="ml-9 sm:ml-11 mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full ${row.bar}`} style={{ width: `${row.percentage}%` }} />
+                                            </div>
                                         </div>
-
-                                        {/* Progress Bar */}
-                                        <div className="ml-9 sm:ml-11 mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${payout.color || "bg-[#D97706]"}`}
-                                                style={{
-                                                    width: `${payout.percentage}%`,
-                                                }}
-                                            />
-                                        </div>
-
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-400">No transactions yet.</p>
+                        )}
                     </div>
 
                     {/* recent activity */}
                     <div className="w-full bg-white rounded-xl border border-slate-100 p-4 md:p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-slate-900 text-[13px] md:text-sm">
-                                Recent Activity
-                            </h3>
+                        <h3 className="font-bold text-slate-900 text-[13px] md:text-sm mb-4">Recent Activity</h3>
 
-                            <button className="text-[10px] sm:text-[11px] font-semibold text-[#D97706] transition-colors">
-                                View All
-                            </button>
-                        </div>
+                        {recent.length > 0 ? (
+                            <div className="divide-y divide-slate-100">
+                                {recent.map((r) => {
+                                    const act = ACTIVITY_ICON[r.status] || ACTIVITY_ICON.pending;
+                                    const Icon = act.icon;
+                                    const title = ACTIVITY_TITLE[r.kind]?.[r.status] || 'Transaction';
+                                    return (
+                                        <div 
+                                        key={r.key} 
+                                        className="flex items-center gap-2.5 sm:gap-3 py-3 first:pt-0 last:pb-0">
+                                            <div className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center ${act.iconBg}`}>
+                                                <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                                            </div>
 
-                        {/* Activity List */}
-                        <div className="divide-y divide-slate-100">
-                            {recentActivity.map((activity, idx) => {
-                                const Icon = activity.icon;
-                                return (
-                                    <div
-                                        key={idx}
-                                        className="flex items-center gap-2.5 sm:gap-3 py-3 first:pt-0 last:pb-0" >
-                                        {/* Status Icon */}
-                                        <div
-                                            className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center ${activity.iconBg}`} >
-                                            <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-[10px] sm:text-[11px] md:text-xs font-bold text-slate-900 leading-tight">
+                                                    {title}
+                                                </h4>
+                                                <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-500 mt-0.5 truncate">
+                                                    {r.ref || '—'}
+                                                </p>
+                                            </div>
+
+                                            <div className="shrink-0 text-right">
+                                                <p className="text-[9px] sm:text-[10px] md:text-[11px] font-bold text-[#0B1E3D]">
+                                                    {formatPrice(r.amount)}
+                                                </p>
+                                                <p className="text-[8px] sm:text-[9px] md:text-[10px] text-slate-500 mt-0.5">
+                                                    {fmtDate(r.at)} · {fmtTime(r.at)}
+                                                </p>
+                                            </div>
                                         </div>
-
-                                        {/* Activity Details */}
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="text-[10px] sm:text-[11px] md:text-xs font-bold text-slate-900 leading-tight">
-                                                {activity.title}
-                                            </h4>
-
-                                            <p className="text-[9px] sm:text-[10px] md:text-[11px] text-slate-500 mt-0.5 truncate">
-                                                {activity.desc}
-                                            </p>
-                                        </div>
-
-                                        {/* Amount & Time */}
-                                        <div className="shrink-0 text-right">
-                                            <p className="text-[9px] sm:text-[10px] md:text-[11px] font-bold text-[#0B1E3D]">
-                                                {activity.amount}
-                                            </p>
-
-                                            <p className="text-[8px] sm:text-[9px] md:text-[10px] text-slate-500 mt-0.5">
-                                                {activity.time}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-400">No activity yet.</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -581,4 +580,4 @@ function Transactions({ setCurrentPage, setSelectedTransactionId }) {
     )
 }
 
-export default Transactions
+export default Transactions;
