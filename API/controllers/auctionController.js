@@ -1482,7 +1482,6 @@ export const getHomeSoldedVehicles = async (req, res) => {
 };
 
 // get all auctions 
-
 const ENDED = ['sold', 'unsold', 'reserve-not-met'];
 const csv = (v) => (v ? String(v).split(',').map(s => s.trim()).filter(Boolean) : []);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1814,3 +1813,70 @@ export const getUpcomingAuctionDates = async (req, res) => {
         });
     }
 };
+
+// similar auctions
+const ENDED_AUCTION_STATUSES = ['sold', 'unsold', 'reserve-not-met'];
+
+const getLatestAuctionsByStatus = async (req, res, type) => {
+    try {
+        const now = new Date();
+
+        const filter = {
+            adminStatus: 'approved',
+        };
+
+        if (type === 'live') {
+            filter.auctionStatus = 'live';
+            filter.auctionEndDateTime = { $gt: now };
+        } else if (type === 'upcoming') {
+            filter.auctionStatus = 'upcoming';
+            filter.auctionStartDateTime = { $gt: now };
+        } else {
+            filter.auctionStatus = { $in: ENDED_AUCTION_STATUSES };
+            filter.auctionEndDateTime = { $lte: now };
+        }
+
+        const vehicles = await Vehicle.find(filter)
+            .select(
+                'listingId make model year trim vehicleType mileage transmission fuelType emirate city ' +
+                'priceType startingBidPrice buyNowPrice currentBid auctionType auctionStartDateTime ' +
+                'auctionEndDateTime images createdAt'
+            )
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
+
+        const data = vehicles.map((vehicle) => {
+            const images = (vehicle.images || [])
+                .map((image) => image?.url)
+                .filter(Boolean);
+
+            return {
+                ...vehicle,
+                image: images[0] || null,
+                images,
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            count: data.length,
+            data,
+        });
+    } catch (err) {
+        console.error(`getLatest${type}Auctions error:`, err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occurred',
+        });
+    }
+};
+
+export const getLatestLiveAuctions = (req, res) =>
+    getLatestAuctionsByStatus(req, res, 'live');
+
+export const getLatestUpcomingAuctions = (req, res) =>
+    getLatestAuctionsByStatus(req, res, 'upcoming');
+
+export const getLatestEndedAuctions = (req, res) =>
+    getLatestAuctionsByStatus(req, res, 'ended');

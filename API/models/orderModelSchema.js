@@ -13,24 +13,24 @@ const historySchema = new mongoose.Schema(
         _id: false,
         status: { type: String, required: true },
         at: { type: Date, default: Date.now },
-        by: { type: String, default: 'system' },   // system | buyer | admin | gateway
+        by: { type: String, default: 'system' },   
         note: { type: String },
     }
 );
 
 const orderSchema = new mongoose.Schema(
     {
-        orderId: { type: String, unique: true },   // ORD-XXXX (readable id)
+        orderId: { type: String, unique: true },   
 
         vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
         listingId: { type: String },
         sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller', required: true },
 
         buyerId: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'buyerType' },
-        buyerType: { type: String, required: true, enum: ['Buyer', 'Seller'] }, // winner seller bhi ho sakta hai
+        buyerType: { type: String, required: true, enum: ['Buyer', 'Seller'] }, 
 
         source: { type: String, required: true, enum: ['auction', 'buy_now'] },
-        bidId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bid' },  // sirf auction me
+        bidId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bid' }, 
 
         amount: { type: Number, required: true },
         currency: { type: String, default: 'AED' },
@@ -85,12 +85,11 @@ const orderSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// DB-level guard: double order / double cron run / buy-now race nahi chalega
 orderSchema.index(
     { vehicleId: 1 },
     { unique: true, partialFilterExpression: { isOpen: true } }
 );
-// ek buyer ka ek time pe sirf ek pending Buy Now (bina deposit ke car lock karne ka misuse rokne ke liye)
+
 orderSchema.index(
     { buyerId: 1 },
     { unique: true, partialFilterExpression: { status: 'pending_payment', source: 'buy_now' } }

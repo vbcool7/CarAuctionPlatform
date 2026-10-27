@@ -1,7 +1,10 @@
 
 import React from 'react';
+import { Download } from 'lucide-react';
+
 import { useGetMySaleDetail } from '../../../hook/useSales';
 import { money, fmtDate, fmtTime, fmtDateTime, imgOf, pretty, STATUS_META, SOURCE_LABEL, PAYOUT_LABEL } from '../../../utils/salesUtils';
+import { useDownloadSellerSaleStatement } from '../../../hook/useInvoice';
 
 const iconByState = {
     done: 'bg-green-500 text-white',
@@ -12,7 +15,7 @@ const iconByState = {
 
 const iconSymbol = { done: '✓', pending: '⏳', error: '✗', upcoming: '' };
 
-// real order + payout data se timeline
+// timeline
 function buildTimeline(s) {
     const p = s.payout;
     const steps = [];
@@ -104,19 +107,12 @@ function Row({ label, value, valueClass = 'font-medium text-gray-800' }) {
 function SalesHistoryDetail({ setCurrentPage, salesId }) {
 
     const { data, isLoading, isError } = useGetMySaleDetail(salesId);
+    const { mutate: downloadStatement, isPending: isDownloading, variables: downloadingSaleId, } = useDownloadSellerSaleStatement();
+
     const sale = data?.sale;
 
-    const back = (
-        <button
-            onClick={() => setCurrentPage('sales-history')}
-            className='flex items-center gap-1 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]'
-        >
-            ← Back to Sales History
-        </button>
-    );
-
-    if (isLoading) return <div className='pb-6 space-y-6'>{back}<p className='text-sm text-slate-500'>Loading sale details...</p></div>;
-    if (isError || !sale) return <div className='pb-6 space-y-6'>{back}<p className='text-sm text-red-600'>Could not load this sale.</p></div>;
+    if (isLoading) return <div className='pb-6 space-y-6'><p className='text-sm text-slate-500'>Loading sale details...</p></div>;
+    if (isError || !sale) return <div className='pb-6 space-y-6'><p className='text-sm text-red-600'>Could not load this sale.</p></div>;
 
     const v = sale.vehicle || {};
     const title = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle';
@@ -128,19 +124,47 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
     return (
         <div className='pb-6 space-y-6'>
 
-            {back}
+            {/* back btn */}
+            <button
+                onClick={() => setCurrentPage('sales-history')}
+                className='flex items-center gap-1 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]'>
+                ← Back to Sales History
+            </button>
+            
+            {/* header / statement download */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D] tracking-tight">
+                        Sales Details
+                    </h1>
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-slate-500 font-medium">
+                        <span className="font-semibold text-slate-700">Order #{sale.orderId}</span>
+                        <span>·</span>
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold">
+                            {SOURCE_LABEL[sale.source] || sale.source}
+                        </span>
+                    </div>
+                </div>
 
-            {/* header */}
-            <div className='flex flex-col'>
-                <h1 className='text-xl md:text-2xl font-bold'>Sales Details</h1>
-                <p className='text-xs md:text-sm text-gray-600 p-px'>
-                    Order {sale.orderId} · {SOURCE_LABEL[sale.source] || sale.source}
-                </p>
+                {sale.orderStatus === 'paid' && (
+                    <button
+                        onClick={() => downloadStatement(sale.orderId)}
+                        disabled={isDownloading && downloadingSaleId === sale.orderId}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-[#D97706] px-5 py-2.5 text-xs md:text-sm font-semibold text-white shadow-sm hover:bg-[#b45309] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                        <Download size={16} className="animate-pulse" />
+                        <span>
+                            {isDownloading && downloadingSaleId === sale.orderId
+                                ? 'Preparing PDF...'
+                                : 'Download Statement'}
+                        </span>
+                    </button>
+                )}
             </div>
 
             <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
 
-                {/* left column */}
+                {/* -------------------------- LEFT -------------------------- */}
                 <div className='lg:col-span-2 space-y-6'>
 
                     {/* vehicle card */}
@@ -154,7 +178,7 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
                                 <h2 className='text-lg md:text-xl font-bold text-[#0B1E3D] leading-tight'>{title}</h2>
 
                                 <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-500'>
-                                    <span>Stock ID: <span className='ml-1 font-semibold text-gray-700'>{sale.listingId || '—'}</span></span>
+                                    <span>ID: <span className='ml-1 font-semibold text-gray-700'>{sale.listingId || '—'}</span></span>
                                     <span className='hidden sm:inline text-gray-300'>•</span>
                                     <span>VIN: <span className='ml-1 font-semibold text-gray-700 tracking-wide'>{v.vin || '—'}</span></span>
                                 </div>
@@ -268,7 +292,7 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
                     </div>
                 </div>
 
-                {/* right column */}
+                {/* -------------------------- RIGHT -------------------------- */}
                 <div className='space-y-6'>
 
                     {/* Vehicle Information */}

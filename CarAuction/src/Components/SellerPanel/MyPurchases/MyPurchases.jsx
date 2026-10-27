@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
     Search, ShoppingBag, CarFront, Wallet, CheckCircle2, Clock3, PackageCheck, ChevronDown, ChevronUp,
-    CalendarDays, Hash, CreditCard, XCircle, Loader2, ChevronLeft, ChevronRight,
+    CalendarDays, Hash, CreditCard, XCircle, Loader2, Download,
 } from 'lucide-react';
 import { useGetMyOrders, useGetMyOrdersSummary, useCreateCheckoutSession } from '../../../hook/usePayment';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 import { formatLabel } from '../../../utils/formatters';
+import { useDownloadBuyerInvoice } from '../../../hook/useInvoice';
 
 const LIMIT = 10;
 
@@ -51,7 +52,6 @@ function MyPurchases() {
     const [expandedId, setExpandedId] = useState(null);
     const [payingId, setPayingId] = useState(null);
 
-    // har keystroke pe API call na ho
     useEffect(() => {
         const t = setTimeout(() => {
             setDebouncedSearch(search.trim());
@@ -62,11 +62,10 @@ function MyPurchases() {
 
     const tab = tabs.find((t) => t.key === activeTab);
 
-    const { data, isLoading, isError, isFetching } = useGetMyOrders(
-        page, LIMIT, tab.status, '', tab.handover, debouncedSearch
-    );
+    const { data, isLoading, isError, isFetching } = useGetMyOrders(page, LIMIT, tab.status, '', tab.handover, debouncedSearch);
     const { data: summaryData } = useGetMyOrdersSummary();
     const { mutate: startCheckout } = useCreateCheckoutSession();
+    const { mutate: downloadInvoice, isPending: isDownloadingInvoice, variables: downloadingInvoiceId, } = useDownloadBuyerInvoice();
 
     const orders = data?.orders || [];
     const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0 };
@@ -76,12 +75,13 @@ function MyPurchases() {
     const totalPaid = s.paid?.total || 0;
     const pendingCount = s.pending_payment?.count || 0;
 
+    // handle pay
     const handlePay = (order) => {
         setPayingId(order._id);
         startCheckout(order._id, {
             onSuccess: (res) => {
                 if (res?.url) {
-                    window.location.href = res.url;   // Stripe hosted page
+                    window.location.href = res.url;
                 } else {
                     toast.error('Could not start payment');
                     setPayingId(null);
@@ -202,7 +202,7 @@ function MyPurchases() {
                         </div>
                     ) : orders.length > 0 ? (
                         orders.map((order) => {
-                            
+
                             const v = order.vehicleId || {};
                             const meta = paymentMeta[order.status] || paymentMeta.expired;
                             const MetaIcon = meta.Icon;
@@ -210,7 +210,7 @@ function MyPurchases() {
                             const isPending = order.status === 'pending_payment';
                             const handoverDone = order.handover?.status === 'confirmed';
                             const isExpanded = expandedId === order._id;
-                            const title = [formatLabel(v.make), formatLabel(v.model)].filter(Boolean).join(' ') || 'Vehicle';
+                            const title = [v.year, formatLabel(v.make), formatLabel(v.model)].filter(Boolean).join(' ') || 'Vehicle';
                             const image = imgOf(v);
                             const subtitle = [
                                 v.year,
@@ -221,6 +221,8 @@ function MyPurchases() {
                             return (
                                 <div key={order._id} className="p-4 sm:p-5">
                                     <div className="flex flex-col gap-4 sm:flex-row">
+
+                                        {/* img */}
                                         {image ? (
                                             <img
                                                 src={image}
@@ -283,7 +285,10 @@ function MyPurchases() {
                                                     )}
                                                 </div>
 
+                                                {/* action btns */}
                                                 <div className="flex items-center gap-3">
+
+                                                    {/* ---- pay now ---- */}
                                                     {isPending && (
                                                         <button
                                                             type="button"
@@ -297,7 +302,36 @@ function MyPurchases() {
                                                             Pay Now
                                                         </button>
                                                     )}
-
+                                                    
+                                                    {/* ---- invoice ---- */}
+                                                    {isPaid && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                downloadInvoice(order.orderId, {
+                                                                    onError: (error) => {
+                                                                        toast.error(
+                                                                            error.response?.data?.message || 'Could not download invoice'
+                                                                        );
+                                                                    },
+                                                                })
+                                                            }
+                                                            disabled={
+                                                                isDownloadingInvoice &&
+                                                                downloadingInvoiceId === order.orderId
+                                                            }
+                                                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-[#D97706] transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        >
+                                                            {isDownloadingInvoice && downloadingInvoiceId === order.orderId
+                                                                ? <Loader2 size={14} className="animate-spin" />
+                                                                : <Download size={14} />}
+                                                            {isDownloadingInvoice && downloadingInvoiceId === order.orderId
+                                                                ? 'Preparing...'
+                                                                : 'Invoice PDF'}
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {/* ---- detail ---- */}
                                                     <button
                                                         type="button"
                                                         onClick={() => setExpandedId(isExpanded ? null : order._id)}
@@ -308,7 +342,8 @@ function MyPurchases() {
                                                     </button>
                                                 </div>
                                             </div>
-
+                                             
+                                            {/* expanded details */}
                                             {isExpanded && (
                                                 <div className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3">
                                                     <div>

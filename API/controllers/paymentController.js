@@ -342,8 +342,9 @@ export const stripeWebhook = async (req, res) => {
 };
 
 // ============ 3) Order status (payment result page polling) ============
-const ORDER_FIELDS = 'orderId listingId vehicleId source amount currency status paymentDueAt paidAt expiredAt createdAt statusHistory handover.status handover.confirmedAt bidId refund.amount refund.refundedAt';
+const ORDER_FIELDS = 'orderId listingId vehicleId source amount currency status paymentDueAt paidAt expiredAt createdAt statusHistory handover.status handover.confirmedAt bidId refund.status refund.amount refund.refundedAt refund.reason';
 
+// get order detail
 export const getMyOrder = async (req, res) => {
     try {
         const { id } = req.params;
@@ -401,6 +402,7 @@ export const getMyOrder = async (req, res) => {
     }
 };
 
+// get all orders
 export const getMyOrders = async (req, res) => {
     try {
         const userType = roleToType(req.user.role);

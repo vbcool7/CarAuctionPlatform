@@ -13,6 +13,7 @@ import buyNowRoutes from './buyNowRoutes.js';
 import paymentRoutes from './paymentRoutes.js';
 import payoutRoutes from './payoutRoutes.js';
 import salesRoutes from './salesRoutes.js';
+import invoiceRoutes from './invoiceRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -29,5 +30,6 @@ rootRouter.use('/buy', buyNowRoutes);
 rootRouter.use('/payment', paymentRoutes);
 rootRouter.use('/payout', payoutRoutes);
 rootRouter.use('/sales', salesRoutes);
+rootRouter.use('/invoice', invoiceRoutes);
 
 export default rootRouter;

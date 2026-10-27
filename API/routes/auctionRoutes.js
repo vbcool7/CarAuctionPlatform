@@ -7,8 +7,9 @@ import requirePermission from '../middlewares/requirePermission.js';
 import {
     getMyAuctions, getMyAuctionById,
     cancelAuction,
-    getAllAuctions, getDistinctMakes, getDistinctModels, getupcomingAuctionDates, getLostAuctions, getAuctionDetail, 
-    getHomeLiveAuctions, getHomeSoldedVehicles, getPublicAuctions, getPublicAuctionDetail, getUpcomingAuctionDates, 
+    getAllAuctions, getDistinctMakes, getDistinctModels, getupcomingAuctionDates, getLostAuctions, getAuctionDetail,
+    getHomeLiveAuctions, getHomeSoldedVehicles, getPublicAuctions, getPublicAuctionDetail, getUpcomingAuctionDates,
+    getLatestLiveAuctions, getLatestUpcomingAuctions, getLatestEndedAuctions
 } from '../controllers/auctionController.js';
 
 const router = express.Router();
@@ -24,7 +25,7 @@ router.patch('/cancel-auction/:id', authMiddleware(['seller', 'admin', 'auctionM
 router.get('/distinct-makes', getDistinctMakes);
 router.get('/distinct-model', getDistinctModels);
 router.get('/get-all-auctions', authMiddleware(['buyer']), getAllAuctions);
-router.get('/get-auction-detail/:id',authMiddleware(['buyer']), getAuctionDetail)
+router.get('/get-auction-detail/:id', authMiddleware(['buyer']), getAuctionDetail)
 router.get('/get-upcoming-auction-dates', getupcomingAuctionDates);
 router.get('/get-lost-auctions-buyer', authMiddleware(['buyer']), getLostAuctions);
 
@@ -34,5 +35,8 @@ router.get('/get-solded-auctions', getHomeSoldedVehicles);
 router.get('/get-auction-list', getPublicAuctions);
 router.get('/get-public-auction-detail/:id', optionalAuth, getPublicAuctionDetail);
 router.get('/get-upcoming-auction-dates', getUpcomingAuctionDates);
+router.get('/get-latest-live-auctions', getLatestLiveAuctions);
+router.get('/get-latest-upcoming-auctions', getLatestUpcomingAuctions);
+router.get('/get-latest-ended-auctions', getLatestEndedAuctions);
 
 export default router;

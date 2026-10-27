@@ -6,7 +6,7 @@ const paymentEventSchema = new mongoose.Schema(
     {
         provider: { type: String, default: 'stripe' },
 
-        eventId: { type: String },          // Stripe event id (evt_...) - dedupe ke liye
+        eventId: { type: String },          
         type: { type: String, required: true },
 
         orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
@@ -19,13 +19,13 @@ const paymentEventSchema = new mongoose.Schema(
         outcome: {
             type: String,
             enum: [
-                'received',            // abhi process nahi hua
-                'session_created',     // humne checkout session banaya
-                'paid',                // order paid hua
-                'amount_mismatch',     // amount/currency match nahi -> refund
-                'refunded_late',       // expiry/cancel ke baad payment aaya -> refund
-                'refunded_duplicate',  // dobara payment -> refund
-                'refund_failed',       // refund fail: ADMIN ko manually dekhna hai
+                'received',            
+                'session_created',     
+                'paid',               
+                'amount_mismatch',     
+                'refunded_late',       
+                'refunded_duplicate',  
+                'refund_failed',       
                 'ignored',
                 'refunded_admin'
             ],

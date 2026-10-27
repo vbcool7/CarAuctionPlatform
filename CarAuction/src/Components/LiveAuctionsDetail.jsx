@@ -5,7 +5,6 @@ import { Share2, Heart, MapPin, Hash, Cog, Flag, Fuel, Download, Send, Gauge } f
 import Breadcrumbs from './Breadcrumbs';
 import LiveBidsPanel from './SharedComponents/LiveBidsPanel';
 import AuctionFeaturesBar from './SharedComponents/AuctionFeatureBar';
-import HomeLiveAuctions from './HomeLiveAuctions';
 import LiveAuctionGallery from './LiveAuctionGallery';
 import OverviewTab from './OverviewTab';
 import VehiclInfoTab from './VehicleInfoTab';
@@ -18,13 +17,18 @@ import AuctionBottomFeaturesBar from './SharedComponents/AuctionBottomFeaturesBa
 import Loader from './Loader';
 import PlaceBidSuccessModal from './PlaceBidSuccessModal';
 import { toast } from 'react-toastify';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 
 import { formatDateTime, formatLabel, formatPrice } from '../utils/formatters';
 import { useStatusRedirect } from '../hook/useStatusRedirect';
 import { UseCountdown } from './SharedComponents/UseCountdown';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { usePublicAuctionDetail } from '../hook/useAuction';
+import { useGetLatestLiveAuctions, usePublicAuctionDetail } from '../hook/useAuction';
 import { useBidSocket } from '../socket/listeners/useBidSocket';
 import { usePlaceBid, useWithdrawBid } from '../hook/useBid';
 import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
@@ -130,14 +134,20 @@ function LiveAuctionsDetail() {
     const { mutateAsync: buyNowAsync, isPending: isBuying } = useBuyNow();
     const { mutateAsync: checkoutAsync, isPending: isStartingCheckout } = useCheckout();
 
+    const { data: similarLiveResponse, isLoading: isSimilarLiveLoading, } = useGetLatestLiveAuctions();
+
     useBidSocket(id);
 
     const vehicle = data?.data;
+    const similarLiveVehicles = (similarLiveResponse?.data || [])
+        .filter((item) => String(item._id) !== String(vehicle?._id));
+
     useStatusRedirect(vehicle, '/live-auction-detail');
 
     if (isLoading) {
         return <Loader />
     }
+
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load live auctions</p>;
     if (!vehicle) return <div className="p-10 text-center">Vehicle not found!</div>;
 
@@ -720,9 +730,152 @@ function LiveAuctionsDetail() {
             </div>
 
             {/* ======= smiliar live auction ======= */}
-            <div className='max-w-6xl mx-auto'>
-                <HomeLiveAuctions />
+           {/* ======= Similar Live Auctions ======= */}
+<div className="mx-auto mt-10 max-w-6xl">
+    {/* ======= Latest Live Auctions ======= */}
+{(isSimilarLiveLoading || similarLiveVehicles.length > 0) && (
+    <section className="mx-auto mt-10 max-w-6xl">
+        <div className="mb-5">
+            <h2 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl">
+                Latest Live Auctions
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+                Explore more vehicles currently available for bidding
+            </p>
+        </div>
+
+        {isSimilarLiveLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[1, 2, 3, 4].map((item) => (
+                    <div
+                        key={item}
+                        className="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    >
+                        <div className="h-44 bg-slate-200" />
+                        <div className="space-y-3 p-4">
+                            <div className="h-4 w-3/4 rounded bg-slate-200" />
+                            <div className="h-3 w-1/2 rounded bg-slate-200" />
+                            <div className="h-5 w-2/3 rounded bg-slate-200" />
+                        </div>
+                    </div>
+                ))}
             </div>
+        ) : (
+            <Swiper
+                modules={[Navigation, Pagination]}
+                navigation
+                pagination={{ clickable: true, dynamicBullets: true }}
+                spaceBetween={18}
+                slidesPerView={1}
+                breakpoints={{
+                    640: { slidesPerView: 2 },
+                    768: { slidesPerView: 3 },
+                    1024: { slidesPerView: 4 },
+                }}
+                className="!pb-12 similar-auctions-swiper"
+            >
+                {similarLiveVehicles.map((item) => {
+                    const isFixedPrice = item.priceType === 'fixed_price';
+                    const displayPrice = isFixedPrice
+                        ? item.buyNowPrice
+                        : (item.currentBid ?? item.startingBidPrice);
+
+                    return (
+                        <SwiperSlide key={item._id} className="!h-auto">
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/live-auction-detail/${item._id}`)}
+                                className="group flex h-full w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:border-amber-300 hover:shadow-lg"
+                            >
+                                <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                                    {item.image ? (
+                                        <img
+                                            src={item.image}
+                                            alt={`${item.year || ''} ${item.make || ''} ${item.model || ''}`}
+                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                                            Image not available
+                                        </div>
+                                    )}
+
+                                    <span className="absolute left-3 top-3 rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white">
+                                        Live Auction
+                                    </span>
+
+                                    <span className="absolute right-3 top-3 rounded-md bg-white/95 px-2 py-1 text-xs font-semibold text-[#0B1E3D]">
+                                        {isFixedPrice ? 'Fixed Price' : 'Reserve Price'}
+                                    </span>
+                                </div>
+
+                                <div className="flex flex-1 flex-col p-4">
+                                    <h3 className="line-clamp-1 text-base font-bold text-[#0B1E3D]">
+                                        {[item.year, item.make, item.model, item.trim]
+                                            .filter(Boolean)
+                                            .join(' ')}
+                                    </h3>
+
+                                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-500">
+                                        {item.mileage != null && (
+                                            <p>
+                                                <span className="font-medium text-slate-700">Mileage </span>
+                                                {Number(item.mileage).toLocaleString()} km
+                                            </p>
+                                        )}
+                                        {item.transmission && (
+                                            <p className="truncate">
+                                                <span className="font-medium text-slate-700">Gear </span>
+                                                {item.transmission}
+                                            </p>
+                                        )}
+                                        {item.fuelType && (
+                                            <p className="truncate">
+                                                <span className="font-medium text-slate-700">Fuel </span>
+                                                {item.fuelType}
+                                            </p>
+                                        )}
+                                        {item.emirate && (
+                                            <p className="truncate">
+                                                <span className="font-medium text-slate-700">Location </span>
+                                                {item.emirate}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-4 border-t border-slate-100 pt-3">
+                                        <p className="text-xs text-slate-500">
+                                            {isFixedPrice
+                                                ? 'Buy Now Price'
+                                                : item.currentBid != null
+                                                    ? 'Current Highest Bid'
+                                                    : 'Starting Bid'}
+                                        </p>
+                                        <p className="mt-1 text-lg font-bold text-[#0B1E3D]">
+                                            {displayPrice != null
+                                                ? formatPrice(displayPrice)
+                                                : 'Price unavailable'}
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-auto mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                                        <span className="text-xs font-medium text-emerald-700">
+                                            Auction Live
+                                        </span>
+                                        <span className="text-sm font-semibold text-amber-600 group-hover:text-amber-700">
+                                            View Details →
+                                        </span>
+                                    </div>
+                                </div>
+                            </button>
+                        </SwiperSlide>
+                    );
+                })}
+            </Swiper>
+        )}
+    </section>
+)}
+</div>
 
             {/* ======= bottom - features ======= */}
             <AuctionBottomFeaturesBar />

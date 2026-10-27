@@ -218,7 +218,7 @@ export const getMySalesSummary = async (req, res) => {
     }
 };
 
-// GET /sales/get-dashboard-summary
+// get-dashboard-summary
 export const getDashboardSummary = async (req, res) => {
     try {
         const sellerId = new mongoose.Types.ObjectId(req.user.id);

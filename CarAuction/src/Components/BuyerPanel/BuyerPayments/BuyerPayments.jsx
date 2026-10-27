@@ -1,11 +1,9 @@
 
 import React, { useState } from 'react';
-import BuyerContactSupport from '../BuyerSharedComponents/BuyerContactSupport';
-import VISAiconimg from '../../../assets/Images/VISAiconimg.png';
-import MasterCardiconImg from '../../../assets/Images/MasterCardiconImg.png';
+import { ShieldCheck, Lock, CreditCard, Award, Receipt } from "lucide-react";
 import { toast } from 'react-toastify';
+import BuyerContactSupport from '../BuyerSharedComponents/BuyerContactSupport';
 
-import { CreditCard, ShieldCheck, Apple, Landmark } from 'lucide-react';
 import { useGetMyOrders, useGetMyOrdersSummary } from '../../../hook/usePayment';
 import { useCheckout } from '../../../hook/useBuy';
 import { getPaginationRange } from '../../utils/getPaginationRange';
@@ -56,7 +54,7 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load payment list</p>;
 
     return (
-        <div>
+        <div className='pb-6'>
             <div className='pb-7'>
                 <h1 className='text-slate-800 text-xl md:text-2xl font-bold'>Payments</h1>
                 <p className='pt-1 text-gray-600 text-[12px] md:text-sm font-medium'>Track and manage your payments for won vehicles.</p>
@@ -71,7 +69,10 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                             {FILTERS.map((f) => (
                                 <button
                                     key={f.key}
-                                    onClick={() => { setStatus(f.key); setPage(1); }}
+                                    onClick={() => {
+                                        setStatus(f.key);
+                                        setPage(1);
+                                    }}
                                     className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${status === f.key
                                         ? 'bg-[#0B1E3D] text-white border-[#0B1E3D]'
                                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
@@ -84,10 +85,19 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                         {isLoading && <p className="text-sm ">Loading details</p>}
                         {isError && <p className="text-sm text-red-500">Failed to load payments</p>}
                         {!isLoading && !isError && orders.length === 0 && (
-                            <p className="text-sm text-slate-500 py-8 text-center">No payments found.</p>
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60 shadow-sm">
+                                    <Receipt size={24} />
+                                </div>
+                                <h3 className="text-sm font-bold text-[#0B1E3D] mb-1">No payments found</h3>
+                                <p className="text-xs text-slate-500 max-w-xs">
+                                    You haven't made any transactions or payment history yet.
+                                </p>
+                            </div>
                         )}
 
                         {orders.map((o) => {
+
                             const v = o.vehicleId;
                             const name = v ? `${v.year ?? ''} ${formatLabel(v.make)} ${formatLabel(v.model)}`.trim() : o.listingId;
                             const img = v?.images?.[0]?.url;
@@ -96,8 +106,14 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                             const closing = o.status === 'pending_payment' && msLeft < MIN_PAY_MS;
 
                             return (
-                                <div key={o._id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
-                                    {img && <img src={img} alt={name} className="w-full sm:w-36 h-28 object-cover rounded-xl" />}
+                                <div
+                                    key={o._id}
+                                    className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
+                                    {img &&
+                                        <img
+                                            src={img}
+                                            alt={name}
+                                            className="w-full sm:w-36 h-28 object-cover rounded-xl" />}
                                     <div className="flex-1 space-y-1.5">
                                         <div className="flex items-start justify-between gap-2">
                                             <div>
@@ -207,7 +223,7 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     <div className="w-full max-w-sm space-y-6">
 
-                        {/* 1. Payment Summary Section */}
+                        {/* 1. Payment Summary */}
                         <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                             <div className="flex items-center gap-3 mb-6">
                                 <CreditCard className="text-[#D97706]" size={20} />
@@ -244,36 +260,37 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                             </div>
                         </div>
 
-                        {/* 2. Need Help Section */}
+                        {/* 2. Need Help */}
                         <BuyerContactSupport />
 
-                        {/* 3. Secure Payments Section */}
-                        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <ShieldCheck className="text-[#D97706]" size={20} />
-                                <h2 className="text-sm font-bold text-[#0B1E3D]">Secure Payments</h2>
-                            </div>
-                            <p className="text-xs text-slate-500 mb-4">All payments are secure and encrypted.</p>
-                            <div className="flex items-center gap-3 text-slate-400">
-                                {/* Images */}
-                                <img src={VISAiconimg} alt="Visa" className="h-5" />
-                                <img src={MasterCardiconImg} alt="MasterCard" className="h-5" />
-
-                                {/* Icons */}
-                                <div className="flex items-center gap-1 text-xs font-semibold">
-                                    <Apple size={16} /> Apple Pay
+                        {/* 3. Secure Payments */}
+                        <div className="relative overflow-hidden bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-100 text-[#D97706]">
+                                        <ShieldCheck size={22} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm font-bold text-[#0B1E3D]">Secure & Protected Payments</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">Encrypted with industry-standard SSL</p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-xs font-semibold">
-                                    <Landmark size={14} /> Bank Transfer
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+                                <div className="flex items-center gap-1.5">
+                                    <Lock size={14} className="text-amber-600" />
+                                    <span>Private & Encrypted</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Award size={14} className="text-blue-600" />
+                                    <span>Buyer Protection</span>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
-
             </div>
-
         </div>
     )
 }

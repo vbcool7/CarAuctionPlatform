@@ -182,7 +182,7 @@ export const useGetHomeSoldAuctions = () => {
 // get all auctions
 export const useGetPublicAuctions = ({
     status = 'live', page = 1, limit = 10,
-    search = '', sort='',
+    search = '', sort = '',
 
     startFrom = '', startTo = '', endFrom = '', endTo = '',
 
@@ -239,8 +239,8 @@ export const useGetPublicAuctions = ({
 
             const params = new URLSearchParams({ status, page, limit });
 
-            if (search.trim()) { params.append('search', search.trim());}
-            if(sort) params.append('sort', sort);
+            if (search.trim()) { params.append('search', search.trim()); }
+            if (sort) params.append('sort', sort);
 
             if (startFrom) params.append('startFrom', startFrom);
             if (startTo) params.append('startTo', startTo);
@@ -305,3 +305,33 @@ export const useGetUpcomingAuctionDatesUserSide = () => {
         staleTime: 1 * 60 * 1000,
     });
 };
+
+// get similar live auctions
+export const useGetLatestLiveAuctions = () =>
+    useQuery({
+        queryKey: ['latest-live-auctions'],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-latest-live-auctions');
+            return res.data;
+        },
+    });
+
+// get similar upcoming auctions
+export const useGetLatestUpcomingAuctions = () =>
+    useQuery({
+        queryKey: ['latest-upcoming-auctions'],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-latest-upcoming-auctions');
+            return res.data;
+        },
+    });
+
+// get similar ended auctions
+export const useGetLatestEndedAuctions = () =>
+    useQuery({
+        queryKey: ['latest-ended-auctions'],
+        queryFn: async () => {
+            const res = await API.get('/auction/get-latest-ended-auctions');
+            return res.data;
+        },
+    });

@@ -1,11 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
-import { Percent, Tag, TrendingUp, Wallet, LineChart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Percent, Tag, TrendingUp, Wallet, LineChart, Download } from 'lucide-react';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
+
 import { useGetMySales, useGetMySalesSummary } from '../../../hook/useSales';
 import { money, fmtDate, fmtTime, imgOf, STATUS_META, SOURCE_LABEL } from '../../../utils/salesUtils';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
+import { formatLabel } from '../../../utils/formatters';
+import { useDownloadSellerSaleStatement } from '../../../hook/useInvoice';
 
 const LIMIT = 10;
 
@@ -42,6 +45,7 @@ function SalesHistory({ setCurrentPage, setSelectedSalesId }) {
 
     const { data, isLoading, isError, isFetching } = useGetMySales(page, LIMIT, status, paymentType, debouncedSearch);
     const { data: summaryData } = useGetMySalesSummary();
+    const { mutate: downloadSaleStatement, isPending: isDownloadingStatement, variables: downloadingOrderId, } = useDownloadSellerSaleStatement();
 
     const sales = data?.sales || [];
     const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0 };
@@ -149,7 +153,7 @@ function SalesHistory({ setCurrentPage, setSelectedSalesId }) {
                             <th className="px-6 py-4.5 w-40">Payout Date</th>
                             <th className="px-6 py-4.5 w-30">Type</th>
                             <th className="px-6 py-4.5 w-35">Status</th>
-                            <th className="px-6 py-4.5 w-30">Actions</th>
+                            <th className="px-6 py-4.5 w-48">Actions</th>
                         </tr>
                     </thead>
 
@@ -163,96 +167,126 @@ function SalesHistory({ setCurrentPage, setSelectedSalesId }) {
                         ) : (
                             sales.map((sale) => {
                                 const v = sale.vehicle || {};
-                                const title = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle';
+                                const title = [v.year, formatLabel(v.make), formatLabel(v.model)].filter(Boolean).join(' ') || 'Vehicle';
                                 const image = imgOf(v);
                                 const meta = STATUS_META[sale.status] || STATUS_META.cancelled;
                                 const saleDate = sale.paidAt || sale.createdAt;
 
                                 return (
-                                    <tr key={sale._id} className='hover:bg-slate-50/60 transition-colors border-b border-gray-100 last:border-b-0'>
+                                    <tr
+                                        key={sale._id}
+                                        className="hover:bg-slate-50/80 transition-all duration-200 border-b border-slate-100/80 last:border-b-0 group">
+
                                         {/* Vehicle */}
                                         <td className="py-4 px-4">
                                             <div className="flex items-center gap-3">
                                                 {image ? (
-                                                    <img src={image} alt={title} className="w-15 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                                                    <img src={image} alt={title} className="w-14 h-10 object-cover rounded-xl border border-slate-200/80 shrink-0 shadow-2xs" />
                                                 ) : (
-                                                    <div className="w-15 h-10 rounded-lg border border-slate-200 bg-slate-100 shrink-0" />
+                                                    <div className="w-14 h-10 rounded-xl border border-slate-200/80 bg-slate-100 shrink-0 flex items-center justify-center text-[10px] font-semibold text-slate-400">
+                                                        No Img
+                                                    </div>
                                                 )}
-                                                <div>
-                                                    <p className="text-sm font-semibold text-slate-900">{title}</p>
-                                                    <p className="text-xs text-slate-400">Stock ID: {sale.listingId || '—'}</p>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-[#0B1E3D] tracking-tight line-clamp-1">{title}</span>
+                                                    <span className="text-[11px] text-slate-400 font-medium">Stock ID: {sale.listingId || '—'}</span>
                                                 </div>
                                             </div>
                                         </td>
 
-                                        {/* Buyer (sirf naam) */}
+                                        {/* Buyer */}
                                         <td className="py-4 px-4">
-                                            <p className="text-sm font-medium text-slate-900">{sale.buyerName}</p>
+                                            <span className="text-sm font-semibold text-slate-700">{sale.buyerName}</span>
                                         </td>
 
                                         {/* Sale Date */}
                                         <td className="py-4 px-4">
-                                            <p className="text-sm text-slate-900">{fmtDate(saleDate)}</p>
-                                            <p className="text-xs text-slate-400">
+                                            <p className="text-sm font-medium text-slate-800">{fmtDate(saleDate)}</p>
+                                            <p className="text-[11px] text-slate-400 font-medium">
                                                 {sale.paidAt ? fmtTime(saleDate) : 'Awaiting payment'}
                                             </p>
                                         </td>
 
                                         {/* Sale Price */}
-                                        <td className="py-4 px-4 text-sm font-semibold text-slate-900">{money(sale.amount)}</td>
+                                        <td className="py-4 px-4 text-sm font-bold text-[#0B1E3D]">
+                                            {money(sale.amount)}
+                                        </td>
 
                                         {/* Commission */}
                                         <td className="py-4 px-4">
                                             {sale.payout ? (
-                                                <>
-                                                    <p className="text-sm text-slate-900">{money(sale.payout.commissionAmount)}</p>
-                                                    <p className="text-xs text-slate-400">({sale.payout.commissionPercent}%)</p>
-                                                </>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-800">{money(sale.payout.commissionAmount)}</span>
+                                                    <span className="text-[11px] text-amber-600 font-semibold">({sale.payout.commissionPercent}%)</span>
+                                                </div>
                                             ) : (
                                                 <span className="text-sm text-slate-400">—</span>
                                             )}
                                         </td>
 
                                         {/* Payout Amount */}
-                                        <td className="py-4 px-4 text-sm font-semibold text-slate-900">
+                                        <td className="py-4 px-4 text-sm font-bold text-emerald-600">
                                             {sale.payout ? money(sale.payout.netAmount) : '—'}
                                         </td>
 
-                                        {/* Payout Date (transfer hone ke baad) */}
+                                        {/* Payout Date */}
                                         <td className="py-4 px-4">
                                             {sale.payout?.paidAt ? (
-                                                <>
-                                                    <p className="text-sm text-slate-900">{fmtDate(sale.payout.paidAt)}</p>
-                                                    <p className="text-xs text-slate-400">{fmtTime(sale.payout.paidAt)}</p>
-                                                </>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-800">{fmtDate(sale.payout.paidAt)}</span>
+                                                    <span className="text-[11px] text-slate-400 font-medium">{fmtTime(sale.payout.paidAt)}</span>
+                                                </div>
                                             ) : (
                                                 <span className="text-sm text-slate-400">—</span>
                                             )}
                                         </td>
 
                                         {/* Type */}
-                                        <td className="py-4 px-4 text-[13px] font-semibold text-slate-900">
-                                            {SOURCE_LABEL[sale.source] || sale.source}
+                                        <td className="py-4 px-4">
+                                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+                                                {SOURCE_LABEL[sale.source] || sale.source}
+                                            </span>
                                         </td>
 
                                         {/* Status */}
-                                        <td className="px-6 py-4.5">
-                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${meta.cls}`}>
+                                        <td className="px-4 py-4">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shadow-2xs ${meta.cls}`}>
                                                 {meta.label}
                                             </span>
                                         </td>
 
                                         {/* Action */}
-                                        <td className="py-4 px-4 text-right">
-                                            <button
-                                                onClick={() => {
-                                                    setSelectedSalesId(sale._id);
-                                                    setCurrentPage('sales-history-detail');
-                                                }}
-                                                className="px-2 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
-                                            >
-                                                View Details
-                                            </button>
+                                        <td className="py-4 px-4">
+                                            <div className="flex items-center justify-end gap-2">
+                                                {sale.orderStatus === 'paid' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadSaleStatement(sale.orderId)}
+                                                        disabled={
+                                                            isDownloadingStatement &&
+                                                            downloadingOrderId === sale.orderId
+                                                        }
+                                                        title="Download sale statement"
+                                                        className="inline-flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-[#D97706] bg-white border border-slate-200 rounded-lg hover:bg-amber-50 disabled:opacity-50"
+                                                    >
+                                                        <Download size={14} />
+                                                        {isDownloadingStatement && downloadingOrderId === sale.orderId
+                                                            ? 'Preparing...'
+                                                            : 'PDF'}
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedSalesId(sale._id);
+                                                        setCurrentPage('sales-history-detail');
+                                                    }}
+                                                    className="px-2 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
