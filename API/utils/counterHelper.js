@@ -16,3 +16,4 @@ export const getNextSellerId = () => getNextSequence('sellerId', 'SLR');
 export const getNextBidId = () => getNextSequence('bidId', 'BID');
 export const getNextOrderId = () => getNextSequence('orderId', 'ORD');
 export const getNextPayoutId = () => getNextSequence('payoutId', 'PAYOUT');
+export const getNextSupportId = () => getNextSequence('supportId', 'SUP');

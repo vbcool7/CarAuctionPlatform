@@ -4,54 +4,52 @@ import { Plus, Ticket, Clock, CheckCircle, Star, Headphones, MessageSquare, Phon
 import FilterDropdown from '../SellerSharedComponents/FilterDropdown';
 import SearchBar from '../SellerSharedComponents/SearchBar';
 
+import { getPaginationRange } from '../../../utils/getPaginationRange';
+import { useGetMySupportTickets } from '../../../hook/useSupport';
+import { useEffect } from 'react';
+
+// stats
 const statsData = [
     {
         id: "total-tickets",
         title: "Total Tickets",
-        value: "8",
+        valueKey: "totalTickets",
         subtitle: "All time",
-        subtitleColor: "text-gray-500",
+        subtitleColor: "text-slate-500",
         icon: Ticket,
-        iconBg: "bg-blue-100",
-        iconColor: "text-blue-600",
+        iconBg: "bg-slate-100",
+        iconColor: "text-[#0B1E3D]",
     },
     {
         id: "open-tickets",
         title: "Open Tickets",
-        value: "3",
+        valueKey: "openTickets",
         subtitle: "Need attention",
-        subtitleColor: "text-amber-600",
+        subtitleColor: "text-rose-600",
         icon: Clock,
-        iconBg: "bg-green-100",
-        iconColor: "text-green-600",
+        iconBg: "bg-rose-50",
+        iconColor: "text-rose-600",
     },
     {
         id: "resolved-tickets",
         title: "Resolved Tickets",
-        value: "5",
+        valueKey: "resolvedTickets",
         subtitle: "Successfully closed",
-        subtitleColor: "text-gray-500",
+        subtitleColor: "text-emerald-600",
         icon: CheckCircle,
-        iconBg: "bg-amber-100",
-        iconColor: "text-amber-600",
+        iconBg: "bg-emerald-50",
+        iconColor: "text-emerald-600",
     },
     {
-        id: "avg-response-time",
-        title: "Avg. Response Time",
-        value: "2h 16m",
-        subtitle: "Last 7 days",
-        subtitleColor: "text-gray-500",
-        icon: Star,
-        iconBg: "bg-purple-100",
-        iconColor: "text-purple-600",
+        id: "in-progress-tickets",
+        title: "In Progress",
+        valueKey: "inProgressTickets",
+        subtitle: "Being reviewed",
+        subtitleColor: "text-amber-600",
+        icon: Clock,
+        iconBg: "bg-amber-50",
+        iconColor: "text-[#D97706]",
     },
-];
-
-const statusOptions = [
-    { value: "", label: "All Status" },
-    { value: "open", label: "Open" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "resolved", label: "Resolved" },
 ];
 
 const badgeColors = [
@@ -66,43 +64,72 @@ const statusColorMap = {
     Open: { bg: "bg-red-100", text: "text-red-600" },
     "In Progress": { bg: "bg-amber-100", text: "text-amber-600" },
     Resolved: { bg: "bg-emerald-100", text: "text-emerald-600" },
+    Closed: { bg: "bg-slate-100", text: "text-slate-600" },
 };
 
-// static data
-const ticketsData = [
+const filterConfig = [
     {
-        id: "SUP-1008",
-        subject: "Payment not received",
-        description: "I have made the payment but it is...",
-        category: "Payments",
-        status: "Open",
-        lastUpdatedDate: "May 15, 2025",
-        lastUpdatedTime: "02:34 PM",
+        label: "Status",
+        key: "status",
+        options: ["all", "open", "in_progress", "resolved", "closed"],
     },
     {
-        id: "SUP-1007",
-        subject: "Auction extension request",
-        description: "Can you please extend the auction...",
-        category: "Auctions",
-        status: "In Progress",
-        lastUpdatedDate: "May 14, 2025",
-        lastUpdatedTime: "11:20 AM",
-    },
-    {
-        id: "SUP-1006",
-        subject: "Vehicle listing issue",
-        description: "The vehicle is not showing in my...",
-        category: "Vehicles",
-        status: "Resolved",
-        lastUpdatedDate: "May 12, 2025",
-        lastUpdatedTime: "04:45 PM",
+        label: "Sort By",
+        key: "sortBy",
+        options: ["newest", "oldest"],
     },
 ];
 
+const mapFiltersToParams = (filters, search) => {
+    const params = {};
+
+    if (filters.status && filters.status !== "all") {
+        params.status = filters.status;
+    }
+
+    if (filters.sortBy) {
+        params.sortBy = filters.sortBy;
+    }
+
+    if (search.trim()) {
+        params.search = search.trim();
+    }
+
+    return params;
+};
+
 function Support({ setCurrentPage, setSelectedTicketId }) {
 
-    const [search, setSearch] = useState();
-    const [status, setStatus] = useState();
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filters, setFilters] = useState({
+        status: "all",
+        sortBy: "newest",
+    });
+
+    const params = mapFiltersToParams(filters, debouncedSearch);
+
+    const { data, isLoading, isError } = useGetMySupportTickets({ page, limit: 10, ...params });
+
+    const tickets = data?.tickets || [];
+    const totalPages = data?.pagination?.totalPages || 1;
+
+    useEffect(() => {
+        setPage(1);
+    }, [filters, search]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const updateFilter = (key, value) => {
+        setFilters((prev) => ({ ...prev, [key]: value }));
+        setPage(1);
+    };
 
     return (
         <div className='pb-6 space-y-6'>
@@ -149,7 +176,7 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                                 </p>
 
                                 <h3 className="text-lg md:text-xl font-bold text-[#0B1E3D] my-1">
-                                    {stat.value}
+                                    {data?.stats?.[stat.valueKey] ?? 0}
                                 </h3>
 
                                 <p className={`text-[11px] font-semibold ${stat.subtitleColor}`}>
@@ -176,18 +203,27 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                         <SearchBar
                             placeholder="Search by ticket ID, subject..."
                             value={search}
-                            onChange={setSearch}
+                            onChange={(value) => setSearch(value)}
                         />
                     </div>
 
-                    <div className="w-full sm:w-auto">
-                        <FilterDropdown
-                            label="All Status"
-                            options={statusOptions}
-                            value={status}
-                            onChange={setStatus}
-                        />
-                    </div>
+                    {/* dropdown */}
+                    {filterConfig.map(({ label, key, options }) => (
+                        <div
+                            key={key}
+                            className="w-full sm:w-42"
+                        >
+                            <FilterDropdown
+                                label={label}
+                                options={options.map((opt) => ({
+                                    label: opt,
+                                    value: opt,
+                                }))}
+                                value={filters[key]}
+                                onChange={(value) => updateFilter(key, value)}
+                            />
+                        </div>
+                    ))}
 
                 </div>
             </div>
@@ -195,7 +231,7 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
             {/* main section */}
             <div className='grid grid-cols-1 xl:grid-cols-3 gap-6 items-start'>
 
-                {/* left */}
+                {/* ------------------------- LEFT ------------------------- */}
                 <div className='xl:col-span-2 space-y-6'>
 
                     {/* list */}
@@ -203,8 +239,8 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                         <table className="w-full text-left table-fixed">
                             <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-4.5 w-30">Ticket ID</th>
-                                    <th className="px-6 py-4.5 w-65">Subject</th>
+                                    <th className="px-6 py-4.5 w-35">Support ID</th>
+                                    <th className="px-6 py-4.5 w-50">Subject</th>
                                     <th className="px-6 py-4.5 w-35">Category</th>
                                     <th className="px-6 py-4.5 w-40">Status</th>
                                     <th className="px-6 py-4.5 w-40">Last Updated</th>
@@ -213,69 +249,159 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                             </thead>
 
                             <tbody className="divide-y divide-slate-100 transition-opacity">
-                                {ticketsData.map((ticket, index) => {
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                            Loading tickets...
+                                        </td>
+                                    </tr>
+                                ) : isError ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-red-500">
+                                            Tickets load nahi ho sake.
+                                        </td>
+                                    </tr>
+                                ) : tickets.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                            No support tickets found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    tickets.map((ticket, index) => {
+                                        const statusLabel = {
+                                            open: "Open",
+                                            in_progress: "In Progress",
+                                            resolved: "Resolved",
+                                            closed: "Closed",
+                                        }[ticket.status] || ticket.status;
 
-                                    const categoryStyle = badgeColors[index % badgeColors.length];
-                                    const statusStyle = statusColorMap[ticket.status] || { bg: "bg-slate-100", text: "text-slate-600" };
+                                        const ticketStatusStyle = statusColorMap[statusLabel] || {
+                                            bg: "bg-slate-100",
+                                            text: "text-slate-600",
+                                        };
 
-                                    return (
-                                        <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
+                                        const categoryStyle = badgeColors[index % badgeColors.length];
 
-                                            {/* Ticket ID */}
-                                            <td className="px-6 py-4 font-semibold text-slate-800 text-sm">
-                                                #{ticket.id}
-                                            </td>
+                                        return (
+                                            <tr key={ticket._id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-6 py-4 font-semibold text-slate-800 text-sm">
+                                                    {ticket.supportId}
+                                                </td>
 
-                                            {/* Subject & Description */}
-                                            <td className="px-6 py-4 truncate">
-                                                <div className="font-medium text-slate-900 text-sm truncate">
-                                                    {ticket.subject}
-                                                </div>
-                                                <div className="text-xs text-slate-400 truncate mt-0.5">
-                                                    {ticket.description}
-                                                </div>
-                                            </td>
+                                                <td className="px-6 py-4 truncate">
+                                                    <div className="font-medium text-slate-900 text-sm truncate">
+                                                        {ticket.subject}
+                                                    </div>
+                                                    <div className="text-xs text-slate-400 truncate mt-0.5">
+                                                        {ticket.description}
+                                                    </div>
+                                                </td>
 
-                                            {/* Category Badge */}
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${categoryStyle.bg} ${categoryStyle.text}`}>
-                                                    {ticket.category}
-                                                </span>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${categoryStyle.bg} ${categoryStyle.text}`}>
+                                                        {ticket.category}
+                                                    </span>
+                                                </td>
 
-                                            {/* Status Badge */}
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                                                    {ticket.status}
-                                                </span>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${ticketStatusStyle.bg} ${ticketStatusStyle.text}`}>
+                                                        {statusLabel}
+                                                    </span>
+                                                </td>
 
-                                            {/* Last Updated */}
-                                            <td className="px-6 py-4 text-xs text-slate-500">
-                                                <div>{ticket.lastUpdatedDate}</div>
-                                                <div className="text-slate-400 mt-0.5">{ticket.lastUpdatedTime}</div>
-                                            </td>
+                                                <td className="px-6 py-4 text-xs text-slate-500">
+                                                    {new Date(ticket.updatedAt || ticket.createdAt).toLocaleString("en-GB", {
+                                                        timeZone: "Asia/Dubai",
+                                                        dateStyle: "medium",
+                                                        timeStyle: "short",
+                                                    })}
+                                                </td>
 
-                                            {/* Action Button */}
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => {
-                                                        setCurrentPage(`support-detail`);
-                                                        setSelectedTicketId(ticket)
-                                                    }}
-                                                    className="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
-                                                    View
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCurrentPage("support-detail");
+                                                            setSelectedTicketId(ticket._id);
+                                                        }}
+                                                        className="px-4 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50"
+                                                    >
+                                                        View
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-slate-200 bg-white">
+
+                            {/* Page Info */}
+                            <p className="hidden sm:block text-xs text-slate-500">
+                                Page <span className="font-semibold text-[#0B1E3D]">{page}</span> of{" "}
+                                <span className="font-semibold text-[#0B1E3D]">{totalPages}</span>
+                            </p>
+
+                            {/* Pagination */}
+                            <div className="flex items-center gap-1.5 mx-auto sm:mx-0 sm:ml-auto">
+
+                                {/* Previous */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p - 1)}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Previous
+                                </button>
+
+                                {/* Page Numbers */}
+                                {getPaginationRange(page, totalPages).map((num, idx) =>
+                                    num === "..." ? (
+                                        <span
+                                            key={`dot-${idx}`}
+                                            className="px-2 py-1.5 text-xs font-medium text-slate-400"
+                                        >
+                                            ...
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            key={num}
+                                            onClick={() => setPage(num)}
+                                            className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold border transition-all
+                                                                                    ${page === num
+                                                    ? "bg-[#D97706] text-white border-[#D97706] shadow-sm"
+                                                    : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50 hover:text-[#D97706] hover:border-amber-200"
+                                                }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    )
+                                )}
+
+                                {/* Next */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => p + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Next
+                                </button>
+
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* right */}
+                {/* ------------------------- RIGHT ------------------------- */}
                 <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6'>
 
                     {/* 1. Need Immediate Help Box */}

@@ -23,6 +23,7 @@ import Payout from '../models/payoutModelSchema.js';
 import Order from '../models/orderModelSchema.js';
 import PaymentEvent from '../models/paymentEventModelSchema.js';
 import Notification from '../models/notificationModelSchema.js';
+import SupportTicket from '../models/supportTicketModelSchema.js';
 
 import { getStripe } from "../config/stripe.js";
 import { createPayoutForOrder } from "../utils/payoutHelper.js";
@@ -5904,6 +5905,182 @@ export const getTransactionById = async (req, res) => {
     }
 };
 
+// ============================================ SUPPORT
+
+// get all support tickets
+export const getAllSupportTickets = async (req, res) => {
+    try {
+        if (String(req.user?.role || "").toLowerCase() !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Admin access required.",
+            });
+        }
+
+        const status = String(req.query.status || "").trim().toLowerCase();
+        const search = String(req.query.search || "").trim();
+        const sortBy = String(req.query.sortBy || "newest").toLowerCase();
+        const requestedUserType = String(req.query.userType || "").trim().toLowerCase();
+
+        const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(
+            50,
+            Math.max(1, Number.parseInt(req.query.limit, 10) || 10)
+        );
+
+        if (!["newest", "oldest"].includes(sortBy)) {
+            return res.status(400).json({
+                success: false,
+                message: "sortBy must be newest or oldest.",
+            });
+        }
+
+        const filter = {};
+
+        const statusByTab = {
+            open: "open",
+            "in progress": "in_progress",
+            in_progress: "in_progress",
+            resolved: "resolved",
+            closed: "closed",
+        };
+
+        if (status && status !== "all" && status !== "all tickets") {
+            const normalizedStatus = statusByTab[status];
+
+            if (!normalizedStatus) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid ticket status.",
+                });
+            }
+
+            filter.status = normalizedStatus;
+        }
+
+        if (requestedUserType && requestedUserType !== "all") {
+            const userTypeByRole = {
+                buyer: "Buyer",
+                seller: "Seller",
+            };
+
+            const normalizedUserType = userTypeByRole[requestedUserType];
+
+            if (!normalizedUserType) {
+                return res.status(400).json({
+                    success: false,
+                    message: "userType must be buyer or seller.",
+                });
+            }
+
+            filter.userType = normalizedUserType;
+        }
+
+        if (search) {
+            const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+            filter.$or = [
+                { supportId: { $regex: safeSearch, $options: "i" } },
+                { subject: { $regex: safeSearch, $options: "i" } },
+                { category: { $regex: safeSearch, $options: "i" } },
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const sortOrder = sortBy === "oldest" ? 1 : -1;
+
+        const [tickets, totalTickets] = await Promise.all([
+            SupportTicket.find(filter)
+                .sort({ createdAt: sortOrder })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+
+            SupportTicket.countDocuments(filter),
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            tickets,
+            pagination: {
+                totalTickets,
+                currentPage: page,
+                totalPages: Math.ceil(totalTickets / limit),
+                limit,
+            },
+        });
+    } catch (err) {
+        console.log("getAllSupportTickets error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error occurred.",
+        });
+    }
+};
+
+// update ticket status
+export const updateSupportTicketStatus = async (req, res) => {
+    try {
+        const userRole = String(req.user?.role || "").toLowerCase();
+
+        if (userRole !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Admin access required.",
+            });
+        }
+
+        const { supportId } = req.params;
+        const requestedStatus = String(req.body.status || "")
+            .trim()
+            .toLowerCase();
+
+        const statusByLabel = {
+            open: "open",
+            "in progress": "in_progress",
+            in_progress: "in_progress",
+            resolved: "resolved",
+            closed: "closed",
+        };
+
+        const status = statusByLabel[requestedStatus];
+
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: "Status must be open, in_progress, resolved, or closed.",
+            });
+        }
+
+        const ticket = await SupportTicket.findOneAndUpdate(
+            { supportId },
+            { status },
+            { new: true, runValidators: true }
+        );
+
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: "Support ticket not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Ticket status updated successfully.",
+            ticket,
+        });
+    } catch (err) {
+        console.log("updateSupportTicketStatus error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error occurred.",
+        });
+    }
+};
+
 // ============================================ ADMIN DASHBOARD
 
 const UAE_OFFSET_MS = 4 * 60 * 60 * 1000;
@@ -6093,18 +6270,18 @@ export const getReportAnalytics = async (req, res) => {
             periodOrderCounts, distinctSuccessfulBuyers, distinctBidders,
         ] = await Promise.all([
             Buyer.countDocuments({ accountStatus: { $ne: 'suspended' } }),
-            Seller.countDocuments({ isComplete: true, accountStatus: { $ne: "suspended" },}),
+            Seller.countDocuments({ isComplete: true, accountStatus: { $ne: "suspended" }, }),
             Buyer.countDocuments(),
             Seller.countDocuments({ isComplete: true }),
             Vehicle.countDocuments({
                 auctionEndDateTime: { $gte: range.start, $lt: range.end },
                 auctionStatus: { $in: ['sold', 'unsold', 'reserve-not-met', 'canceled'] },
             }),
-            
+
             Order.countDocuments(paidRange),
 
             Payout.aggregate([
-                { $match: { status: { $ne: 'canceled' }} },
+                { $match: { status: { $ne: 'canceled' } } },
                 { $group: { _id: null, amount: { $sum: '$commissionAmount' } } },
             ]),
 

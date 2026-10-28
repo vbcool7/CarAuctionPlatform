@@ -1814,7 +1814,7 @@ export const getUpcomingAuctionDates = async (req, res) => {
     }
 };
 
-// similar auctions
+// similar auctions - live, upcoming, ended
 const ENDED_AUCTION_STATUSES = ['sold', 'unsold', 'reserve-not-met'];
 
 const getLatestAuctionsByStatus = async (req, res, type) => {
@@ -1839,7 +1839,7 @@ const getLatestAuctionsByStatus = async (req, res, type) => {
         const vehicles = await Vehicle.find(filter)
             .select(
                 'listingId make model year trim vehicleType mileage transmission fuelType emirate city ' +
-                'priceType startingBidPrice buyNowPrice currentBid auctionType auctionStartDateTime ' +
+                'priceType startingBidPrice buyNowPrice currentBid auctionType auctionStartDateTime auctionStatus ' +
                 'auctionEndDateTime images createdAt'
             )
             .sort({ createdAt: -1 })

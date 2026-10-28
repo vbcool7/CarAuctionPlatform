@@ -1,17 +1,15 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Share2, Heart, MapPin, Hash, Cog, Flag, Fuel, Tag, Calendar, Clock, User, ShieldCheck, MessageCircle, Mail, Link, Gavel, Eye, Users, AlertCircle, Bell, Gauge, XCircle } from 'lucide-react';
-import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import { Share2, Heart, MapPin, Hash, Cog, Flag, Fuel, Tag, Calendar, Clock, User, ShieldCheck, MessageCircle, Mail, Link, Gavel, Users, AlertCircle, Bell, Gauge, XCircle } from 'lucide-react';
+import { HiCheckCircle } from 'react-icons/hi';
 import { HiReceiptRefund } from 'react-icons/hi2';
 import { FaFacebookF, FaXTwitter } from "react-icons/fa6";
-import { AreaChart, Area, LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
-
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, ReferenceLine } from 'recharts';
 import Breadcrumbs from './Breadcrumbs';
 import AuctionFeaturesBar from './SharedComponents/AuctionFeatureBar';
 import SellerInfo from './SellerInfo';
 import HomeRecentlySold from './HomeRecentlySold';
-
 import OverviewTab from './OverviewTab';
 import VehiclInfoTab from './VehicleInfoTab';
 import InspectionTab from './InspectionTab';
@@ -23,14 +21,19 @@ import AuctionBottomFeaturesBar from './SharedComponents/AuctionBottomFeaturesBa
 import EndedSoldGallery from './EndedSoldGallery';
 import EndedUnsoldGallery from './EndedUnSoldGallery';
 import Loader from './Loader';
+import { toast } from 'react-toastify';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 
 import { formatDateTime, formatLabel, formatPrice } from '../utils/formatters';
 import useAuthStore from '../store/useAuthStore';
-import { usePublicAuctionDetail } from '../hook/useAuction';
+import { useGetLatestEndedAuctions, usePublicAuctionDetail } from '../hook/useAuction';
 import { useStatusRedirect } from '../hook/useStatusRedirect';
 import { useGetPublicAuctionBids } from '../hook/useBid';
 import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
-import { toast } from 'react-toastify';
 
 // market insights
 const chartData = [
@@ -348,9 +351,13 @@ function EndedAuctionsDetail() {
     const { data, isLoading, isError } = usePublicAuctionDetail(id);
     const { data: watchlistIds } = useGetWatchlistIds();
     const { mutate: toggleWatchlist, isPending, variables: pendingId } = useToggleWatchlist();
+    const { data: similarEndedResponse, isLoading: isSimilarEndedLoading, } = useGetLatestEndedAuctions();
 
     const vehicle = data?.data;
-    useStatusRedirect(vehicle, '/live-ended-detail');
+    const similarEndedVehicles = (similarEndedResponse?.data || [])
+        .filter((item) => String(item._id) !== String(vehicle?._id));
+
+    useStatusRedirect(vehicle, '/ended-auction-detail');
 
     // for bid chart - sold
     const { data: bidsData } = useGetPublicAuctionBids(vehicle?._id, bidPage, 20);
@@ -1199,8 +1206,207 @@ function EndedAuctionsDetail() {
                 )}
 
                 {/* ======== similar sold ======== */}
-                <div className='mt-6'>
-                    <HomeRecentlySold />
+                <div className='my-14'>
+                    {(isSimilarEndedLoading || similarEndedVehicles.length > 0) && (
+                        <section className="mx-auto mt-10 max-w-6xl">
+                            <div className="mb-6 border-l-4 border-[#D97706] pl-3.5">
+                                <h2 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl tracking-tight">
+                                    Latest Ended Auctions
+                                </h2>
+                                <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
+                                    Explore past auction outcomes, final winning bids, and closed listings
+                                </p>
+                            </div>
+
+                            {isSimilarEndedLoading ? (
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    {[1, 2, 3, 4].map((item) => (
+                                        <div
+                                            key={item}
+                                            className="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white"
+                                        >
+                                            <div className="h-44 bg-slate-200" />
+                                            <div className="space-y-3 p-4">
+                                                <div className="h-4 w-3/4 rounded bg-slate-200" />
+                                                <div className="h-3 w-1/2 rounded bg-slate-200" />
+                                                <div className="h-5 w-2/3 rounded bg-slate-200" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Swiper
+                                    modules={[Autoplay]}
+                                    autoplay={{
+                                        delay: 2500,
+                                        disableOnInteraction: false,
+                                        pauseOnMouseEnter: true,
+                                    }}
+                                    loop={similarEndedVehicles.length > 4}
+                                    speed={700}
+                                    spaceBetween={20}
+                                    slidesPerView={1}
+                                    breakpoints={{
+                                        640: { slidesPerView: 2 },
+                                        768: { slidesPerView: 3 },
+                                        1024: { slidesPerView: 4 },
+                                    }}
+                                    className="similar-auctions-swiper !py-4"
+                                >
+                                    {similarEndedVehicles.map((item) => {
+                                        const isFixedPrice = item.priceType === 'fixed_price';
+                                        const displayPrice = isFixedPrice
+                                            ? item.buyNowPrice
+                                            : (item.currentBid ?? item.startingBidPrice);
+
+                                        return (
+                                            <SwiperSlide key={item._id} className="!h-auto">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(`/ended-auction-detail/${item._id}`)}
+                                                    className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-left transition-all duration-300 hover:-translate-y-1.5 hover:border-slate-400 hover:shadow-xl hover:shadow-slate-200/50"
+                                                >
+                                                    {/* Top Image Container */}
+                                                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                                                        {item.image ? (
+                                                            <img
+                                                                src={item.image}
+                                                                alt={`${item.year || ''} ${item.make || ''} ${item.model || ''}`}
+                                                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108 grayscale-[20%] group-hover:grayscale-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-500 bg-slate-100">
+                                                                Image not available
+                                                            </div>
+                                                        )}
+
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 opacity-80" />
+
+                                                        {/* Left Top Dynamic Status Badge (Sold / Unsold / Reserve Not Met) */}
+                                                        {(() => {
+                                                            const status = item.auctionStatus || item.status;
+                                                            let badgeStyle = "bg-slate-900/85 text-slate-200 border-white/10";
+                                                            let dotStyle = "bg-slate-400";
+                                                            let label = "Ended";
+
+                                                            if (status === 'sold') {
+                                                                badgeStyle = "bg-emerald-950/85 text-emerald-200 border-emerald-500/30";
+                                                                dotStyle = "bg-emerald-400";
+                                                                label = "Sold";
+                                                            } else if (status === 'reserve-not-met') {
+                                                                badgeStyle = "bg-amber-950/85 text-amber-200 border-amber-500/30";
+                                                                dotStyle = "bg-amber-400";
+                                                                label = "Reserve Not Met";
+                                                            } else if (status === 'unsold') {
+                                                                badgeStyle = "bg-rose-950/85 text-rose-200 border-rose-500/30";
+                                                                dotStyle = "bg-rose-400";
+                                                                label = "Unsold";
+                                                            }
+
+                                                            return (
+                                                                <div className={`absolute left-3 top-3 flex items-center gap-1.5 rounded-full backdrop-blur-md px-2.5 py-1 border shadow-sm ${badgeStyle}`}>
+                                                                    <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`} />
+                                                                    <span className="text-[10px] font-bold tracking-wide uppercase">
+                                                                        {label}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })()}
+
+                                                        {/* Right Price Type Badge */}
+                                                        <span className="absolute right-3 top-3 rounded-full bg-white/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-[#0B1E3D] shadow-sm">
+                                                            {isFixedPrice ? 'Fixed Price' : 'Reserve Price'}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Card Content Section */}
+                                                    <div className="flex flex-1 flex-col p-4">
+                                                        <h3 className="line-clamp-1 text-base font-extrabold text-[#0B1E3D] group-hover:text-slate-700 transition-colors">
+                                                            {[item.year, formatLabel(item.make), formatLabel(item.model)].filter(Boolean).join(' ')}
+                                                        </h3>
+
+                                                        {/* Feature Badges / Specs Grid */}
+                                                        <div className="mt-3.5 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                                                            {item.mileage != null && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">KM:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {Number(item.mileage).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.transmission && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Gear:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.transmission)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.fuelType && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Fuel:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.fuelType)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.emirate && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Loc:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.emirate)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Price Section Box */}
+                                                        {['sold', 'unsold', 'reserve-not-met'].includes(item.auctionStatus) && (
+                                                            <div className="mt-4 rounded-xl bg-slate-50/80 p-3 border border-slate-100">
+                                                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                                                                    {item.priceType === 'fixed_price'
+                                                                        ? 'Buy Now Price'
+                                                                        : item.auctionStatus === 'sold'
+                                                                            ? 'Sold Price'
+                                                                            : item.auctionStatus === 'unsold'
+                                                                                ? 'Starting Bid Price'
+                                                                                : 'Current Bid Price'}
+                                                                </p>
+
+                                                                <p className="mt-0.5 text-lg font-black text-[#0B1E3D] tracking-tight">
+                                                                    {(() => {
+                                                                        const price = item.priceType === 'fixed_price'
+                                                                            ? item.buyNowPrice
+                                                                            : item.auctionStatus === 'unsold'
+                                                                                ? item.startingBidPrice
+                                                                                : item.currentBid;
+
+                                                                        return price != null ? formatPrice(price) : 'Price N/A';
+                                                                    })()}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Footer Action Bar */}
+                                                        <div className="mt-auto pt-3.5 flex items-center justify-between border-t border-slate-100/80">
+                                                            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+                                                                Auction Closed
+                                                            </span>
+                                                            <span className="text-xs font-bold text-slate-700 group-hover:text-[#0B1E3D] group-hover:translate-x-1 transition-all flex items-center gap-0.5">
+                                                                View Results <span className="text-sm">→</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </SwiperSlide>
+                                        );
+                                    })}
+                                </Swiper>
+                            )}
+                        </section>
+                    )}
                 </div>
             </div>
 

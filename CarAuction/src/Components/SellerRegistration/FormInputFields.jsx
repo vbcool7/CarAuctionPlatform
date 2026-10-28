@@ -64,6 +64,7 @@ const FormInputFields = ({ label, name, value, onChange, type = "text", placehol
                     name={name}
                     value={value}
                     rows={rows}
+                    maxLength={maxLength}
                     disabled={disabled}
                     placeholder={placeholder || `Enter ${label}`}
                     onChange={onChange}

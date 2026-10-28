@@ -2,34 +2,33 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { vehicles } from './Data';
-import { Share2, Heart, MapPin, Hash, Fingerprint, Cog, Flag, Fuel, User, ShieldCheck, Gavel, Award, Briefcase, Gauge } from 'lucide-react';
-import { HiCalendar, HiOutlineTag, HiOutlineCurrencyDollar, HiLocationMarker, HiCheckCircle, HiOutlineClock } from "react-icons/hi";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
-import { toast } from 'react-toastify';
-
+import { Share2, Heart, MapPin, Hash, Cog, Flag, Fuel, User, ShieldCheck, Gavel, Award, Briefcase, Gauge } from 'lucide-react';
+import { HiCalendar, HiOutlineTag, HiOutlineCurrencyDollar, HiLocationMarker, HiOutlineClock } from "react-icons/hi";
+import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import Breadcrumbs from './Breadcrumbs';
 import VehicleGallery from './VehicleGallery';
 import AuctionFeaturesBar from './SharedComponents/AuctionFeatureBar';
-
 import DetailTabs from './DetailTabs';
 import OverviewTab from './OverviewTab';
 import VehiclInfoTab from './VehicleInfoTab';
 import InspectionTab from './InspectionTab';
-import BiddingHistoryTab from './BiddingHistoryTab';
 import DocumentsTab from './DocumentsTab';
-import ShippingPaymentsTab from './ShippingPaymentsTab';
-import AuctionBottomFeaturesBar from './SharedComponents/AuctionBottomFeaturesBar';
 import AuctionDetailsTab from './AuctionDetailsTab';
 import LocationTab from './LocationTab';
 import SellerInfo from './SellerInfo';
-import UpcomingSimilarAuctions from './UpcomingSimilarAuctions';
-import { usePublicAuctionDetail } from '../hook/useAuction';
-import { useStatusRedirect } from '../hook/useStatusRedirect';
-import { formatDateTime, formatLabel, formatPrice } from '../utils/formatters';
 import { UseCountdown } from './SharedComponents/UseCountdown';
 import Loader from './Loader';
 
+import { toast } from 'react-toastify';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+
+import { formatDateTime, formatLabel, formatPrice } from '../utils/formatters';
+import { useStatusRedirect } from '../hook/useStatusRedirect';
+import { useGetLatestUpcomingAuctions, usePublicAuctionDetail } from '../hook/useAuction';
 import { useGetWatchlistIds, useToggleWatchlist } from '../hook/useWatchlist';
 import useAuthStore from '../store/useAuthStore';
 
@@ -90,9 +89,13 @@ function UpcomingAuctionsDetail() {
     const { data, isLoading, isError } = usePublicAuctionDetail(id);
     const { data: watchlistIds } = useGetWatchlistIds();
     const { mutate: toggleWatchlist, isPending, variables: pendingId } = useToggleWatchlist();
+    const { data: similarUpcomingResponse, isLoading: isSimilarUpcomingLoading, } = useGetLatestUpcomingAuctions();
 
     const vehicle = data?.data;
-    useStatusRedirect(vehicle, '/live-upcoming-detail');
+    const similarUpcomingVehicles = (similarUpcomingResponse?.data || [])
+        .filter((item) => String(item._id) !== String(vehicle?._id));
+
+    useStatusRedirect(vehicle, '/upcoming-auction-detail');
 
     if (isLoading) {
         return <Loader />
@@ -507,8 +510,167 @@ function UpcomingAuctionsDetail() {
                 </div>
 
                 {/* ======== similar auctions ======== */}
-                <div className='mt-6'>
-                    <UpcomingSimilarAuctions />
+                <div className='my-14'>
+                    {(isSimilarUpcomingLoading || similarUpcomingVehicles.length > 0) && (
+                        <section className="mx-auto mt-10 max-w-6xl">
+                            <div className="mb-6 border-l-4 border-[#D97706] pl-3.5">
+                                <h2 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl tracking-tight">
+                                    Latest Upcoming Auctions
+                                </h2>
+                                <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
+                                    Preview upcoming vehicles and get ready to place your bids soon
+                                </p>
+                            </div>
+
+                            {isSimilarUpcomingLoading ? (
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                    {[1, 2, 3, 4].map((item) => (
+                                        <div
+                                            key={item}
+                                            className="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white"
+                                        >
+                                            <div className="h-44 bg-slate-200" />
+                                            <div className="space-y-3 p-4">
+                                                <div className="h-4 w-3/4 rounded bg-slate-200" />
+                                                <div className="h-3 w-1/2 rounded bg-slate-200" />
+                                                <div className="h-5 w-2/3 rounded bg-slate-200" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Swiper
+                                    modules={[Autoplay]}
+                                    autoplay={{
+                                        delay: 2500,
+                                        disableOnInteraction: false,
+                                        pauseOnMouseEnter: true,
+                                    }}
+                                    loop={similarUpcomingVehicles.length > 4}
+                                    speed={700}
+                                    spaceBetween={20}
+                                    slidesPerView={1}
+                                    breakpoints={{
+                                        640: { slidesPerView: 2 },
+                                        768: { slidesPerView: 3 },
+                                        1024: { slidesPerView: 4 },
+                                    }}
+                                    className="similar-auctions-swiper !py-4"
+                                >
+                                    {similarUpcomingVehicles.map((item) => {
+                                        const isFixedPrice = item.priceType === 'fixed_price';
+                                        const displayPrice = isFixedPrice
+                                            ? item.buyNowPrice
+                                            : (item.currentBid ?? item.startingBidPrice);
+
+                                        return (
+                                            <SwiperSlide key={item._id} className="!h-auto">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(`/upcoming-auction-detail/${item._id}`)}
+                                                    className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-left transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/80 hover:shadow-xl hover:shadow-slate-200/50"
+                                                >
+                                                    {/* Top Image Container */}
+                                                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                                                        {item.image ? (
+                                                            <img
+                                                                src={item.image}
+                                                                alt={`${item.year || ''} ${item.make || ''} ${item.model || ''}`}
+                                                                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
+                                                            />
+                                                        ) : (
+                                                            <div className="flex h-full items-center justify-center text-xs font-semibold text-slate-500 bg-slate-100">
+                                                                Image not available
+                                                            </div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-black/20 opacity-80" />
+
+                                                        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-slate-900/85 backdrop-blur-md px-2.5 py-1 border border-white/10 shadow-sm">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                                            <span className="text-[10px] font-bold text-white tracking-wide uppercase">
+                                                                Upcoming
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Right Price Type Badge */}
+                                                        <span className="absolute right-3 top-3 rounded-full bg-white/90 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-[#0B1E3D] shadow-sm">
+                                                            {isFixedPrice ? 'Fixed Price' : 'Reserve Price'}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Card Content Section */}
+                                                    <div className="flex flex-1 flex-col p-4">
+                                                        <h3 className="line-clamp-1 text-base font-extrabold text-[#0B1E3D] group-hover:text-[#D97706] transition-colors">
+                                                            {[item.year, formatLabel(item.make), formatLabel(item.model)].filter(Boolean).join(' ')}
+                                                        </h3>
+
+                                                        {/* Feature Badges / Specs Grid */}
+                                                        <div className="mt-3.5 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                                                            {item.mileage != null && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">KM:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {Number(item.mileage).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.transmission && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Gear:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.transmission)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.fuelType && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Fuel:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.fuelType)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {item.emirate && (
+                                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                                    <span className="text-slate-400 font-medium">Loc:</span>
+                                                                    <span className="font-semibold text-slate-800 truncate">
+                                                                        {formatLabel(item.emirate)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Price Section Box */}
+                                                        <div className="mt-4 rounded-xl bg-slate-50/80 p-3 border border-slate-100">
+                                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                                                                {isFixedPrice ? 'Buy Now Price' : 'Starting Bid'}
+                                                            </p>
+                                                            <p className="mt-0.5 text-lg font-black text-[#0B1E3D] tracking-tight">
+                                                                {displayPrice != null
+                                                                    ? formatPrice(displayPrice)
+                                                                    : 'Price TBA'}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Footer Action Bar */}
+                                                        <div className="mt-auto pt-3.5 flex items-center justify-between border-t border-slate-100/80">
+                                                            <span className="text-xs font-semibold text-indigo-700 flex items-center gap-1.5">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block" />
+                                                                Opening Shortly
+                                                            </span>
+                                                            <span className="text-xs font-bold text-[#D97706] group-hover:translate-x-1 transition-transform flex items-center gap-0.5">
+                                                                Preview Vehicle <span className="text-sm">→</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </SwiperSlide>
+                                        );
+                                    })}
+                                </Swiper>
+                            )}
+                        </section>
+                    )}
                 </div>
 
             </div>

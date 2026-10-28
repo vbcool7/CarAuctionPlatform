@@ -16,6 +16,7 @@ import {
     getAllSales, 
     getAllPayments, getPaymentById,
     getAllTransactions, getTransactionById,
+    getAllSupportTickets, updateSupportTicketStatus,
     adminDashboardStats,
     getReportAnalytics,
 } from '../controllers/adminController.js';
@@ -175,6 +176,10 @@ router.get('/payment-detail/:id', authMiddleware(['admin', 'auctionManager']), r
 // ============================ TRANSACTION
 router.get('/get-all-transactions', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllTransactions);
 router.get('/transaction-detail/:key', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getTransactionById);
+
+// ============================ SUPPORT
+router.get('/get-all-support-tickets', authMiddleware(['admin']), getAllSupportTickets);
+router.patch('/update-support-status', authMiddleware(['admin']), updateSupportTicketStatus);
 
 // ============================ DASHBOARD STATS
 router.get('/admin-dashboard-stats', authMiddleware(['admin']), adminDashboardStats);
