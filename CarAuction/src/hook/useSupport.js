@@ -30,5 +30,37 @@ export const useGetMySupportTickets = ({
 
             return res.data;
         },
+        placeholderData: (previousData) => previousData,
+    });
+};
+
+// request a call
+export const useCreateRequestedCall = () => {
+    return useMutation({
+        mutationFn: async (formData) => {
+            const res = await API.post('/support/request-call', formData);
+            return res.data;
+        },
+    });
+};
+
+// my call reqs
+export const useGetMyCallRequests = ({
+    status = '',
+    search = '',
+    page = 1,
+    limit = 10,
+    sortBy = 'newest',
+} = {}) => {
+    return useQuery({
+        queryKey: ['myCallRequests', { status, search, page, limit, sortBy }],
+        queryFn: async () => {
+            const res = await API.get('/support/my-call-requests', {
+                params: { status, search, page, limit, sortBy },
+            });
+
+            return res.data;
+        },
+        placeholderData: (previousData) => previousData,
     });
 };

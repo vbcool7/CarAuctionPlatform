@@ -16,7 +16,7 @@ import {
     getAllSales, 
     getAllPayments, getPaymentById,
     getAllTransactions, getTransactionById,
-    getAllSupportTickets, updateSupportTicketStatus,
+    getAllSupportTickets, getSupportTicketById, updateSupportTicketStatus, getAllSupportCallRequests, getSupportCallRequestById, updateCallRequestStatus,
     adminDashboardStats,
     getReportAnalytics,
 } from '../controllers/adminController.js';
@@ -177,9 +177,14 @@ router.get('/payment-detail/:id', authMiddleware(['admin', 'auctionManager']), r
 router.get('/get-all-transactions', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getAllTransactions);
 router.get('/transaction-detail/:key', authMiddleware(['admin', 'auctionManager']), requirePermission('managePayments'), getTransactionById);
 
-// ============================ SUPPORT
-router.get('/get-all-support-tickets', authMiddleware(['admin']), getAllSupportTickets);
-router.patch('/update-support-status', authMiddleware(['admin']), updateSupportTicketStatus);
+// ============================ SUPPORT / CALL REQ
+router.get('/get-all-tickets', authMiddleware(['admin']), getAllSupportTickets);
+router.get('/ticket-detail/:id', authMiddleware(['admin']), getSupportTicketById);
+router.patch('/update-ticket-status/:supportId', authMiddleware(['admin']), updateSupportTicketStatus);
+
+router.get('/get-all-call-requests', authMiddleware(['admin']), getAllSupportCallRequests);
+router.get('/call-request-detail/:id', authMiddleware(['admin']), getSupportCallRequestById);
+router.patch('/update-call-request-status/:id', authMiddleware(['admin']), updateCallRequestStatus);
 
 // ============================ DASHBOARD STATS
 router.get('/admin-dashboard-stats', authMiddleware(['admin']), adminDashboardStats);

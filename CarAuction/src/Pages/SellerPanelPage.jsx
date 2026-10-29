@@ -29,6 +29,7 @@ import SupportDetail from '../Components/SellerPanel/Support/SupportDetail';
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
 import EditVehicle from '../Components/SellerPanel/EditVehicle/EditVehicle';
 import MyPurchases from '../Components/SellerPanel/MyPurchases/MyPurchases';
+import RequestCall from '../Components/SellerPanel/Support/RequestCall';
 
 const SELLER_DEEP_LINKS = ['watchlist', 'my-vehicles', 'my-auctions', 'my-purchases'];
 
@@ -155,6 +156,7 @@ function SellerPanelPage() {
               {currentPage === 'support' && <Support setSelectedTicketId={setSelectedTicketId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'support-detail' && <SupportDetail ticketId={selectedTicketId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'create-ticket' && <CreateTicket setCurrentPage={setCurrentPage} />}
+              {currentPage === 'request-call' && <RequestCall setCurrentPage={setCurrentPage} />}
 
               {/* notifications */}
               {currentPage === 'notifications' && <SellerNotifications setCurrentPage={setCurrentPage} />}

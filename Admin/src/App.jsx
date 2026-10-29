@@ -64,12 +64,16 @@ import AddNewManagerForm from './Components/UserManagement/AddNewUser/AddNewMana
 import Manager from './Components/UserManagement/Manager';
 import ManagerDetail from './Components/UserManagement/ManagerDetail';
 import EditVehicle from './Components/SharedComponents/EditVehicle';
+import AllTickets from './Components/SupportManagement/AllTickets';
+import AllTicketsDetail from './Components/SupportManagement/AllTicketsDetail';
+import CallRequests from './Components/SupportManagement/CallRequests';
+import CallRequestsDetail from './Components/SupportManagement/CallRequestsDetail';
 
 function App() {
 
   const token = useAdminAuthStore((state) => state.token);
 
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('support');
   const [previousPage, setPreviousPage] = useState(null);
   const [sideBarCollapsed, setSideBarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -108,6 +112,10 @@ function App() {
   // dis man
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [selectedAllDisputeId, setSelectedAllDisputeId] = useState(null);
+
+  // support
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedCallRequestId, setSelectedCallRequestId] = useState(null);
 
   // cms man
   const [editingBlog, setEditingBlog] = useState(null);
@@ -382,6 +390,13 @@ function App() {
                 {currentPage === 'dispute-categories' && <DisputeCategories setSelectedCategoryId={setSelectedCategoryId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'add-new-category' && <AddNewCategory setCurrentPage={setCurrentPage} />}
                 {currentPage === 'edit-dispute-category' && <EditDisputeCategory categoryId={selectedCategoryId} setCurrentPage={setCurrentPage} />}
+
+                {/* support management */}
+                {currentPage === 'all-tickets' && <AllTickets setSelectedTicketId={setSelectedTicketId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'all-tickets-detail' && <AllTicketsDetail ticketId={selectedTicketId} setCurrentPage={setCurrentPage} />}
+
+                {currentPage === 'call' && <CallRequests setSelectedCallRequestId={setSelectedCallRequestId} setCurrentPage={setCurrentPage} />}
+                {currentPage === 'call-detail' && <CallRequestsDetail callRequestId={selectedCallRequestId} setCurrentPage={setCurrentPage} />}
 
                 {/* report & analytics */}
                 {currentPage === 'reports-analytics' && <ReportAndAnalytics setCurrentPage={setCurrentPage} />}

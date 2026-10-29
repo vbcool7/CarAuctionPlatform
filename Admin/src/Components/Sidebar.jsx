@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut, CarFront } from 'lucide-react';
+import { ChevronDown, LogOut, CarFront, Headphones } from 'lucide-react';
 import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line, RiMoneyDollarCircleLine } from "react-icons/ri";
 import useAdminAuthStore from '../store/useAdminAuthStore';
 
@@ -84,6 +84,17 @@ const menuItems = [
         submenu: [
             { id: "all-disputes", label: "All Disputes" },
             { id: "dispute-categories", label: "Dispute Categories" },
+        ]
+    },
+    {
+        id: "support-management",
+        icon: Headphones,
+        label: "Support Management",
+        adminOnly: true,
+        active: false,
+        submenu: [
+            { id: "all-tickets", label: "All Tickets" },
+            { id: "call", label: "Call Requests" },
         ]
     },
     {

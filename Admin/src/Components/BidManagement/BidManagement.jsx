@@ -1,15 +1,13 @@
 
-import React, { useState } from 'react';
-import { Download, MoreVertical, Calendar, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History, Eye, ArrowDownUp } from 'lucide-react';
-import { bidsList } from '../Data';
+import React, { useState, useEffect } from 'react';
+import { Download, MoreVertical, Gavel, TrendingUp, Trophy, XCircle, ArrowUp, ArrowDown, Plus, ArrowUpRight, X, History, Eye, ArrowDownUp } from 'lucide-react';
 import SearchBar from '../SharedComponents/SearchBar';
 import FilterDropdown from '../SharedComponents/FilterDropdown';
 import SummaryDonutCard from '../SharedComponents/SummaryDonutCard';
+import DateRangePicker from '../SharedComponents/DateRangePicker';
 
 import { useGetAllBids, useGetBidStats, useGetTopBidders } from '../../hooks/useBid';
 import { getPaginationRange } from '../utils/getPaginationRange'
-import { useEffect } from 'react';
-import DateRangePicker from '../SharedComponents/DateRangePicker';
 
 // tabs
 const tabs = [

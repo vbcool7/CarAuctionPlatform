@@ -24,6 +24,7 @@ import Order from '../models/orderModelSchema.js';
 import PaymentEvent from '../models/paymentEventModelSchema.js';
 import Notification from '../models/notificationModelSchema.js';
 import SupportTicket from '../models/supportTicketModelSchema.js';
+import SupportCallRequest from '../models/supportCallRequestModel.js';
 
 import { getStripe } from "../config/stripe.js";
 import { createPayoutForOrder } from "../utils/payoutHelper.js";
@@ -5905,7 +5906,7 @@ export const getTransactionById = async (req, res) => {
     }
 };
 
-// ============================================ SUPPORT
+// ============================================ SUPPORT / CALL REQUEST
 
 // get all support tickets
 export const getAllSupportTickets = async (req, res) => {
@@ -5918,6 +5919,7 @@ export const getAllSupportTickets = async (req, res) => {
         }
 
         const status = String(req.query.status || "").trim().toLowerCase();
+        const priority = String(req.query.priority || "").trim().toLowerCase();
         const search = String(req.query.search || "").trim();
         const sortBy = String(req.query.sortBy || "newest").toLowerCase();
         const requestedUserType = String(req.query.userType || "").trim().toLowerCase();
@@ -5936,6 +5938,64 @@ export const getAllSupportTickets = async (req, res) => {
         }
 
         const filter = {};
+
+        if (priority && priority !== "all" && priority !== "all priority") {
+            const allowedPriorities = ["high", "medium", "low"];
+
+            if (!allowedPriorities.includes(priority)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid ticket priority.",
+                });
+            }
+
+            filter.priority = {
+                $regex: `^${priority}$`,
+                $options: "i",
+            };
+        }
+
+        // date filter
+        const startDate = String(req.query.startDate || "").trim();
+        const endDate = String(req.query.endDate || "").trim();
+
+        if (startDate || endDate) {
+            filter.createdAt = {};
+
+            if (startDate) {
+                const start = new Date(startDate);
+
+                if (Number.isNaN(start.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid start date.",
+                    });
+                }
+
+                filter.createdAt.$gte = start;
+            }
+
+            if (endDate) {
+                const end = new Date(endDate);
+
+                if (Number.isNaN(end.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid end date.",
+                    });
+                }
+
+                end.setUTCHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+
+            if (startDate && endDate && startDate > endDate) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Start date cannot be after end date.",
+                });
+            }
+        }
 
         const statusByTab = {
             open: "open",
@@ -5989,19 +6049,53 @@ export const getAllSupportTickets = async (req, res) => {
         const skip = (page - 1) * limit;
         const sortOrder = sortBy === "oldest" ? 1 : -1;
 
-        const [tickets, totalTickets] = await Promise.all([
+        const [tickets, totalTickets, stats] = await Promise.all([
             SupportTicket.find(filter)
+                .populate({
+                    path: "userId",
+                    select: "firstName lastName fullName email mobile phone profileImageUrl profileImage",
+                })
                 .sort({ createdAt: sortOrder })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
 
             SupportTicket.countDocuments(filter),
+
+            SupportTicket.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalTickets: { $sum: 1 },
+                        openTickets: {
+                            $sum: { $cond: [{ $eq: ["$status", "open"] }, 1, 0] },
+                        },
+                        inProgressTickets: {
+                            $sum: { $cond: [{ $eq: ["$status", "in_progress"] }, 1, 0] },
+                        },
+                        resolvedTickets: {
+                            $sum: { $cond: [{ $eq: ["$status", "resolved"] }, 1, 0] },
+                        },
+                        closedTickets: {
+                            $sum: { $cond: [{ $eq: ["$status", "closed"] }, 1, 0] },
+                        },
+                    },
+                },
+            ]),
         ]);
+
+        const ticketStats = stats[0] || {
+            totalTickets: 0,
+            openTickets: 0,
+            inProgressTickets: 0,
+            resolvedTickets: 0,
+            closedTickets: 0,
+        };
 
         return res.status(200).json({
             success: true,
             tickets,
+            stats: ticketStats,
             pagination: {
                 totalTickets,
                 currentPage: page,
@@ -6009,12 +6103,60 @@ export const getAllSupportTickets = async (req, res) => {
                 limit,
             },
         });
+
     } catch (err) {
         console.log("getAllSupportTickets error:", err);
 
         return res.status(500).json({
             success: false,
             message: "Server error occurred.",
+        });
+    }
+};
+
+// get support ticket by id
+export const getSupportTicketById = async (req, res) => {
+    try {
+        if (String(req.user?.role || "").toLowerCase() !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Admin access required.",
+            });
+        }
+
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid support ticket ID.",
+            });
+        }
+
+        const ticket = await SupportTicket.findById(id)
+            .populate({
+                path: "userId",
+                select: "firstName lastName fullName email mobile phone profileImageUrl profileImage",
+            })
+            .lean();
+
+        if (!ticket) {
+            return res.status(404).json({
+                success: false,
+                message: "Support ticket not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            ticket,
+        });
+    } catch (error) {
+        console.error("Get support ticket details error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch support ticket details.",
         });
     }
 };
@@ -6077,6 +6219,314 @@ export const updateSupportTicketStatus = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server error occurred.",
+        });
+    }
+};
+
+// get all call req's
+export const getAllSupportCallRequests = async (req, res) => {
+    try {
+        if (String(req.user?.role || "").toLowerCase() !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Admin access required.",
+            });
+        }
+
+        const status = String(req.query.status || "").trim().toLowerCase();
+        const search = String(req.query.search || "").trim();
+        const sortBy = String(req.query.sortBy || "newest").toLowerCase();
+        const requestedUserType = String(req.query.userType || "").trim().toLowerCase();
+
+        const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(
+            50,
+            Math.max(1, Number.parseInt(req.query.limit, 10) || 10)
+        );
+
+        if (!["newest", "oldest"].includes(sortBy)) {
+            return res.status(400).json({
+                success: false,
+                message: "sortBy must be newest or oldest.",
+            });
+        }
+
+        const filter = {};
+
+        // date filter
+        const startDate = String(req.query.startDate || "").trim();
+        const endDate = String(req.query.endDate || "").trim();
+
+        if (startDate || endDate) {
+            filter.createdAt = {};
+
+            if (startDate) {
+                const start = new Date(startDate);
+
+                if (Number.isNaN(start.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid start date.",
+                    });
+                }
+
+                filter.createdAt.$gte = start;
+            }
+
+            if (endDate) {
+                const end = new Date(endDate);
+
+                if (Number.isNaN(end.getTime())) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid end date.",
+                    });
+                }
+
+                end.setUTCHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+
+            if (startDate && endDate && startDate > endDate) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Start date cannot be after end date.",
+                });
+            }
+        }
+
+        // Status filter
+        const allowedStatuses = [
+            "pending",
+            "contacted",
+            "completed",
+            "cancelled",
+        ];
+
+        if (status && status !== "all" && status !== "all requests") {
+            if (!allowedStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid call request status.",
+                });
+            }
+
+            filter.status = status;
+        }
+
+        // User type filter
+        if (requestedUserType && requestedUserType !== "all") {
+            const userTypeByRole = {
+                buyer: "Buyer",
+                seller: "Seller",
+            };
+
+            const normalizedUserType = userTypeByRole[requestedUserType];
+
+            if (!normalizedUserType) {
+                return res.status(400).json({
+                    success: false,
+                    message: "userType must be buyer or seller.",
+                });
+            }
+
+            filter.userType = normalizedUserType;
+        }
+
+        // Search filter
+        if (search) {
+            const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+            filter.$or = [
+                { callRequestId: { $regex: safeSearch, $options: "i" } },
+                { fullName: { $regex: safeSearch, $options: "i" } },
+                { contactNumber: { $regex: safeSearch, $options: "i" } },
+                { topic: { $regex: safeSearch, $options: "i" } },
+            ];
+        }
+
+        const skip = (page - 1) * limit;
+        const sortOrder = sortBy === "oldest" ? 1 : -1;
+
+        const [callRequests, totalCallRequests, stats] = await Promise.all([
+            SupportCallRequest.find(filter)
+                .populate({
+                    path: "userId",
+                    select: "firstName lastName fullName email mobile phone profileImageUrl profileImage",
+                })
+                .sort({ createdAt: sortOrder })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+
+            SupportCallRequest.countDocuments(filter),
+
+            SupportCallRequest.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalCallRequests: { $sum: 1 },
+                        pendingRequests: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "pending"] }, 1, 0],
+                            },
+                        },
+                        contactedRequests: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "contacted"] }, 1, 0],
+                            },
+                        },
+                        completedRequests: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "completed"] }, 1, 0],
+                            },
+                        },
+                        cancelledRequests: {
+                            $sum: {
+                                $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0],
+                            },
+                        },
+                    },
+                },
+            ]),
+        ]);
+
+        const callRequestStats = stats[0] || {
+            totalCallRequests: 0,
+            pendingRequests: 0,
+            contactedRequests: 0,
+            completedRequests: 0,
+            cancelledRequests: 0,
+        };
+
+        return res.status(200).json({
+            success: true,
+            callRequests,
+            stats: callRequestStats,
+            pagination: {
+                totalCallRequests,
+                currentPage: page,
+                totalPages: Math.ceil(totalCallRequests / limit),
+                limit,
+            },
+        });
+    } catch (err) {
+        console.log("getAllSupportCallRequests error:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error occurred.",
+        });
+    }
+};
+
+// get call req by id
+export const getSupportCallRequestById = async (req, res) => {
+    try {
+        if (String(req.user?.role || "").toLowerCase() !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied",
+            });
+        }
+
+        const { id } = req.params;
+
+        const callRequest = await SupportCallRequest.findOne({
+            $or: [
+                { callRequestId: id },
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+            ],
+        }).populate(
+            "userId",
+            "firstName lastName fullName email mobile phone profileImageUrl profileImage"
+        );
+
+        if (!callRequest) {
+            return res.status(404).json({
+                success: false,
+                message: "Call request not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Call request fetched successfully",
+            callRequest,
+        });
+    } catch (error) {
+        console.error("Get Call Request Detail Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured",
+        });
+    }
+};
+
+// update call req status
+export const updateCallRequestStatus = async (req, res) => {
+    try {
+        if (String(req.user?.role || "").toLowerCase() !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied",
+            });
+        }
+
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const allowedStatuses = [
+            "pending",
+            "contacted",
+            "completed",
+            "cancelled",
+        ];
+
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid call request status",
+            });
+        }
+
+        const idQuery = [
+            { callRequestId: id },
+        ];
+
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            idQuery.push({ _id: id });
+        }
+
+        const callRequest = await SupportCallRequest.findOneAndUpdate(
+            { $or: idQuery },
+            { $set: { status } },
+            { new: true, runValidators: true }
+        ).populate(
+            "userId",
+            "firstName lastName fullName email mobile phone profileImageUrl profileImage"
+        );
+
+        if (!callRequest) {
+            return res.status(404).json({
+                success: false,
+                message: "Call request not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Call request status updated successfully",
+            callRequest,
+        });
+    } catch (error) {
+        console.error("Update Call Request Status Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server Error Occured",
         });
     }
 };

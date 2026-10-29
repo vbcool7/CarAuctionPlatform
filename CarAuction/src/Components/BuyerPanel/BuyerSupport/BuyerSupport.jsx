@@ -9,6 +9,7 @@ import BuyerSupportLiveChat from './BuyerSupportLiveChat';
 import BuyerSupportRequestCall from './BuyerSupportRequestCall';
 
 function BuyerSupport({ setCurrentPage }) {
+  
   const [supportPage, setSupportPage] = useState('home');
 
   return (
