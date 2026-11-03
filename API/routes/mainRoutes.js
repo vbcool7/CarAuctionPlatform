@@ -15,6 +15,7 @@ import payoutRoutes from './payoutRoutes.js';
 import salesRoutes from './salesRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import supportRoutes from './supportTicketRoutes.js';
+import disputeRoutes from './disputeRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -33,5 +34,6 @@ rootRouter.use('/payout', payoutRoutes);
 rootRouter.use('/sales', salesRoutes);
 rootRouter.use('/invoice', invoiceRoutes);
 rootRouter.use('/support', supportRoutes);
+rootRouter.use('/dispute', disputeRoutes);
 
 export default rootRouter;

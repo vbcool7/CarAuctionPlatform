@@ -1,6 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Download } from 'lucide-react';
+import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
 
 import { useGetMySaleDetail } from '../../../hook/useSales';
 import { money, fmtDate, fmtTime, fmtDateTime, imgOf, pretty, STATUS_META, SOURCE_LABEL, PAYOUT_LABEL } from '../../../utils/salesUtils';
@@ -104,12 +106,24 @@ function Row({ label, value, valueClass = 'font-medium text-gray-800' }) {
     );
 }
 
-function SalesHistoryDetail({ setCurrentPage, salesId }) {
+function SalesHistoryDetail({ setCurrentPage, salesId, setSelectedDisputeId }) {
+
+    const [showRaise, setShowRaise] = useState(false);
 
     const { data, isLoading, isError } = useGetMySaleDetail(salesId);
     const { mutate: downloadStatement, isPending: isDownloading, variables: downloadingSaleId, } = useDownloadSellerSaleStatement();
 
     const sale = data?.sale;
+
+    // back btn
+    const back = (
+        <button
+            onClick={() => setCurrentPage('sales-history')}
+            className='flex items-center gap-1 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]'
+        >
+            ← Back to Sales History
+        </button>
+    );
 
     if (isLoading) return <div className='pb-6 space-y-6'><p className='text-sm text-slate-500'>Loading sale details...</p></div>;
     if (isError || !sale) return <div className='pb-6 space-y-6'><p className='text-sm text-red-600'>Could not load this sale.</p></div>;
@@ -125,12 +139,8 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
         <div className='pb-6 space-y-6'>
 
             {/* back btn */}
-            <button
-                onClick={() => setCurrentPage('sales-history')}
-                className='flex items-center gap-1 text-xs md:text-sm text-gray-500 hover:text-[#0B1E3D]'>
-                ← Back to Sales History
-            </button>
-            
+            {back}
+
             {/* header / statement download */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
                 <div className="flex flex-col gap-1">
@@ -171,7 +181,12 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
                     <div className='bg-white rounded-xl border border-gray-200 p-5'>
                         <div className='flex flex-col sm:flex-row items-start sm:items-center gap-5'>
                             <div className='rounded-xl overflow-hidden h-36 w-full sm:w-56 bg-gray-100 shrink-0 border border-gray-100'>
-                                {image && <img src={image} alt={title} className='w-full h-full object-cover' />}
+                                {image &&
+                                    <img
+                                        src={image}
+                                        alt={title}
+                                        className='w-full h-full object-cover'
+                                    />}
                             </div>
 
                             <div className='flex flex-col justify-between w-full gap-4'>
@@ -294,6 +309,27 @@ function SalesHistoryDetail({ setCurrentPage, salesId }) {
 
                 {/* -------------------------- RIGHT -------------------------- */}
                 <div className='space-y-6'>
+
+                    {/* Dispute */}
+                    {sale.dispute && (
+                        <DisputeActionCard
+                            dispute={sale.dispute}
+                            onRaise={() => setShowRaise(true)}
+                            onView={(id) => {
+                                setSelectedDisputeId(id);
+                                setCurrentPage('disputes-detail');
+                            }}
+                        />
+                    )}
+
+                    {showRaise && (
+                        <RaiseDisputeModal
+                            order={{ _id: sale._id, orderId: sale.orderId }}
+                            role={sale.dispute?.role}
+                            deadline={sale.dispute?.deadline}
+                            onClose={() => setShowRaise(false)}
+                        />
+                    )}
 
                     {/* Vehicle Information */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

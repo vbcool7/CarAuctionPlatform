@@ -4,10 +4,10 @@ import { ShieldCheck, Lock, CreditCard, Award, Receipt } from "lucide-react";
 import { toast } from 'react-toastify';
 import BuyerContactSupport from '../BuyerSharedComponents/BuyerContactSupport';
 
-import { useGetMyOrders, useGetMyOrdersSummary } from '../../../hook/usePayment';
-import { useCheckout } from '../../../hook/useBuy';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
+import { useGetMyOrders, useGetMyOrdersSummary } from '../../../hook/usePayment';
+import { useCheckout } from '../../../hook/useBuy';
 
 const FILTERS = [
     { key: '', label: 'All' },
@@ -146,6 +146,19 @@ function BuyerPayments({ setSelectedVehicleId, setCurrentPage }) {
                                         {closing && (
                                             <p className="text-xs text-red-500 mt-2">Payment window closes in under 30 minutes, so a new payment cannot be started. Contact support.</p>
                                         )}
+
+                                        <div className="pt-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedVehicleId(o._id);   
+                                                    setCurrentPage('won-auctions-detail');
+                                                }}
+                                                className="text-xs font-semibold text-[#0B1E3D] border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 hover:border-[#0B1E3D] transition-all"
+                                            >
+                                                View Details{o.status === 'paid' ? ' / Dispute' : ''}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );

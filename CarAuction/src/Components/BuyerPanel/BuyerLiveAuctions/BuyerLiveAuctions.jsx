@@ -1,16 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { Gavel, Users, Car, Clock, LayoutGrid, List, Heart, MapPin, Gauge, Headset, Award, CreditCard, ArrowRight, ChevronRight, Wifi, Wallet, Zap, Lightbulb, User, Bell } from 'lucide-react';
-
+import { toast } from 'react-toastify';
 import SearchBar from '../BuyerSharedComponents/Searchbar';
 import FilterDropdown from '../BuyerSharedComponents/FilterDropdown';
+
 import { formatLabel, formatPrice } from '../../../utils/formatters';
 import { useGetTopBidders } from '../../../hook/useBid';
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { useGetAllAuctions, useGetDistinctMakes, useGetDistinctModel } from '../../../hook/useAuction';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 import { useToggleWatchlist } from '../../../hook/useWatchlist';
-import { toast } from 'react-toastify';
 
 const stats = [
     {
@@ -536,7 +536,7 @@ function BuyerLiveAuctions({ setCurrentPage, setSelectedVehicleId, setPreviousPa
                                                         key={num}
                                                         onClick={() => setPage(num)}
                                                         className={` w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold border transition-all duration-200
-                                                                        ${page === num
+                                                            ${page === num
                                                                 ? "bg-[#0B1E3D] text-white border-[#0B1E3D] shadow-md shadow-slate-200 scale-[1.02]"
                                                                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-[#0B1E3D] hover:text-[#0B1E3D]"
                                                             }`}

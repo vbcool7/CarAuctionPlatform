@@ -1,5 +1,5 @@
 
-import mongoose, { model } from "mongoose";
+import mongoose from "mongoose";
 import { getNextPayoutId } from "../utils/counterHelper.js";
 
 const historySchema = new mongoose.Schema(
@@ -55,6 +55,8 @@ const payoutSchema = new mongoose.Schema(
         },
 
         requestedAt: { type: Date },
+
+        disputeHold: { type: Boolean, default: false },
 
         bankSnapshot: {
             accountHolderName: String,

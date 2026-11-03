@@ -5,9 +5,12 @@ import {
     Search, ShoppingBag, CarFront, Wallet, CheckCircle2, Clock3, PackageCheck, ChevronDown, ChevronUp,
     CalendarDays, Hash, CreditCard, XCircle, Loader2, Download,
 } from 'lucide-react';
-import { useGetMyOrders, useGetMyOrdersSummary, useCreateCheckoutSession } from '../../../hook/usePayment';
+import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
+
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 import { formatLabel } from '../../../utils/formatters';
+import { useGetMyOrders, useGetMyOrdersSummary, useCreateCheckoutSession } from '../../../hook/usePayment';
 import { useDownloadBuyerInvoice } from '../../../hook/useInvoice';
 
 const LIMIT = 10;
@@ -43,7 +46,7 @@ const paymentMeta = {
 
 const SOURCE_LABEL = { auction: 'Auction Won', buy_now: 'Buy Now' };
 
-function MyPurchases() {
+function MyPurchases({ setCurrentPage, setSelectedDisputeId }) {
 
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -51,6 +54,7 @@ function MyPurchases() {
     const [page, setPage] = useState(1);
     const [expandedId, setExpandedId] = useState(null);
     const [payingId, setPayingId] = useState(null);
+    const [raiseFor, setRaiseFor] = useState(null);
 
     useEffect(() => {
         const t = setTimeout(() => {
@@ -219,7 +223,9 @@ function MyPurchases() {
                             ].filter(Boolean).join(' · ');
 
                             return (
-                                <div key={order._id} className="p-4 sm:p-5">
+                                <div
+                                    key={order._id}
+                                    className="p-4 sm:p-5">
                                     <div className="flex flex-col gap-4 sm:flex-row">
 
                                         {/* img */}
@@ -302,7 +308,7 @@ function MyPurchases() {
                                                             Pay Now
                                                         </button>
                                                     )}
-                                                    
+
                                                     {/* ---- invoice ---- */}
                                                     {isPaid && (
                                                         <button
@@ -330,7 +336,7 @@ function MyPurchases() {
                                                                 : 'Invoice PDF'}
                                                         </button>
                                                     )}
-                                                    
+
                                                     {/* ---- detail ---- */}
                                                     <button
                                                         type="button"
@@ -342,8 +348,8 @@ function MyPurchases() {
                                                     </button>
                                                 </div>
                                             </div>
-                                             
-                                            {/* expanded details */}
+
+                                            {/* ---- expanded details ---- */}
                                             {isExpanded && (
                                                 <div className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3">
                                                     <div>
@@ -374,6 +380,20 @@ function MyPurchases() {
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* ---- raise dispute ---- */}
+                                            {isExpanded && order.dispute && (
+                                                <div className="mt-3">
+                                                    <DisputeActionCard
+                                                        dispute={order.dispute}
+                                                        onRaise={() => setRaiseFor(order)}
+                                                        onView={(id) => {
+                                                            setSelectedDisputeId(id);
+                                                            setCurrentPage('disputes-detail');
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -401,7 +421,7 @@ function MyPurchases() {
                     )}
                 </div>
 
-                {/* Footer / pagination */}
+                {/* pagination */}
                 <div className="flex flex-col gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-slate-500">
                         Showing {orders.length} of {pagination.total} purchases
@@ -462,6 +482,16 @@ function MyPurchases() {
                     )}
                 </div>
             </div>
+            
+            {/* ------- dispute modal ------- */}
+            {raiseFor && (
+                <RaiseDisputeModal
+                    order={{ _id: raiseFor._id, orderId: raiseFor.orderId }}
+                    role={raiseFor.dispute?.role}
+                    deadline={raiseFor.dispute?.deadline}
+                    onClose={() => setRaiseFor(null)}
+                />
+            )}
         </div>
     );
 }

@@ -2,10 +2,6 @@
 import mongoose from 'mongoose';
 import { getNextOrderId } from '../utils/counterHelper.js';
 
-// Ek vehicle ki har sale-attempt ka ALAG Order banta hai (kabhi delete nahi hota).
-// Relist ke baad naya Order banega, purane expired Orders history me rahenge.
-// export const PAYMENT_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
-
 export const PAYMENT_WINDOW_MS = (Number(process.env.PAYMENT_WINDOW_MINUTES) || 48 * 60) * 60 * 1000;
 
 const historySchema = new mongoose.Schema(
@@ -76,6 +72,8 @@ const orderSchema = new mongoose.Schema(
                 ref: 'Admin'
             },
         },
+
+        hasOpenDispute: { type: Boolean, default: false },
 
         expiredAt: { type: Date },
         canceledAt: { type: Date },

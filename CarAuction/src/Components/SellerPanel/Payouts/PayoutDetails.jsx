@@ -127,7 +127,7 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    {status === 'available' && (
+                    {status === 'available' && !payout.disputeHold && (
                         <button
                             type="button"
                             onClick={handleRequest}
@@ -152,6 +152,21 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
                     </button>
                 </div>
             </div>
+             
+            {/* dispute hold badge */}
+            {payout.disputeHold && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-sm text-red-700">
+                        <span className="font-semibold">Payout on hold.</span> An open dispute on this order is holding this payout. You can request it once the dispute is resolved.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setCurrentPage('disputes')}
+                        className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100">
+                        View Disputes
+                    </button>
+                </div>
+            )}
 
             {/* Main grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -231,7 +246,6 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
 
                     {/* Payment Information */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-
                         <div className="px-4 py-3 border-b border-gray-100">
                             <h3 className="text-sm font-semibold text-[#0B1E3D]">
                                 Payment Information
@@ -275,13 +289,11 @@ function PayoutDetails({ payoutId, setCurrentPage }) {
                                 </span>
 
                                 <span
-                                    className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-md border ${STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 border-slate-200'
-                                        }`}
-                                >
+                                    className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-md border 
+                                        ${STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                                     {formatLabel(status)}
                                 </span>
                             </div>
-
                         </div>
                     </div>
 

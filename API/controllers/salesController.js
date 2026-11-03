@@ -5,6 +5,8 @@ import Vehicle from '../models/vehicleModelSchema.js';
 import Order from '../models/orderModelSchema.js';
 import Payout from '../models/payoutModelSchema.js';
 
+import { getDisputeInfoForOrders } from '../utils/disputeHelper.js';
+
 // ============================== SELLER
 
 const SALE_FIELDS =
@@ -136,23 +138,26 @@ export const getMySaleDetail = async (req, res) => {
             .populate('buyerId', 'firstName lastName fullName')
             .lean();
 
-        if (!order) return res.status(404).json({ 
-            success: false, 
-            message: 'Sale not found' 
+        if (!order) return res.status(404).json({
+            success: false,
+            message: 'Sale not found'
         });
 
         const payout = await Payout.findOne({ orderId: order._id })
             .select(PAYOUT_FIELDS + ' history').lean();
 
         const sale = shapeSale(order, payout);
+        const disputeInfo = await getDisputeInfoForOrders([order], req.user, 'seller');
+        sale.dispute = disputeInfo.get(String(order._id));
+
         sale.timeline = (order.statusHistory || []).map((h) => ({ status: h.status, at: h.at, note: h.note }));
         sale.payoutTimeline = (payout?.history || []).map((h) => ({ status: h.status, at: h.at }));
         sale.refund = order.refund || null;
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Sales detail fetched",
-            sale 
+            sale
         });
 
     } catch (err) {
@@ -226,7 +231,7 @@ export const getDashboardSummary = async (req, res) => {
         const DAY_MS = 24 * 60 * 60 * 1000;
         const UAE_MS = 4 * 60 * 60 * 1000;
         const since = new Date(Date.now() - (DAYS + 1) * DAY_MS);
- 
+
         const [vehicleRows, payoutRows, dailyRows, recentVehicles, seller] = await Promise.all([
             Vehicle.aggregate([
                 { $match: { sellerId } },
@@ -255,17 +260,17 @@ export const getDashboardSummary = async (req, res) => {
                 .lean(),
             Seller.findById(sellerId).select('fullName createdAt status accountStatus').lean(),
         ]);
- 
+
         // vehicles
         const byStatus = {};
         let total = 0;
         vehicleRows.forEach((r) => { byStatus[r._id] = r.count; total += r.count; });
- 
+
         // earnings (seller ko net, commission ke baad)
         const net = { on_hold: 0, available: 0, requested: 0, paid: 0 };
         payoutRows.forEach((r) => { net[r._id] = r.net; });
         const pending = net.on_hold + net.available + net.requested;
- 
+
         // last 30 din (UAE date), khali din 0
         const dayMap = new Map(dailyRows.map((d) => [d._id, d.total]));
         const series = [];
@@ -273,7 +278,7 @@ export const getDashboardSummary = async (req, res) => {
             const key = new Date(Date.now() + UAE_MS - i * DAY_MS).toISOString().slice(0, 10);
             series.push({ date: key, earnings: Math.round((dayMap.get(key) || 0) * 100) / 100 });
         }
- 
+
         return res.status(200).json({
             success: true,
             summary: {
@@ -293,9 +298,9 @@ export const getDashboardSummary = async (req, res) => {
 
     } catch (err) {
         console.error('getDashboardSummary error:', err);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Server Error Occured' 
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occured'
         });
     }
 };

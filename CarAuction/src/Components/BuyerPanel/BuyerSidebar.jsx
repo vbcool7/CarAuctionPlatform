@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, MessageSquareText, CreditCard, FileText, User, Headset, LogOut, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, MessageSquareText, CreditCard, FileText, User, Headset, LogOut, ChevronDown, ShieldAlert } from 'lucide-react';
 
 const menuItems = [
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", active: true },
@@ -16,6 +16,7 @@ const menuItems = [
     { id: "messages", icon: MessageSquareText, label: "Messages", active: false, badge: 3 },
     { id: "payments", icon: CreditCard, label: "Payments", active: false },
     { id: "invoices", icon: FileText, label: "Invoices", active: false },
+    { id: "disputes", icon: ShieldAlert, label: "Dispute", active: false },
     { id: "profile", icon: User, label: "Profile Settings", active: false },
     { id: "support", icon: Headset, label: "Support", active: false },
     { id: "logout", icon: LogOut, label: "Log Out", active: false },

@@ -27,9 +27,11 @@ import BuyerLogout from '../Components/BuyerPanel/BuyerLogout';
 import BuyerAuctionResultDetail from '../Components/BuyerPanel/BuyerSharedComponents/BuyerAuctionResultDetail';
 import BuyerMyBidsDetail from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBidsDetail';
 import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuctionsDetail';
+import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
 
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
-import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
+import Dispute from '../Components/SharedComponents/Dispute';
+import DisputeDetail from '../Components/SharedComponents/DisputeDetail';
 
 const BUYER_DEEP_LINKS = ['watchlist', 'bids', 'payments'];
 
@@ -47,6 +49,7 @@ function BuyerPanelPage() {
     const [selectedSellerId, setSelectedSellerId] = useState(null);
     const [selectedBidId, setSelectedBidId] = useState(null);
     const [selectedLostId, setSelectedLostId] = useState(null);
+    const [selectedDisputeId, setSelectedDisputeId] = useState(null);
 
     // bid placed
     const [bidResultData, setBidResultData] = useState(null);
@@ -188,7 +191,7 @@ function BuyerPanelPage() {
 
                             {/* won auctions */}
                             {currentPage === "won-auctions" && <BuyerWonAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "won-auctions-detail" && <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setCurrentPage={setCurrentPage} />}
+                            {currentPage === "won-auctions-detail" && <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setSelectedDisputeId={setSelectedDisputeId} setCurrentPage={setCurrentPage} />}
 
                             {/* lost auctions */}
                             {currentPage === "lost-auctions" && <BuyerLostAuctions setSelectedLostId={setSelectedLostId} setCurrentPage={setCurrentPage} />}
@@ -211,6 +214,10 @@ function BuyerPanelPage() {
 
                             {/* invoices */}
                             {currentPage === "invoices" && <BuyerInvoices setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
+
+                            {/* dispute */}
+                            {currentPage === 'disputes' && <Dispute setCurrentPage={setCurrentPage} setSelectedDisputeId={setSelectedDisputeId} />}
+                            {currentPage === 'disputes-detail' && <DisputeDetail disputeId={selectedDisputeId} setCurrentPage={setCurrentPage} />}
 
                             {/* profile */}
                             {currentPage === "profile" && <BuyerProfile setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}

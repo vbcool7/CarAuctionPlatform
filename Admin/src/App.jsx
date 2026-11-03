@@ -28,7 +28,6 @@ import CompletedAuctionsDetail from './Components/AuctionManagement/CompletedAuc
 import BidManagement from './Components/BidManagement/BidManagement';
 import Sales from './Components/PayoutManagement/Sales/Sales';
 import Payouts from './Components/PayoutManagement/Payouts/Payouts';
-import CreatePayoutForm from './Components/PayoutManagement/Payouts/CreatePayoutForm';
 import AllPayments from './Components/PayoutManagement/AllPayments/AllPayments';
 import AllPaymentsDetail from './Components/PayoutManagement/AllPayments/AllPaymentsDetail';
 import Refunds from './Components/PayoutManagement/Refunds/Refunds';
@@ -38,10 +37,9 @@ import AddNewPaymentGatewayForm from './Components/PayoutManagement/PaymentGatew
 import PaymentGatewayDetails from './Components/PayoutManagement/PaymentGateway/PaymentGatewayDetails';
 import AllDisputes from './Components/DisputeManagement/AllDisputes/AllDisputes';
 import DisputeCategories from './Components/DisputeManagement/DisputeCategories/DisputeCategories';
-import AddNewCategory from './Components/DisputeManagement/DisputeCategories/AddNewCategory';
 import EditDisputeCategory from './Components/DisputeManagement/DisputeCategories/EditDisputeCategory';
+import AddNewCategory from './Components/DisputeManagement/DisputeCategories/AddNewCategory';
 import AllDisputesDetail from './Components/DisputeManagement/AllDisputes/AllDisputesDetail';
-import EditAllDisputes from './Components/DisputeManagement/AllDisputes/EditAllDisputes';
 import ReportAndAnalytics from './Components/ReportAndAnalytics/ReportAndAnalytics';
 import CreateCustomPage from './Components/CmsManagement/CreateCustomPage';
 import CreateBlogPost from './Components/CmsManagement/CreateBlogPost';
@@ -334,17 +332,6 @@ function App() {
                 {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'payouts-detail' && <PayoutsDetail payoutId={selectedPayoutId} setCurrentPage={setCurrentPage} />}
 
-                {/* payout management - create payout */}
-                {currentPage === 'create-payout' &&
-                  <CreatePayoutForm
-                    setCurrentPage={setCurrentPage}
-                    payoutDraft={payoutDraft}
-                    setPayoutDraft={setPayoutDraft}
-                    payoutStep={payoutStep}
-                    setPayoutStep={setPayoutStep}
-                  />
-                }
-
                 {/* payout management - refunds */}
                 {currentPage === 'refunds' && <Refunds setSelectedRefundId={setSelectedRefundId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'refunds-detail' && <RefundsDetail refundId={selectedRefundId} setSelectedPaymentId={setSelectedPaymentId} setCurrentPage={setCurrentPage} />}
@@ -375,7 +362,8 @@ function App() {
                 {currentPage === 'all-disputes' && <AllDisputes setSelectedAllDisputeId={setSelectedAllDisputeId} setCurrentPage={setCurrentPage} />}
                 {currentPage === 'all-disputes-detail' &&
                   <AllDisputesDetail
-                    allDisputeId={selectedAllDisputeId}
+                    disputeId={selectedAllDisputeId}
+                    setSelectedPaymentId={setSelectedPaymentId}
                     setCurrentPage={setCurrentPage}
                   />
                 }

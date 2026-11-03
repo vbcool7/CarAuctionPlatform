@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft, ChevronRight, CheckCircle2, Landmark, XCircle, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -103,6 +102,20 @@ function PayoutsDetail({ setCurrentPage, payoutId }) {
                     <span className="font-medium text-[#D97706]">{p.payoutId}</span>
                 </div>
             </div>
+
+            {p.disputeHold && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-sm text-red-700">
+                        <span className="font-semibold">Frozen by an open dispute.</span> Handover, Mark as paid and Cancel &amp; refund are disabled until the dispute is resolved.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setCurrentPage('all-disputes')}
+                        className="shrink-0 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100">
+                        Go to Disputes
+                    </button>
+                </div>
+            )}
 
             {/* summary hero card */}
             <div className="rounded-2xl border border-slate-200/80 bg-linear-to-r from-slate-50/50 via-white to-white p-6 shadow-sm">
@@ -268,14 +281,14 @@ function PayoutsDetail({ setCurrentPage, payoutId }) {
                             </h3>
                             <div className="space-y-2.5 pt-1">
                                 {p.status === 'on_hold' && (
-                                    <button onClick={onHandover} disabled={acting}
+                                    <button onClick={onHandover} disabled={acting || p.disputeHold}
                                         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 transition-colors px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
                                         <CheckCircle2 size={16} /> Confirm handover
                                     </button>
                                 )}
                                 {p.status === 'requested' && (
                                     <>
-                                        <button onClick={onPaid} disabled={acting}
+                                        <button onClick={onPaid} disabled={acting || p.disputeHold}
                                             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 hover:bg-green-700 transition-colors px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
                                             <CheckCircle2 size={16} /> Mark as paid
                                         </button>
@@ -286,7 +299,7 @@ function PayoutsDetail({ setCurrentPage, payoutId }) {
                                     </>
                                 )}
                                 {canRefund && (
-                                    <button onClick={onRefund} disabled={acting}
+                                    <button onClick={onRefund} disabled={acting || p.disputeHold}
                                         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 transition-colors px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
                                         <RotateCcw size={16} /> Cancel & refund buyer
                                     </button>

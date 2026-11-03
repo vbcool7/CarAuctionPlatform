@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, CheckCircle2, Download, PauseCircle, Wallet } from 'lucide-react';
 import { toast } from 'react-toastify';
+
 import { useGetMyPayouts, useRequestPayout } from '../../../hook/usePayout';
 import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
 import { getPaginationRange } from '../../../utils/getPaginationRange';
@@ -250,9 +251,16 @@ function Payouts({ setSelectedPayoutId, setCurrentPage }) {
 
                         {/* 3. Footer Info & Action */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+
                             {/* Reference / Hints */}
                             <div className="text-xs text-slate-500 space-y-0.5">
-                                {HINT[p.status] && <p>{HINT[p.status]}</p>}
+                                {p.disputeHold ? (
+                                    <p className="text-red-600 font-medium">
+                                        On hold because of an open dispute. You can request this payout once the dispute is resolved.
+                                    </p>
+                                ) : (
+                                    HINT[p.status] && <p>{HINT[p.status]}</p>
+                                )}
 
                                 {p.status === 'paid' && (
                                     <p className="text-emerald-600 font-medium flex items-center gap-1">
@@ -278,7 +286,7 @@ function Payouts({ setSelectedPayoutId, setCurrentPage }) {
                                     View Details
                                 </button>
 
-                                {p.status === 'available' && (
+                                {p.status === 'available' && !p.disputeHold && (
                                     <button
                                         onClick={() => handleRequest(p)}
                                         disabled={isPending}

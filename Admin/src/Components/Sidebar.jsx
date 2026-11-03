@@ -79,11 +79,11 @@ const menuItems = [
         id: "dispute-management",
         icon: RiShieldCheckLine,
         label: "Dispute Management",
-        adminOnly: true,
+        permissionKey: "managePayments",
         active: false,
         submenu: [
+            { id: "dispute-categories", label: "Dispute Categories", adminOnly: true },
             { id: "all-disputes", label: "All Disputes" },
-            { id: "dispute-categories", label: "Dispute Categories" },
         ]
     },
     {

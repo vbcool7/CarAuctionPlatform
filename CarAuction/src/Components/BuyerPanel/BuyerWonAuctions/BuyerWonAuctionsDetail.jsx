@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Download, Printer, FileText, BadgeCheck, CheckCircle, ArrowRight, Lock, ShieldCheck } from "lucide-react";
 import BuyerAuctionSellerCard from '../BuyerAuctionSellerCard';
 import BuyerContactSupport from '../BuyerSharedComponents/BuyerContactSupport';
@@ -9,14 +9,15 @@ import DocumentsTab from '../../DocumentsTab';
 import DetailTabs from '../../DetailTabs';
 import ConditionTab from '../../ConditionTab';
 import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
-
+import VehicleGallery from '../../VehicleGallery';
 import BuyerWonAuctionDetailStatusBanner from './BuyerWonAuctionsStatusBanner';
+import ActivityTimelineTab from '../../ActivityTimelineTab';
+import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
 
+import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
 import { useGetMyOrderDetail } from '../../../hook/usePayment';
 import { useCheckout } from '../../../hook/useBuy';
-import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
-import VehicleGallery from '../../VehicleGallery';
-import ActivityTimelineTab from '../../ActivityTimelineTab';
 
 const statusConfig = {
     "payment-completed": {
@@ -40,6 +41,12 @@ const statusConfig = {
         subtitle: "The vehicle handover has been confirmed.",
         actions: [],
     },
+    "canceled": {
+        title: "Order Canceled",
+        badge: { label: "Canceled", classes: "bg-red-50 text-red-600" },
+        subtitle: "This order was canceled and your payment was refunded.",
+        actions: [],
+    },
     "expired": {
         title: "Payment Expired",
         badge: { label: "Expired", classes: "bg-slate-100 text-slate-600" },
@@ -48,7 +55,9 @@ const statusConfig = {
     },
 };
 
-function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage }) {
+function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelectedDisputeId }) {
+
+    const [showRaise, setShowRaise] = useState(false);
 
     const { data, isLoading, isError } = useGetMyOrderDetail(orderId);
     const { mutate: startCheckout, isPending: isPaying } = useCheckout();
@@ -70,7 +79,8 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage }) {
     const wonStatus =
         order.status === 'pending_payment' ? 'payment-pending'
             : order.status === 'paid' ? (order.handover?.status === 'confirmed' ? 'handed-over' : 'payment-completed')
-                : 'expired';
+                : order.status === 'canceled' ? 'canceled'
+                    : 'expired';
 
     // handle pay            
     const handlePay = () => startCheckout(order._id, {
@@ -112,6 +122,14 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage }) {
         "handed-over": {
             tabs: completedTabs,
             defaultTab: "specifications",
+        },
+        "expired": {
+            tabs: pendingTabs,
+            defaultTab: "vehicle-details",
+        },
+        "canceled": {
+            tabs: pendingTabs,
+            defaultTab: "vehicle-details",
         },
     };
 
@@ -572,6 +590,39 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage }) {
                             </div>
                         )}
 
+                        {/* ── DISPUTE (paid orders: raise / view) ── */}
+                        {order.dispute && (
+                            <div className="mb-6">
+                                <DisputeActionCard
+                                    dispute={order.dispute}
+                                    onRaise={() => setShowRaise(true)}
+                                    onView={(id) => { setSelectedDisputeId(id); setCurrentPage('disputes-detail'); }}
+                                />
+                            </div>
+                        )}
+
+                        {/* ── CANCELED: Refund Summary ── */}
+                        {wonStatus === 'canceled' && (
+                            <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mb-6">
+                                <h2 className="text-base font-bold text-[#0B1E3D] mb-4">Refund Summary</h2>
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Order ID</span>
+                                        <span className="font-medium text-[#0B1E3D]">{order.orderId || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Refunded</span>
+                                        <span className="font-bold text-[#0B1E3D]">{formatPrice(order.refund?.amount ?? order.amount ?? 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Refunded On</span>
+                                        <span className="font-medium text-[#0B1E3D]">{order.refund?.refundedAt ? formatDateTime(order.refund.refundedAt) : '—'}</span>
+                                    </div>
+                                </div>
+                                <p className="mt-4 text-xs text-slate-400 leading-relaxed">The refund goes back to your original payment method.</p>
+                            </div>
+                        )}
+
                         {/* ── EXPIRED: Order Summary ── */}
                         {isExpired && (
                             <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mb-6">
@@ -672,6 +723,15 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage }) {
                         {/* ── Need Help ── */}
                         {(isCompleted || isHandedOver) && (
                             <BuyerContactSupport />
+                        )}
+
+                        {showRaise && (
+                            <RaiseDisputeModal
+                                order={{ _id: order._id, orderId: order.orderId }}
+                                role={order.dispute?.role}
+                                deadline={order.dispute?.deadline}
+                                onClose={() => setShowRaise(false)}
+                            />
                         )}
                     </div>
                 </div>

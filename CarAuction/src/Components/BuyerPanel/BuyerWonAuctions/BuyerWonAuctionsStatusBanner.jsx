@@ -1,6 +1,6 @@
 
 import { Clock, CheckCircle, XCircle } from "lucide-react";
-import { formatDateTime } from "../../../utils/formatters";
+import { formatDateTime, formatPrice } from "../../../utils/formatters";
 
 function BuyerWonAuctionDetailStatusBanner({ order, wonStatus, onPay, paying }) {
 
@@ -32,6 +32,20 @@ function BuyerWonAuctionDetailStatusBanner({ order, wonStatus, onPay, paying }) 
           {wonStatus === 'handed-over'
             ? 'Handover has been confirmed.'
             : `Payment received on ${formatDateTime(order.paidAt)}. Waiting for handover confirmation.`}
+        </p>
+      </div>
+    </div>
+  );
+
+  if (wonStatus === 'canceled') return (
+    <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+      <XCircle size={20} className="text-red-500" />
+      <div>
+        <p className="text-sm font-semibold text-red-600">Order canceled and refunded</p>
+        <p className="text-xs text-slate-500">
+          {order.refund?.amount != null
+            ? `${formatPrice(order.refund.amount)} was refunded${order.refund.refundedAt ? ` on ${formatDateTime(order.refund.refundedAt)}` : ''}.`
+            : 'Your payment was refunded.'}
         </p>
       </div>
     </div>

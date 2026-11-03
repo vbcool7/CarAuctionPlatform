@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Car, Gavel, FileText, History, Wallet, Heart, MessageSquare, UserCog, HelpCircle, LogOut, CarFront, ChevronDown, Plus, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Car, Gavel, FileText, History, Wallet, Heart, MessageSquare, UserCog, HelpCircle, LogOut, CarFront, ChevronDown, Plus, ShoppingBag, ShieldCheck } from "lucide-react";
 
 import { useSellerGet } from '../../hook/useSeller';
 
@@ -52,6 +52,12 @@ const menuItems = [
         id: "watchlist",
         icon: Heart,
         label: "Watchlist",
+        active: false,
+    },
+    {
+        id: "disputes",
+        icon: ShieldCheck,
+        label: "My Disputes",
         active: false,
     },
     {

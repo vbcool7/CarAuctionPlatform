@@ -28,6 +28,7 @@ import SupportCallRequest from '../models/supportCallRequestModel.js';
 
 import { getStripe } from "../config/stripe.js";
 import { createPayoutForOrder } from "../utils/payoutHelper.js";
+import { cancelAndRefundCore } from "../utils/orderRefund.js";
 import { createNotification } from '../services/notificationService.js';
 
 const bad = (res, message, code = 400) => res.status(code).json({ success: false, message });
@@ -4259,7 +4260,7 @@ export const confirmHandover = async (req, res) => {
 
         const now = new Date();
         const order = await Order.findOneAndUpdate(
-            { _id: orderId, status: 'paid', 'handover.status': { $ne: 'confirmed' } },
+            { _id: orderId, status: 'paid', 'handover.status': { $ne: 'confirmed' }, hasOpenDispute: { $ne: true } },
             {
                 $set: {
                     'handover.status': 'confirmed',
@@ -4274,9 +4275,10 @@ export const confirmHandover = async (req, res) => {
         ).lean();
 
         if (!order) {
-            const existing = await Order.findById(orderId).select('status handover').lean();
+            const existing = await Order.findById(orderId).select('status handover hasOpenDispute').lean();
             if (!existing) return bad(res, 'Order not found', 404);
             if (existing.status !== 'paid') return bad(res, `Order is ${existing.status}, payment not completed`);
+            if (existing.hasOpenDispute) return bad(res, 'This order has an open dispute. Resolve the dispute before confirming handover.', 409);
             return bad(res, 'Handover is already confirmed');
         }
 
@@ -4317,7 +4319,7 @@ export const markPayoutPaid = async (req, res) => {
 
         const now = new Date();
         const payout = await Payout.findOneAndUpdate(
-            { _id: id, status: 'requested' },
+            { _id: id, status: 'requested', disputeHold: { $ne: true } },
             {
                 $set: { status: 'paid', paidAt: now, paidBy: req.user.id, transferReference: ref },
                 $push: { history: { status: 'paid', at: now, by: req.user.role, byId: req.user.id, note: `Transfer ref: ${ref}` } },
@@ -4326,9 +4328,10 @@ export const markPayoutPaid = async (req, res) => {
         ).lean();
 
         if (!payout) {
-            const existing = await Payout.findById(id).select('status').lean();
+            const existing = await Payout.findById(id).select('status disputeHold').lean();
 
             if (!existing) return bad(res, 'Payout not found', 404);
+            if (existing.disputeHold) return bad(res, 'This payout is frozen because of an open dispute. Resolve the dispute first.', 409);
             return bad(res, `Only requested payouts can be marked paid (status: ${existing.status})`);
         }
 
@@ -4557,166 +4560,20 @@ const notifySafe = async (payload) => {
 
 const OPEN_PAYOUT_STATUSES = ['on_hold', 'available', 'requested'];
 
-// POST /payments/admin/orders/:id/cancel-refund   body: { reason }
-// Paid order cancel + buyer ko FULL refund (Stripe) + car wapas 'unsold' (admin relist kar sakta hai)
-//
-// Order of operations (paise ki baat hai, isliye):
-//   1) Payout ko 'canceled' karke LOCK  -> seller request / admin transfer ab nahi ho sakta
-//   2) Stripe refund                    -> fail ho to lock wapas hata do, kuchh nahi badlta
-//   3) Order canceled, car unsold, bid canceled, notifications
-
 export const cancelAndRefundOrder = async (req, res) => {
     try {
-        const { id } = req.params;
-
-        const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
-
-        if (!mongoose.isValidObjectId(id)) return bad(res, 'Invalid order id');
-        if (reason.length < 3) return bad(res, 'A reason is required');
-
-        const order = await Order.findById(id).lean();
-        if (!order) return bad(res, "Order Not Found", 404);
-
-        if (order.status !== 'paid') return bad(res, `Only paid orders can be refunded (order is ${order.status})`);
-
-        const pi = order.stripePaymentIntentId;
-        if (!pi) return bad(res, 'No Stripe payment found for this order');
-
-        const now = new Date();
-
-        // ---- 1) lock via payout ----
-        const locked = await Payout.findOneAndUpdate(
-            { orderId: order._id, status: { $in: OPEN_PAYOUT_STATUSES } },
-            {
-                $set: { status: 'canceled' },
-                $push: { history: { status: 'canceled', at: now, by: req.user.role, byId: req.user.id, note: `Order canceled & refunded: ${reason}` } },
-            },
-            { new: false }
-        ).lean();
-
-        const revertLock = async (why) => {
-            if (!locked) return;
-            await Payout.updateOne(
-                { _id: locked._id, status: 'canceled' },
-                {
-                    $set: { status: locked.status },
-                    $push: { history: { status: locked.status, at: new Date(), by: 'system', note: why } },
-                }
-            );
-        };
-
-        if (!locked) {
-            const existing = await Payout.findOne({ orderId: order._id }).select('status').lean();
-            // payout hi nahi bana tha, ya pichli attempt beech me ruki thi (canceled) -> aage badho
-            if (existing && existing.status !== 'canceled') {
-                return bad(res, `Seller payout is already ${existing.status}. This cannot be auto-refunded, handle it manually.`);
-            }
-        }
-
-        // ---- 2) Stripe refund ----
-        let refund;
-        try {
-            refund = await getStripe().refunds.create(
-                { payment_intent: pi, metadata: { orderId: order.orderId, reason: 'admin_cancel' } },
-                { idempotencyKey: `refund_admin_${pi}` }
-            );
-        } catch (err) {
-            if (err?.code === 'charge_already_refunded') {
-                refund = { id: null, status: 'succeeded' };       // pehle ho chuka tha
-            } else {
-                console.error('[refund] Stripe refund failed:', err.message);
-                await revertLock('Refund failed, cancel reverted');
-
-                await PaymentEvent.create({
-                    type: 'refund.admin',
-                    orderId: order._id,
-                    paymentIntentId: pi,
-                    amount: Math.round(order.amount * 100),
-                    currency: 'aed',
-                    outcome: 'refund_failed',
-                    processed: true,
-                    note: err.message,
-                });
-                return bad(res, 'Refund failed at the payment gateway. Nothing was changed, try again.', 502);
-            }
-        }
-
-        if (refund.status === 'failed' || refund.status === 'canceled') {
-            await revertLock('Refund failed, cancel reverted');
-            return bad(res, 'Refund was not accepted by the payment gateway. Nothing was changed.', 502);
-        }
-
-        // ---- 3) Order / vehicle / bid ----
-        const canceled = await Order.findOneAndUpdate(
-            { _id: order._id, status: 'paid' },
-            {
-                $set: {
-                    status: 'canceled',
-                    isOpen: false,                    // new order can make from this vehicle
-                    canceledAt: now,
-                    'refund.status': refund.status,
-                    'refund.stripeRefundId': refund.id,
-                    'refund.amount': order.amount,
-                    'refund.reason': reason,
-                    'refund.refundedAt': now,
-                    'refund.refundedBy': req.user.id,
-                },
-                $push: { statusHistory: { status: 'canceled', at: now, by: req.user.role, note: `Refunded: ${reason}` } },
-            },
-            { new: true }
-        ).lean();
-
-        await PaymentEvent.create({
-            type: 'refund.admin',
-            orderId: order._id,
-            paymentIntentId: pi,
-            amount: Math.round(order.amount * 100),
-            currency: 'aed',
-            outcome: 'refunded_admin',
-            processed: true,
-            note: reason,
+        const r = await cancelAndRefundCore({
+            orderId: req.params.id,
+            reason: req.body?.reason,
+            actor: { id: req.user.id, role: req.user.role },
         });
 
-        if (!canceled) {
-            return res.status(200).json({
-                success: true,
-                message: 'Order was already canceled'
-            });
-        }
-
-        // vehicle can be relisted
-        await Vehicle.updateOne(
-            { _id: order.vehicleId, auctionStatus: 'sold' },
-            { $set: { auctionStatus: 'unsold', soldOn: null } }
-        );
-
-        // 'won' bid ko 'canceled': relist par archive hogi, home page par galat 'sold' winner nahi dikhega
-        if (order.bidId) {
-            await Bid.updateOne({ _id: order.bidId, status: 'won' }, { $set: { status: 'canceled' } });
-        }
-
-        await notifySafe({
-            recipientId: order.buyerId,
-            recipientType: order.buyerType,
-            type: 'purchase_canceled',
-            vehicleId: order.vehicleId,
-            title: 'Order canceled and refunded',
-            message: `Your order for ${order.listingId} was canceled and AED ${order.amount} is being refunded to your card. Reason: ${reason}`,
-        });
-
-        await notifySafe({
-            recipientId: order.sellerId,
-            recipientType: 'Seller',
-            type: 'order_canceled',
-            vehicleId: order.vehicleId,
-            title: 'Sale canceled',
-            message: `The sale of ${order.listingId} was canceled and the buyer was refunded. The vehicle is unsold and can be relisted by admin. Reason: ${reason}`,
-        });
+        if (!r.ok) return bad(res, r.message, r.status);
 
         return res.status(200).json({
             success: true,
-            message: 'Order canceled and refunded',
-            refundStatus: refund.status
+            message: r.message,
+            ...(r.refundStatus ? { refundStatus: r.refundStatus } : {}),
         });
 
     } catch (err) {

@@ -14,7 +14,7 @@ export const calcCommission = (gross, percent) => {
     return { commissionAmount, netAmount };
 };
 
-// Payment success par call hota hai. Dobara call karo to duplicate nahi banta (null return).
+// Called on successful payment
 export const createPayoutForOrder = async (order) => {
 
     const percent = getCommissionPercent();
@@ -33,6 +33,7 @@ export const createPayoutForOrder = async (order) => {
             netAmount,
             currency: order.currency || 'AED',
             status: handoverDone ? 'available' : 'on_hold',
+            disputeHold: !!order.hasOpenDispute,
             history: [{
                 status: handoverDone ? 'available' : 'on_hold',
                 by: 'system',
@@ -40,7 +41,7 @@ export const createPayoutForOrder = async (order) => {
             }],
         });
     } catch (err) {
-        if (err?.code === 11000) return null;
-        throw err;
+        if (err?.code === 11000 && err?.keyPattern?.orderId) return null;   
+        throw err;                                                          
     }
 };

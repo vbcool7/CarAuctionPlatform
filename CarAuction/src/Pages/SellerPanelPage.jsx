@@ -18,7 +18,6 @@ import SalesHistoryDetail from '../Components/SellerPanel/SalesHistory/SalesHist
 import Payouts from '../Components/SellerPanel/Payouts/Payouts';
 import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 
-import { useSellerLogout } from '../hook/useSeller';
 import useAuthStore from '../store/useAuthStore';
 import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
 import Watchlist from '../Components/SellerPanel/Watchlist/Watchlist';
@@ -26,10 +25,14 @@ import ProfileSetting from '../Components/SellerPanel/ProfileSetting/ProfileSett
 import Support from '../Components/SellerPanel/Support/Support';
 import CreateTicket from '../Components/SellerPanel/Support/CreateTicket';
 import SupportDetail from '../Components/SellerPanel/Support/SupportDetail';
-import { useDeepLinkPage } from '../hook/useDeepLinkPage';
 import EditVehicle from '../Components/SellerPanel/EditVehicle/EditVehicle';
 import MyPurchases from '../Components/SellerPanel/MyPurchases/MyPurchases';
 import RequestCall from '../Components/SellerPanel/Support/RequestCall';
+
+import { useDeepLinkPage } from '../hook/useDeepLinkPage';
+import { useSellerLogout } from '../hook/useSeller';
+import Dispute from '../Components/SharedComponents/Dispute';
+import DisputeDetail from '../Components/SharedComponents/DisputeDetail';
 
 const SELLER_DEEP_LINKS = ['watchlist', 'my-vehicles', 'my-auctions', 'my-purchases'];
 
@@ -53,6 +56,7 @@ function SellerPanelPage() {
   const [selectedSalesId, setSelectedSalesId] = useState(null);
   const [selectedPayoutId, setSelectedPayoutId] = useState(null);
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedDisputeId, setSelectedDisputeId] = useState(null);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -136,11 +140,11 @@ function SellerPanelPage() {
               {currentPage === 'bids-offers-detail' && <BidsOffersDetail bidsOfferId={selectedBidsOfferId} setCurrentPage={setCurrentPage} />}
 
               {/* my purchases */}
-              {currentPage === 'my-purchases' && <MyPurchases setCurrentPage={setCurrentPage} />}
+              {currentPage === 'my-purchases' && <MyPurchases setSelectedDisputeId={setSelectedDisputeId} setCurrentPage={setCurrentPage} />}
 
               {/* sales history */}
               {currentPage === 'sales-history' && <SalesHistory setSelectedSalesId={setSelectedSalesId} setCurrentPage={setCurrentPage} />}
-              {currentPage === 'sales-history-detail' && <SalesHistoryDetail salesId={selectedSalesId} setCurrentPage={setCurrentPage} />}
+              {currentPage === 'sales-history-detail' && <SalesHistoryDetail salesId={selectedSalesId} setSelectedDisputeId={setSelectedDisputeId} setCurrentPage={setCurrentPage} />}
 
               {/* payout */}
               {currentPage === 'payouts' && <Payouts setSelectedPayoutId={setSelectedPayoutId} setCurrentPage={setCurrentPage} />}
@@ -148,6 +152,10 @@ function SellerPanelPage() {
 
               {/* watchlist */}
               {currentPage === 'watchlist' && <Watchlist setCurrentPage={setCurrentPage} />}
+
+              {/* dispute */}
+              {currentPage === 'disputes' && <Dispute setCurrentPage={setCurrentPage} setSelectedDisputeId={setSelectedDisputeId} />}
+              {currentPage === 'disputes-detail' && <DisputeDetail disputeId={selectedDisputeId} setCurrentPage={setCurrentPage} />}
 
               {/* profile-settings */}
               {currentPage === 'profile-settings' && <ProfileSetting setCurrentPage={setCurrentPage} />}

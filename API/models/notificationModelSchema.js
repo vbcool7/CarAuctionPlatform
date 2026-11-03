@@ -28,6 +28,7 @@ const notificationSchema = new mongoose.Schema(
                 'payout_requested', 'payout_paid', 'payout_rejected', 'handover_confirmed', 
                 'order_canceled', 
                 'purchase_pending', 'purchase_expired', 'purchase_canceled',
+                'dispute_raised', 'dispute_response_received', 'dispute_under_review', 'dispute_resolved', 'dispute_withdrawn',
             ],
         },
 

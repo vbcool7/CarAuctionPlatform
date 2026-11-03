@@ -6,6 +6,7 @@ import Bid from '../models/bidModelSchema.js';
 import Admin from '../models/adminModelSchema.js';
 import PaymentEvent from '../models/paymentEventModelSchema.js';
 
+import { getDisputeInfoForOrders } from '../utils/disputeHelper.js';
 import { getStripe } from '../config/stripe.js';
 import { createNotification } from "../services/notificationService.js";
 import { createPayoutForOrder } from "../utils/payoutHelper.js";
@@ -357,25 +358,17 @@ export const getMyOrder = async (req, res) => {
             });
         }
 
-        // mongo _id ya readable orderId (ORD-00001) dono chalega
         const filter = mongoose.isValidObjectId(id) ? { _id: id } : { orderId: id };
         const order = await Order.findOne({ ...filter, buyerId: req.user.id, buyerType: userType })
             .select(ORDER_FIELDS)
             .populate(
                 'vehicleId',
                 `
-        make model year trim vin mileage listingId
-        vehicleType bodyType fuelType transmission drivetrain
-        exteriorColor interiorColor country emirate city zipCode
-        titleStatus accidentHistory vehicleDescription
-        overallCondition mechanicalCondition
-        exteriorCondition interiorCondition
-        tiresCondition glassCondition
-        paintType repainted sunroof smokeOdor petFriendly
-        engineSize cylinders doors seats images documents
-        priceType buyNowPrice startingBidPrice currentBid
-        auctionType auctionStatus auctionStartDateTime
-        auctionEndDateTime auctionDuration
+        make model year trim vin mileage listingId vehicleType bodyType fuelType transmission drivetrain exteriorColor
+        interiorColor country emirate city zipCode titleStatus accidentHistory vehicleDescription overallCondition mechanicalCondition
+        exteriorCondition interiorCondition tiresCondition glassCondition paintType repainted sunroof smokeOdor petFriendly
+        engineSize cylinders doors seats images documents priceType buyNowPrice startingBidPrice currentBid auctionType 
+        auctionStatus auctionStartDateTime auctionEndDateTime auctionDuration
     `
             )
             .populate('sellerId', 'fullName businessName')
@@ -387,6 +380,9 @@ export const getMyOrder = async (req, res) => {
                 message: 'Order not found'
             });
         }
+
+        const disputeInfo = await getDisputeInfoForOrders([order], req.user, 'buyer');
+        order.dispute = disputeInfo.get(String(order._id));
 
         return res.status(200).json({
             success: true,
@@ -437,6 +433,9 @@ export const getMyOrders = async (req, res) => {
                 .lean(),
             Order.countDocuments(filter),
         ]);
+
+        const disputeMap = await getDisputeInfoForOrders(orders, req.user, 'buyer');
+        orders.forEach((o) => { o.dispute = disputeMap.get(String(o._id)); });
 
         return res.status(200).json({
             success: true,

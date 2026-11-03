@@ -135,7 +135,7 @@ export const requestPayout = async (req, res) => {
         const now = new Date();
 
         const payout = await Payout.findOneAndUpdate(
-            { _id: id, sellerId: req.user.id, status: 'available' },
+            { _id: id, sellerId: req.user.id, status: 'available', disputeHold: { $ne: true } },
             {
                 $set: {
                     status: 'requested',
@@ -156,9 +156,10 @@ export const requestPayout = async (req, res) => {
         ).select('-bankSnapshot').lean();
 
         if (!payout) {
-            const existing = await Payout.findOne({ _id: id, sellerId: req.user.id }).select('status').lean();
+            const existing = await Payout.findOne({ _id: id, sellerId: req.user.id }).select('status disputeHold').lean();
 
             if (!existing) return bad(res, 'Payout not found', 404);
+            if (existing.disputeHold) return bad(res, 'This payout is on hold because of an open dispute. You can request it once the dispute is resolved.', 409);
             return bad(res, `Payout cannot be requested (status: ${existing.status})`);
         }
 
