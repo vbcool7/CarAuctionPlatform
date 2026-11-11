@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
-import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
-import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
+import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
 
 import { useGetMySaleDetail } from '../../../hook/useSales';
 import { money, fmtDate, fmtTime, fmtDateTime, imgOf, pretty, STATUS_META, SOURCE_LABEL, PAYOUT_LABEL } from '../../../utils/salesUtils';

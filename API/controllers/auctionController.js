@@ -4,7 +4,7 @@ import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
-import Order from '../models/orderModelSchema.js';
+import Order, {PAYMENT_WINDOW_MS} from '../models/orderModelSchema.js';
 import mongoose from 'mongoose';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { STATUS_META } from '../../utils/disputeIcons';
+import { STATUS_META } from '../../../utils/disputeIcons';
 
 // order.dispute (buyer) ya sale.dispute (seller) ka shape:
 // { role, canRaise, reason, deadline, openDispute{_id,disputeId,status,raisedByMe}|null, myDispute{_id,disputeId,status}|null }

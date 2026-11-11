@@ -33,13 +33,6 @@ const requirePermission = (permission) => {
                 });
             }
 
-            // if (!freshUser?.permissions?.[permission]) {
-            //     return res.status(403).json({
-            //         success: false,
-            //         message: `Access Denied: missing '${permission}' permission`
-            //     });
-            // }
-
             if (!required.some((p) => freshUser?.permissions?.[p])) {
                 return res.status(403).json({
                     success: false,

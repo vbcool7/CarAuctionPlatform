@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Paperclip, X } from 'lucide-react';
-import { EVIDENCE_ACCEPT, MAX_EVIDENCE, MAX_EVIDENCE_MB } from '../../utils/disputeIcons';
+import { EVIDENCE_ACCEPT, MAX_EVIDENCE, MAX_EVIDENCE_MB } from '../../../utils/disputeIcons';
 
 function EvidencePicker({ files, onChange, disabled }) {
     const add = (e) => {

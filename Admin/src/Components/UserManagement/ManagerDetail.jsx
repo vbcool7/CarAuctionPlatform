@@ -26,7 +26,8 @@ function ManagerDetail({ setCurrentPage, managerId }) {
         'manageUsers',
         'managePayments',
         'managePayouts',
-        'manageReports'
+        'manageReports',
+        'manageLiveChat'
     ];
 
     const [editedPermissions, setEditedPermissions] = useState(null);

@@ -1,11 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle, Clock, Eye, FileText, FolderOpen } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Eye, FileText, FolderOpen, MessageSquare } from 'lucide-react';
 
 import SearchBar from '../../SharedComponents/SearchBar';
 import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import DateRangePicker from '../../SharedComponents/DateRangePicker';
 import { formatPrice, toYMD, fmtDate, fmtTime } from '../../utils/formatter';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAdminSocket } from '../../../socket/AdminSocketProvider';
 
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { useGetAllDisputes, useGetDisputeCategories } from '../../../hooks/useDispute';
@@ -83,6 +85,23 @@ function AllDisputes({ setCurrentPage, setSelectedAllDisputeId }) {
   useEffect(() => {
     setPage(1);
   }, [status, filters, debouncedSearch, startDate, endDate]);
+
+  const socket = useAdminSocket();
+  const queryClient = useQueryClient();
+
+  // chat ka naya message / read aaye to list ka badge refresh
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => queryClient.invalidateQueries({
+      predicate: (q) => JSON.stringify(q.queryKey).toLowerCase().includes('dispute'),
+    });
+    socket.on('dispute:message', refresh);
+    socket.on('dispute:read', refresh);
+    return () => {
+      socket.off('dispute:message', refresh);
+      socket.off('dispute:read', refresh);
+    };
+  }, [socket, queryClient]);
 
   const updateFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -290,6 +309,7 @@ function AllDisputes({ setCurrentPage, setSelectedAllDisputeId }) {
         <table className="w-full text-left table-fixed">
           <thead className="bg-gray-100 border-b border-gray-200 text-slate-500 uppercase text-[11px] font-bold tracking-wider">
             <tr>
+              <th className="px-6 py-4 w-26">Activity</th>
               <th className="px-6 py-4 w-40">Dispute ID</th>
               <th className="px-6 py-4 w-48">Order / Vehicle</th>
               <th className="px-6 py-4 w-44">Category</th>
@@ -312,6 +332,18 @@ function AllDisputes({ setCurrentPage, setSelectedAllDisputeId }) {
                   <tr
                     key={d._id}
                     className="hover:bg-slate-50/50 transition-colors text-[13px]">
+
+                    {/* unread badge */}
+                    <td className="px-4 py-3">
+                      {d.unread > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-[#D97706] border border-amber-200/80 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+                          <span>{d.unread > 99 ? '99+' : `${d.unread} New`}</span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 px-1 py-1 rounded-full text-[10px] font-semibold shadow-2xs border border-gray-200">No Messages</span>
+                      )}
+                    </td>
 
                     {/* dispute id */}
                     <td className="py-4 px-6">

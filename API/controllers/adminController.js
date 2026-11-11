@@ -246,7 +246,8 @@ export const addManager = async (req, res) => {
             'manageUsers',
             'managePayments',
             'managePayouts',
-            'manageReports'
+            'manageReports',
+            'manageLiveChat'
         ];
 
         // Build normalized permissions object (booleans only, unknown keys ignored)
@@ -492,7 +493,8 @@ export const editManagerPermissions = async (req, res) => {
             'manageUsers',
             'managePayments',
             'managePayouts',
-            'manageReports'
+            'manageReports',
+            'manageLiveChat',
         ];
 
         const newPermissions = {};
@@ -575,9 +577,8 @@ export const toggleManagerStatus = async (req, res) => {
         // Only check when reactivating (false -> true)
         if (isActive === true && manager.isActive === false) {
             const permissionFields = [
-                'manageVehicles', 'manageBids', 'manageAuctions',
-                'manageUsers', 'managePayments', 'managePayouts', 'manageReports'
-                // apni actual 7 permission field names yahan confirm karke daalo
+                'manageVehicles', 'manageBids', 'manageAuctions', 'manageUsers', 'managePayments', 
+                'managePayouts', 'manageReports', 'manageLiveChat'
             ];
 
             const trueFields = permissionFields.filter(f => manager[f] === true);

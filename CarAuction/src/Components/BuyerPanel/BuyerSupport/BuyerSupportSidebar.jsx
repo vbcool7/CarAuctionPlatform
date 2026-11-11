@@ -2,7 +2,11 @@
 import React from 'react';
 import { Headset, MessageCircle, Mail, Phone, ChevronRight, ExternalLink, ShieldCheck } from 'lucide-react';
 
+import { useSupportChatStatus } from '../../../hook/useSupportChat';
+
 function BuyerSupportSidebar({ supportPage, setSupportPage }) {
+
+    const { data: chatStatus } = useSupportChatStatus();
 
     const helpLinks = [
         "How to Place a Bid",
@@ -25,10 +29,15 @@ function BuyerSupportSidebar({ supportPage, setSupportPage }) {
                 <p className="text-sm text-slate-500 mb-6">Our support team is available <br /> Monday – Friday 9:00 AM – 6:00 PM GST</p>
 
                 <div className="space-y-5">
-                    <div className="flex items-center gap-3 text-sm">
+                    <div
+                        onClick={() => setSupportPage('live-chat')}
+                        className="flex items-center gap-3 text-sm cursor-pointer">
                         <MessageCircle size={18} className="text-[#D97706]" />
                         <span className="font-medium text-[#0B1E3D]">Live Chat</span>
-                        <span className="ml-auto bg-green-50 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Online</span>
+                        <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold uppercase 
+                            ${chatStatus?.online ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {chatStatus?.online ? 'Online' : 'Offline'}
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-3 text-sm">

@@ -12,8 +12,8 @@ import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 import VehicleGallery from '../../VehicleGallery';
 import BuyerWonAuctionDetailStatusBanner from './BuyerWonAuctionsStatusBanner';
 import ActivityTimelineTab from '../../ActivityTimelineTab';
-import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
-import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
+import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
 
 import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
 import { useGetMyOrderDetail } from '../../../hook/usePayment';

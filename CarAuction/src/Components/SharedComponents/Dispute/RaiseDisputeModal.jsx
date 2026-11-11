@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { X } from 'lucide-react';
 
-import { useGetDisputeCategories, useRaiseDispute } from '../../hook/useDispute';
-import { getDisputeIcon, checkEvidenceFiles } from '../../utils/disputeIcons';
+import { useGetDisputeCategories, useRaiseDispute } from '../../../hook/useDispute';
+import { getDisputeIcon, checkEvidenceFiles } from '../../../utils/disputeIcons';
 import EvidencePicker from './EvidencePicker';
 
 const MIN_DESC = 20;

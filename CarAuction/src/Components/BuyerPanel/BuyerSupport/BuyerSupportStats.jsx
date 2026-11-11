@@ -4,6 +4,7 @@ import { HelpCircle, FileText, MessageCircle, Phone, ArrowRight, Search, Eye, Ti
 
 import { getPaginationRange } from '../../utils/getPaginationRange';
 import { useGetMySupportTickets, useGetMyCallRequests } from '../../../hook/useSupport';
+import { useSupportUnreadCount } from '../../../hook/useSupportChat';
 
 const tabs = ['All Tickets', 'Open', 'In Progress', 'Resolved', 'Closed'];
 const tabKeys = ['all tickets', 'open', 'in progress', 'resolved', 'closed'];
@@ -106,6 +107,8 @@ function BuyerSupportStats({ setSupportPage }) {
         sortBy: callFilters.sortBy,
     });
 
+    const unread = useSupportUnreadCount();
+
     const callRequests = callRequestsData?.callRequests || [];
     const callRequestsTotalPages = callRequestsData?.pagination?.totalPages || 1;
 
@@ -134,15 +137,27 @@ function BuyerSupportStats({ setSupportPage }) {
                     <div
                         key={i}
                         onClick={() => setSupportPage(opt.page)}
-                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group cursor-pointer"
+                        className={`relative bg-white p-4 rounded-2xl border shadow-sm hover:shadow-md hover:border-amber-200 transition-all group cursor-pointer
+                        ${opt.page === 'live-chat' && unread > 0 ? 'border-amber-400 ring-2 ring-amber-200' : 'border-slate-100'}`}
                     >
+                        {opt.page === 'live-chat' && unread > 0 && (
+                            <span className="absolute top-3 right-3 min-w-5 h-5 px-1.5 rounded-full bg-[#D97706] text-white text-[10px] font-bold flex items-center justify-center">
+                                {unread > 99 ? '99+' : unread}
+                            </span>
+                        )}
+
                         <div className={`w-11 h-11 ${opt.bgColor} rounded-full flex items-center justify-center mb-4`}>
                             {opt.icon}
                         </div>
+
                         <div className="flex justify-between items-end">
                             <div>
                                 <h3 className="font-bold text-[#0B1E3D] text-sm mb-0.5">{opt.title}</h3>
-                                <p className="text-slate-500 text-xs">{opt.desc}</p>
+                                <p className="text-slate-500 text-xs">
+                                    {opt.page === 'live-chat' && unread > 0
+                                        ? `${unread} new ${unread > 1 ? 'replies' : 'reply'} from support`
+                                        : opt.desc}
+                                </p>
                             </div>
                             <ArrowRight size={18} className="text-slate-300 group-hover:text-[#D97706] transition-colors shrink-0" />
                         </div>

@@ -2,6 +2,8 @@
 import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
 
+import Admin from '../models/adminModelSchema.js';
+
 let io;
 
 export const initSocket = (httpServer, allowedOrigins) => {
@@ -39,7 +41,7 @@ export const initSocket = (httpServer, allowedOrigins) => {
 
         console.log(`[socket] connected: user:${id} (${role})`);
 
-        // ---- NAYA: bidding-ke-liye-vehicle-room ----
+        // ---- NEW: vehicle-room-for-bidding ----
         socket.on('joinVehicleRoom', (vehicleId) => {
             socket.join(`vehicle:${vehicleId}`);
         });
@@ -47,11 +49,48 @@ export const initSocket = (httpServer, allowedOrigins) => {
         socket.on('leaveVehicleRoom', (vehicleId) => {
             socket.leave(`vehicle:${vehicleId}`);
         });
-        // ---- NAYA-khatam ----
+        // ---- NEW-END ----
 
         socket.on('disconnect', () => {
             console.log(`[socket] disconnected: user:${id}`);
         });
+
+        // ---- NEW: live chat staff room ----
+        if (role === 'admin' || role === 'auctionManager') {
+            (async () => {
+                try {
+                    const staff = await Admin.findById(id).select('name role permissions isActive').lean();
+                    const allowed = staff?.isActive && (staff.role === 'admin' || staff.permissions?.manageLiveChat);
+                    if (!allowed) return;
+
+                    socket.join('staff:livechat');
+
+                    const firstName = String(staff.name || '').trim().split(/\s+/)[0] || 'Support';
+                    socket.on('chat:typing', ({ conversationId, typing }) => {
+                        socket.to('staff:livechat').emit('chat:typing', {
+                            conversationId, typing: !!typing, staffId: id, name: firstName,
+                        });
+                    });
+                } catch (err) {
+                    console.error('[socket] live chat staff join failed:', err.message);
+                }
+            })();
+        }
+        // ---- NEW-END ----
+
+        // ---- NEW: dispute chat staff room ----
+        if (role === 'admin' || role === 'auctionManager') {
+            (async () => {
+                try {
+                    const staff = await Admin.findById(id).select('role permissions isActive').lean();
+                    const allowed = staff?.isActive !== false && (staff?.role === 'admin' || staff?.permissions?.managePayments);
+                    if (allowed) socket.join('staff:disputes');
+                } catch (err) {
+                    console.error('[socket] dispute staff join failed:', err.message);
+                }
+            })();
+        }
+        // ---- NEW-END ----
     });
 
     return io;

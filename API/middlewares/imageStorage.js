@@ -5,7 +5,7 @@ import cloudinary from '../config/cloudinary.js';
 
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    
+
     params: async (req, file) => {
         let folderName = 'CarAuction/Others';
 
@@ -17,6 +17,8 @@ const storage = new CloudinaryStorage({
             folderName = 'CarAuction/Admin';
         } else if (req.baseUrl.includes('vehicle')) {
             folderName = 'CarAuction/Vehicle';
+        } else if (req.baseUrl.includes('support-chat')) {
+            folderName = 'CarAuction/SupportChat';
         } else if (req.baseUrl.includes('support')) {
             folderName = 'CarAuction/SupportTicket';
         } else if (req.baseUrl.includes('dispute')) {
@@ -24,12 +26,13 @@ const storage = new CloudinaryStorage({
         }
 
         const isPdf = file.mimetype === 'application/pdf';
+        const baseId = `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1E9)}`;
 
         return {
             folder: folderName,
             allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'pdf'],
             resource_type: isPdf ? 'raw' : 'image',
-            public_id: `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1E9)}`,
+            public_id: isPdf ? `${baseId}.pdf` : baseId,
             transformation: isPdf ? undefined : [
                 { quality: 'auto:good' },
                 { fetch_format: 'auto' },

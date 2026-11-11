@@ -8,6 +8,7 @@ import Admin from '../models/adminModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
+import Conversation from '../models/conversationModelSchema.js';
 
 import { deleteCloudinaryFiles } from "../utils/cloudinaryUtils.js";
 import { notifyParty, notifyStaff } from "../utils/disputeNotify.js";
@@ -307,12 +308,18 @@ export const getAllDisputes = async (req, res) => {
 
         const stale = await Dispute.countDocuments({ isOpen: true, createdAt: { $lte: staleBefore } });
 
+        // unread count - dispute msgs
+        const adminId = String(req.user.id);
+        const convs = await Conversation.find({ type: 'dispute', refId: { $in: rows.map((r) => r._id) } })
+            .select('refId staffUnread').lean();
+        const unreadByDispute = new Map(convs.map((c) => [String(c.refId), c.staffUnread?.[adminId] || 0]));
+
         const stats = { total: total_all, stale };
         DISPUTE_STATUSES.forEach((s, i) => { stats[s] = byStatus[i]; });
 
         return res.status(200).json({
             success: true,
-            disputes: rows.map((d) => rowOf(d, now)),
+            disputes: rows.map((d) => ({ ...rowOf(d, now), unread: unreadByDispute.get(String(d._id)) || 0 })),
             stats,
             staleAfterDays: DISPUTE_STALE_DAYS,
             pagination: {
@@ -939,9 +946,14 @@ export const getMyDisputes = async (req, res) => {
             Dispute.countDocuments({ $and: [mine, { status: { $in: CLOSED_STATUSES } }] }),
         ]);
 
+        // unread count
+        const convs = await Conversation.find({ type: 'dispute', refId: { $in: rows.map((r) => r._id) } })
+            .select('refId partyUnread').lean();
+        const unreadByDispute = new Map(convs.map((c) => [String(c.refId), c.partyUnread?.[String(uid)] || 0]));
+
         return res.status(200).json({
             success: true,
-            disputes: rows.map((d) => shapeRow(d, req.user)),
+            disputes: rows.map((d) => ({ ...shapeRow(d, req.user), unread: unreadByDispute.get(String(d._id)) || 0 })),
             summary: { all: cAll, open: cOpen, under_review: cReview, closed: cClosed },
             pagination: {
                 page,

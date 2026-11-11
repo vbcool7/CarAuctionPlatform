@@ -520,7 +520,10 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                                         </p>
                                     </div>
                                 </div>
-                                <button className="w-full bg-[#D97706] hover:bg-amber-500 text-white font-medium py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer">
+
+                                <button
+                                    onClick={() => setCurrentPage('live-chat')}
+                                    className="w-full bg-[#D97706] hover:bg-amber-500 text-white font-medium py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-sm cursor-pointer">
                                     <Headphones className="w-4 h-4" />
                                     <span>Contact Support</span>
                                 </button>
@@ -530,8 +533,11 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
                                 <h3 className="font-bold text-slate-900 text-base mb-4">Quick Actions</h3>
                                 <div className="space-y-1">
+
                                     {/* Create New Ticket */}
-                                    <div className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
+                                    <div
+                                        onClick={() => setCurrentPage('create-ticket')}
+                                        className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
                                         <div className="flex items-center space-x-3.5">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                                 <Edit className="w-5 h-5" />
@@ -545,7 +551,9 @@ function Support({ setCurrentPage, setSelectedTicketId }) {
                                     </div>
 
                                     {/* Live Chat */}
-                                    <div className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
+                                    <div
+                                        onClick={() => setCurrentPage('live-chat')}
+                                        className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
                                         <div className="flex items-center space-x-3.5">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                                 <MessageSquare className="w-5 h-5" />

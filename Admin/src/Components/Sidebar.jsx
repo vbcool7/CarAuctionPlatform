@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, LogOut, CarFront, Headphones } from 'lucide-react';
 import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line, RiMoneyDollarCircleLine } from "react-icons/ri";
+
 import useAdminAuthStore from '../store/useAdminAuthStore';
+import { useLiveChatUnreadCount } from '../hooks/useLiveChat';
 
 const menuItems = [
     {
@@ -145,7 +147,7 @@ const menuItems = [
         id: "live-chat",
         icon: RiMessage2Line,
         label: "Live Chat",
-        adminOnly: true,
+        permissionKey: "manageLiveChat",
         active: false,
     },
 ];
@@ -153,6 +155,9 @@ const menuItems = [
 function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, onCloseMobile, openLogoutModal }) {
 
     const admin = useAdminAuthStore((state) => state.admin);
+
+    const canLiveChat = admin?.role === 'admin' || admin?.permissions?.manageLiveChat === true;
+    const liveChatUnread = useLiveChatUnreadCount(canLiveChat);
 
     const visibleMenuItems = menuItems
         .filter((item) => {
@@ -230,6 +235,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                         const isActive = currentPage === item.id;
                         const isExpanded = expandedItems.has(item.id);
                         const Icon = item.icon;
+                        const badgeValue = item.id === 'live-chat' ? (liveChatUnread > 0 ? liveChatUnread : null) : item.badge;
 
                         return (
                             <div key={item.id}>
@@ -267,7 +273,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                                                     {item.label}
                                                 </span>
 
-                                                {item.badge && (
+                                                {badgeValue && (
                                                     <span
                                                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold
                                                             ${isActive
@@ -275,7 +281,7 @@ function Sidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, o
                                                                 : "bg-linear-to-r from-amber-100 to-orange-100 text-[#B45309] border border-amber-200"
                                                             }`}
                                                     >
-                                                        {item.badge}
+                                                        {badgeValue}
                                                     </span>
                                                 )}
                                             </div>

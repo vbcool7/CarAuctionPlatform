@@ -1,11 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Search } from 'lucide-react';
+import { Eye, MessageSquare, Search } from 'lucide-react';
 
-import { useGetMyDisputes } from '../../hook/useDispute';
-import { getPaginationRange } from '../../utils/getPaginationRange';
-import { formatDateTime, formatPrice } from '../../utils/formatters';
-import { STATUS_META } from '../../utils/disputeIcons';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSocket } from '../../../socket/SocketProvider';
+
+import { useGetMyDisputes } from '../../../hook/useDispute';
+import { getPaginationRange } from '../../../utils/getPaginationRange';
+import { formatDateTime, formatPrice } from '../../../utils/formatters';
+import { STATUS_META } from '../../../utils/disputeIcons';
 
 const STATUS_TABS = [
     { key: '', label: 'All', count: 'all' },
@@ -45,6 +48,23 @@ function Dispute({ setCurrentPage, setSelectedDisputeId, detailPage = 'disputes-
         setPage(1);
     }, [status, view, debounced]);
 
+    const socket = useSocket();
+    const queryClient = useQueryClient();
+
+    // chat ka naya message / read aaye to list ka badge refresh
+    useEffect(() => {
+        if (!socket) return;
+        const refresh = () => queryClient.invalidateQueries({
+            predicate: (q) => JSON.stringify(q.queryKey).toLowerCase().includes('dispute'),
+        });
+        socket.on('dispute:message', refresh);
+        socket.on('dispute:read', refresh);
+        return () => {
+            socket.off('dispute:message', refresh);
+            socket.off('dispute:read', refresh);
+        };
+    }, [socket, queryClient]);
+
     if (isLoading) return <p className="p-10 text-center">Loading disputes....</p>;
     if (isError) return <p className="p-10 text-center text-red-500">Failed to load disputes</p>;
 
@@ -58,7 +78,7 @@ function Dispute({ setCurrentPage, setSelectedDisputeId, detailPage = 'disputes-
                     Disputes you raised, or that were raised against you, on paid orders.
                 </p>
             </div>
-            
+
             {/* search / tabs */}
             <div className="w-full bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div className="relative w-full md:max-w-md">
@@ -81,8 +101,8 @@ function Dispute({ setCurrentPage, setSelectedDisputeId, detailPage = 'disputes-
                             type="button"
                             onClick={() => setView(t.key)}
                             className={`px-5 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap ${view === t.key
-                                    ? 'bg-[#D97706] text-white shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+                                ? 'bg-[#D97706] text-white shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
                                 }`}
                         >
                             {t.label}
@@ -113,7 +133,8 @@ function Dispute({ setCurrentPage, setSelectedDisputeId, detailPage = 'disputes-
                 <table className="w-full text-left table-fixed">
                     <thead className="bg-white border-b border-slate-200 text-[#0B1E3D] uppercase text-[11px] font-extrabold tracking-wider">
                         <tr>
-                            <th className="px-4 py-3  w-30">Dispute</th>
+                            <th className="px-4 py-3 w-24">Updates</th>
+                            <th className="px-4 py-3 w-35">Dispute</th>
                             <th className="px-4 py-3 w-45">Order / Vehicle</th>
                             <th className="px-4 py-3 w-40">Category</th>
                             <th className="px-4 py-3 w-45">Other Party</th>
@@ -131,10 +152,26 @@ function Dispute({ setCurrentPage, setSelectedDisputeId, detailPage = 'disputes-
                                 <tr
                                     key={d._id}
                                     className="text-[13px] hover:bg-gray-50/50">
+                                    
+                                    {/* unread badge */}
+                                    <td className="px-4 py-3">
+                                        {d.unread > 0 ? (
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/60 text-[#D97706]">
+                                                <MessageSquare size={13} className="shrink-0" />
+                                                <span className="text-[11px] font-bold">
+                                                    {d.unread > 99 ? '99+' : d.unread}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-500 text-sm">---</span>
+                                        )}
+                                    </td>
 
                                     {/* dispute id */}
                                     <td className="px-4 py-3">
-                                        <div className="font-medium text-indigo-600">{d.disputeId}</div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-indigo-600">{d.disputeId}</span>
+                                        </div>
                                         <div className="text-[11px] text-gray-400">{d.iRaised ? 'Raised by me' : 'Against me'}</div>
                                     </td>
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { LayoutDashboard, Car, Gavel, FileText, History, Wallet, Heart, MessageSquare, UserCog, HelpCircle, LogOut, CarFront, ChevronDown, Plus, ShoppingBag, ShieldCheck } from "lucide-react";
 
 import { useSellerGet } from '../../hook/useSeller';
+import { useSupportUnreadCount } from '../../hook/useSupportChat';
 
 const menuItems = [
     {
@@ -61,10 +62,9 @@ const menuItems = [
         active: false,
     },
     {
-        id: "messages",
+        id: "live-chat",
         icon: MessageSquare,
-        label: "Messages",
-        badge: 3,
+        label: "Live Chat",
         active: false,
     },
     {
@@ -84,6 +84,7 @@ const menuItems = [
 function SellerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, onCloseMobile, openLogoutModal }) {
 
     const { data: getSeller, isError } = useSellerGet();
+    const unread = useSupportUnreadCount();
 
     const [expandedItems, setExpandedItems] = useState(new Set(['dashboard']));
 
@@ -143,7 +144,7 @@ function SellerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileO
                     <div className="mx-4 mb-3 p-3 rounded-2xl bg-linear-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 flex items-center gap-3">
                         <div className="relative shrink-0">
                             <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center text-amber-400 justify-center font-bold border border-amber-500/40">
-                               {getSeller?.fullName?.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {getSeller?.fullName?.split(' ').map(n => n[0]).join('').toUpperCase()}
                             </div>
                             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0A1128] rounded-full"></span>
                         </div>
@@ -161,6 +162,9 @@ function SellerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileO
                         const isActive = currentPage === item.id;
                         const isExpanded = expandedItems.has(item.id);
                         const Icon = item.icon;
+                        const badge = item.id === 'live-chat'
+                            ? (currentPage === 'live-chat' ? 0 : unread)
+                            : item.badge;
 
                         return (
                             <div key={item.id}>
@@ -197,7 +201,7 @@ function SellerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileO
                                                     {item.label}
                                                 </span>
 
-                                                {item.badge && (
+                                                {badge > 0 && (
                                                     <span
                                                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold
                                                             ${isActive
@@ -205,7 +209,7 @@ function SellerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileO
                                                                 : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                                             }`}
                                                     >
-                                                        {item.badge}
+                                                        {badge > 99 ? '99+' : badge}
                                                     </span>
                                                 )}
                                             </div>

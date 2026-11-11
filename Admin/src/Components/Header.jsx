@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Search, ChevronDown, User, LogOut, Mail } from 'lucide-react';
+import { Menu, Search, ChevronDown, User, LogOut, MessageSquare } from 'lucide-react';
 
 import { useAdminLogout } from '../hooks/useAdmin';
 import useAdminAuthStore from '../store/useAdminAuthStore';
 import toast from 'react-hot-toast';
 import NotificationDropdown from './NotificationDropdown';
+import { useLiveChatUnreadCount } from '../hooks/useLiveChat';
 
 function Header({ onToggleSideBar, setCurrentPage }) {
 
@@ -16,6 +17,7 @@ function Header({ onToggleSideBar, setCurrentPage }) {
     const clearStore = useAdminAuthStore((state) => state.logout);
 
     const { mutate: logoutAdmin, isPending } = useAdminLogout();
+    const unread = useLiveChatUnreadCount();
 
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
@@ -76,13 +78,15 @@ function Header({ onToggleSideBar, setCurrentPage }) {
 
                     {/* mail */}
                     <button
-                        onClick={() => setCurrentPage('mails')}
+                        onClick={() => setCurrentPage('live-chat')}
                         className='relative p-1 text-slate-700 hover:text-slate-400 transition-colors'
                     >
-                        <Mail size={20} />
-                        <span className='absolute -top-1 -right-1 w-4 h-4 bg-linear-to-r from-amber-500 to-orange-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
-                            12
-                        </span>
+                        <MessageSquare size={20} />
+                        {unread > 0 && (
+                            <span className='absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-linear-to-r from-amber-500 to-orange-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center'>
+                                {unread > 99 ? '99+' : unread}
+                            </span>
+                        )}
                     </button>
 
                     {/* User */}
@@ -121,7 +125,6 @@ function Header({ onToggleSideBar, setCurrentPage }) {
                         {/* Dropdown menu */}
                         {showDropdown && (
                             <div className='absolute right-0 top-full mt-2 w-30 md:w-40 sm:w-48 bg-white border border-slate-100 rounded-xl shadow-xl overflow-hidden z-50'>
-                                {/* Dropdown content remains same */}
                                 <div className='px-3 md:px-4 py-2 md:py-3 border-b border-slate-100'>
                                     <p className='text-[14px] md:text-sm font-semibold text-[#0B1E3D]'>
                                         {admin?.name || "Loading..."}
@@ -149,4 +152,4 @@ function Header({ onToggleSideBar, setCurrentPage }) {
     );
 }
 
-export default Header
+export default Header;

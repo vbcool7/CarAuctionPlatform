@@ -2,12 +2,13 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { CheckCircle } from 'lucide-react';
+import EvidencePicker from '../Dispute/EvidencePicker';
+import EvidenceList from '../Dispute/EvidenceList';
+import DisputeChat from '../Dispute/DisputeChat';
 
-import { useGetMyDispute, useRespondToDispute, useWithdrawDispute } from '../../hook/useDispute';
-import { formatDateTime, formatPrice } from '../../utils/formatters';
-import { STATUS_META, OUTCOME_LABEL, checkEvidenceFiles } from '../../utils/disputeIcons';
-import EvidencePicker from '../SharedComponents/EvidencePicker';
-import EvidenceList from '../SharedComponents/EvidenceList';
+import { useGetMyDispute, useRespondToDispute, useWithdrawDispute } from '../../../hook/useDispute';
+import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
+import { STATUS_META, OUTCOME_LABEL, checkEvidenceFiles } from '../../../utils/disputeIcons';
 
 const MIN_RESPONSE = 10;
 const MAX_DESC = 2000;
@@ -109,7 +110,7 @@ function DisputeDetail({ disputeId, setCurrentPage, backPage = 'disputes' }) {
                             {meta.label}
                             {d.resolution.outcome ? ` · ${OUTCOME_LABEL[d.resolution.outcome]}` : ''}
                         </p>
-                        {d.resolution.note && <p className="mt-1 text-[13px] break-words">{d.resolution.note}</p>}
+                        {d.resolution.note && <p className="mt-1 text-[13px] wrap-break-word">{d.resolution.note}</p>}
                         {d.resolution.at && <p className="mt-1 text-[11px] text-gray-400">{formatDateTime(d.resolution.at)}</p>}
                     </div>
                 </div>
@@ -119,16 +120,18 @@ function DisputeDetail({ disputeId, setCurrentPage, backPage = 'disputes' }) {
 
                 <div className="lg:col-span-2 space-y-6">
 
+                    {/* complaint */}
                     <Card title="Complaint">
-                        <p className="whitespace-pre-wrap break-words text-gray-800">{d.description}</p>
+                        <p className="whitespace-pre-wrap wrap-break-word text-gray-800">{d.description}</p>
                         <p className="mt-4 mb-2 text-[11px] font-semibold uppercase text-gray-400">Attachments</p>
                         <EvidenceList files={d.evidence} />
                     </Card>
 
+                    {/* response */}
                     <Card title={d.iRaised ? `Response from ${counterLabel}` : 'Your Response'}>
                         {d.response ? (
                             <>
-                                <p className="whitespace-pre-wrap break-words text-gray-800">{d.response.description}</p>
+                                <p className="whitespace-pre-wrap wrap-break-word text-gray-800">{d.response.description}</p>
                                 <p className="mt-1 text-[11px] text-gray-400">{formatDateTime(d.response.at)}</p>
                                 <p className="mt-4 mb-2 text-[11px] font-semibold uppercase text-gray-400">Attachments</p>
                                 <EvidenceList files={d.response.evidence} />
@@ -145,6 +148,7 @@ function DisputeDetail({ disputeId, setCurrentPage, backPage = 'disputes' }) {
                                     className="w-full rounded-lg border border-gray-200 p-2 text-[13px] outline-none focus:border-[#D97706]"
                                     placeholder="Your response..."
                                 />
+
                                 <EvidencePicker files={files} onChange={setFiles} disabled={busy} />
                                 {error && <p className="text-[13px] text-red-600">{error}</p>}
                                 <button type="submit" disabled={busy}
@@ -157,14 +161,21 @@ function DisputeDetail({ disputeId, setCurrentPage, backPage = 'disputes' }) {
                         )}
                     </Card>
 
+                    {/* dispute chat */}
+                    <DisputeChat disputeId={d._id} status={d.status} />
+
+                    {/* timeline */}
                     <Card title="Timeline">
                         <div>
                             {d.timeline.map((t, i) => (
-                                <div key={`${t.status}-${i}`} className="flex gap-3">
+                                <div
+                                    key={`${t.status}-${i}`}
+                                    className="flex gap-3">
                                     <div className="flex flex-col items-center">
                                         <div className="w-2.5 h-2.5 mt-1.5 rounded-full bg-[#D97706] shrink-0" />
                                         {i < d.timeline.length - 1 && <div className="w-px flex-1 my-1 bg-gray-200" />}
                                     </div>
+
                                     <div className={i < d.timeline.length - 1 ? 'pb-4' : ''}>
                                         <p className="text-[13px] font-medium text-gray-900">{TIMELINE_LABEL[t.status] || t.status}</p>
                                         <p className="text-xs text-gray-400">{formatDateTime(t.at)}</p>
@@ -174,34 +185,44 @@ function DisputeDetail({ disputeId, setCurrentPage, backPage = 'disputes' }) {
                         </div>
                     </Card>
                 </div>
-
+                
+                {/* summary */}
                 <div className="space-y-6">
                     <Card title="Summary">
                         <div className="flex items-center justify-between pb-2">
                             <span className="text-gray-500">Status</span>
                             <span className={`px-2 py-0.5 rounded border text-[11px] font-medium ${meta.cls}`}>{meta.label}</span>
                         </div>
+
                         <Row label="Category" value={d.category?.name} />
                         <Row label="Order" value={d.orderNumber} />
                         <Row label="Amount" value={formatPrice(d.amount)} />
                         <Row label={counterLabel} value={d.counterparty?.name} />
                         <Row label="Raised On" value={formatDateTime(d.createdAt)} />
                     </Card>
-
+                     
+                    {/* vehicle detail */}
                     {d.vehicleTitle && (
                         <Card title="Vehicle">
                             <div className="flex items-center gap-3">
                                 <div className="w-20 h-14 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
-                                    {d.vehicleImage && <img src={d.vehicleImage} alt="" className="w-full h-full object-cover" />}
+                                    {d.vehicleImage &&
+                                        <img
+                                            src={d.vehicleImage}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                        />
+                                    }
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-[#0B1E3D] truncate">{d.vehicleTitle}</p>
+                                    <p className="text-sm font-semibold text-[#0B1E3D] truncate">{formatLabel(d.vehicleTitle)}</p>
                                     <p className="text-[11px] text-gray-500">{d.listingId}</p>
                                 </div>
                             </div>
                         </Card>
                     )}
-
+                    
+                    {/* action */}
                     {d.canWithdraw && (
                         <Card title="Actions">
                             <button type="button" disabled={busy} onClick={doWithdraw}

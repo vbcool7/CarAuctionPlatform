@@ -241,7 +241,7 @@ function Manager({ setCurrentPage, setSelectedManagerId }) {
             <tr className="text-xs text-gray-800 uppercase bg-gray-100 border-b border-gray-200">
               <th className="px-6 py-4 font-semibold min-w-20">SN</th>
               <th className="px-6 py-4 font-semibold min-w-50">Manager</th>
-              <th className="px-6 py-4 font-medium min-w-30">Role</th>
+              <th className="px-6 py-4 font-medium min-w-45">Role</th>
               <th className="px-6 py-4 font-medium min-w-40">Joined On</th>
               <th className="px-6 py-4 font-medium min-w-40">Permissions</th>
               <th className="px-6 py-4 font-medium min-w-30">Status</th>

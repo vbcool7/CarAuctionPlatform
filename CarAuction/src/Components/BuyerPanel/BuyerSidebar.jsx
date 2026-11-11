@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, MessageSquareText, CreditCard, FileText, User, Headset, LogOut, ChevronDown, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, CreditCard, FileText, User, Headset, LogOut, ChevronDown, ShieldAlert } from 'lucide-react';
+import { useSupportUnreadCount } from '../../hook/useSupportChat';
 
 const menuItems = [
     { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", active: true },
@@ -13,7 +14,6 @@ const menuItems = [
     { id: "won-auctions", icon: Trophy, label: "Won Auctions", active: false },
     { id: "lost-auctions", icon: XCircle, label: "Lost Auctions", active: false },
     { id: "my-offers", icon: Tag, label: "My Offers", active: false },
-    { id: "messages", icon: MessageSquareText, label: "Messages", active: false, badge: 3 },
     { id: "payments", icon: CreditCard, label: "Payments", active: false },
     { id: "invoices", icon: FileText, label: "Invoices", active: false },
     { id: "disputes", icon: ShieldAlert, label: "Dispute", active: false },
@@ -25,6 +25,7 @@ const menuItems = [
 function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOpen, onCloseMobile, openLogoutModal }) {
 
     const [expandedItems, setExpandedItems] = useState(new Set(['dashboard']));
+    const unread = useSupportUnreadCount();
 
     const toggleEcpanded = (itemid) => {
         const newExpanded = new Set(expandedItems);
@@ -71,6 +72,9 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                         const isActive = currentPage === item.id;
                         const isExpanded = expandedItems.has(item.id);
                         const Icon = item.icon;
+                        const badge = item.id === 'support'
+                            ? (unread > 0 ? (unread > 99 ? '99+' : unread) : null)
+                            : item.badge;
 
                         return (
                             <div key={item.id}>
@@ -108,7 +112,7 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                                                     {item.label}
                                                 </span>
 
-                                                {item.badge && (
+                                                {badge && (
                                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold
                                                         ${item.id === 'live-auctions'
                                                             ? 'bg-red-500 text-white'
@@ -116,9 +120,7 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                                                                 ? 'bg-white/20 text-white'
                                                                 : 'bg-amber-100 text-[#D97706]'
                                                         }`}>
-                                                        {item.id === 'messages'
-                                                            ? (0 || 0)
-                                                            : item.badge}
+                                                        {badge}
                                                     </span>
                                                 )}
                                             </div>

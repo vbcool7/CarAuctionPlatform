@@ -66,6 +66,7 @@ import AllTickets from './Components/SupportManagement/AllTickets';
 import AllTicketsDetail from './Components/SupportManagement/AllTicketsDetail';
 import CallRequests from './Components/SupportManagement/CallRequests';
 import CallRequestsDetail from './Components/SupportManagement/CallRequestsDetail';
+import LiveChat from './Components/LiveChat/LiveChat';
 
 function App() {
 
@@ -414,6 +415,9 @@ function App() {
 
                 {/* notifications */}
                 {currentPage === 'notifications' && <Notifications setCurrentPage={setCurrentPage} />}
+
+                {/* live chat */}
+                {currentPage === 'live-chat' && <LiveChat setCurrentPage={setCurrentPage} />}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

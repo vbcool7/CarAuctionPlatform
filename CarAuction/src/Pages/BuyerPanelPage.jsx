@@ -28,10 +28,10 @@ import BuyerAuctionResultDetail from '../Components/BuyerPanel/BuyerSharedCompon
 import BuyerMyBidsDetail from '../Components/BuyerPanel/BuyerMyBids/BuyerMyBidsDetail';
 import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAuctions/BuyerBrowseAuctionsDetail';
 import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
+import Dispute from '../Components/SharedComponents/Dispute/Dispute';
+import DisputeDetail from '../Components/SharedComponents/Dispute/DisputeDetail';
 
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
-import Dispute from '../Components/SharedComponents/Dispute';
-import DisputeDetail from '../Components/SharedComponents/DisputeDetail';
 
 const BUYER_DEEP_LINKS = ['watchlist', 'bids', 'payments'];
 

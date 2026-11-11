@@ -5,8 +5,8 @@ import {
     Search, ShoppingBag, CarFront, Wallet, CheckCircle2, Clock3, PackageCheck, ChevronDown, ChevronUp,
     CalendarDays, Hash, CreditCard, XCircle, Loader2, Download,
 } from 'lucide-react';
-import DisputeActionCard from '../../SharedComponents/DisputeActionCard';
-import RaiseDisputeModal from '../../SharedComponents/RaiseDisputeModal';
+import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
+import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
 
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 import { formatLabel } from '../../../utils/formatters';

@@ -16,6 +16,8 @@ import salesRoutes from './salesRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import supportRoutes from './supportTicketRoutes.js';
 import disputeRoutes from './disputeRoutes.js';
+import supportChatRoutes from './supportChatRoutes.js';
+import disputeChatRoutes from './disputeChatRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -35,5 +37,7 @@ rootRouter.use('/sales', salesRoutes);
 rootRouter.use('/invoice', invoiceRoutes);
 rootRouter.use('/support', supportRoutes);
 rootRouter.use('/dispute', disputeRoutes);
+rootRouter.use('/support-chat', supportChatRoutes);
+rootRouter.use('/dispute-chat', disputeChatRoutes);
 
 export default rootRouter;

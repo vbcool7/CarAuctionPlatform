@@ -17,6 +17,8 @@ import SalesHistory from '../Components/SellerPanel/SalesHistory/SalesHistory';
 import SalesHistoryDetail from '../Components/SellerPanel/SalesHistory/SalesHistoryDetail';
 import Payouts from '../Components/SellerPanel/Payouts/Payouts';
 import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
+import Dispute from '../Components/SharedComponents/Dispute/Dispute';
+import DisputeDetail from '../Components/SharedComponents/Dispute/DisputeDetail';
 
 import useAuthStore from '../store/useAuthStore';
 import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
@@ -31,8 +33,7 @@ import RequestCall from '../Components/SellerPanel/Support/RequestCall';
 
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
 import { useSellerLogout } from '../hook/useSeller';
-import Dispute from '../Components/SharedComponents/Dispute';
-import DisputeDetail from '../Components/SharedComponents/DisputeDetail';
+import LiveChat from '../Components/SellerPanel/LiveChat/LiveChat';
 
 const SELLER_DEEP_LINKS = ['watchlist', 'my-vehicles', 'my-auctions', 'my-purchases'];
 
@@ -165,6 +166,9 @@ function SellerPanelPage() {
               {currentPage === 'support-detail' && <SupportDetail ticketId={selectedTicketId} setCurrentPage={setCurrentPage} />}
               {currentPage === 'create-ticket' && <CreateTicket setCurrentPage={setCurrentPage} />}
               {currentPage === 'request-call' && <RequestCall setCurrentPage={setCurrentPage} />}
+
+              {/* live chat */}
+              {currentPage === 'live-chat' && <LiveChat setCurrentPage={setCurrentPage} />}
 
               {/* notifications */}
               {currentPage === 'notifications' && <SellerNotifications setCurrentPage={setCurrentPage} />}

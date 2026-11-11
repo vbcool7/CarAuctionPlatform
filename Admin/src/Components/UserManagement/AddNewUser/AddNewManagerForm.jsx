@@ -21,6 +21,7 @@ function AddNewManagerForm({ setCurrentPage }) {
             managePayments: false,
             managePayouts: false,
             manageReports: false,
+            manageLiveChat: false
         },
     });
 
@@ -35,6 +36,7 @@ function AddNewManagerForm({ setCurrentPage }) {
         { key: 'managePayments', label: 'Manage Payments' },
         { key: 'managePayouts', label: 'Manage Payouts' },
         { key: 'manageReports', label: 'Manage Reports' },
+        { key: 'manageLiveChat', label: 'Manage Live Chat' },
     ];
 
     // map: permission key -> name of manager who already holds it
@@ -78,10 +80,7 @@ function AddNewManagerForm({ setCurrentPage }) {
             payload.append("profilePhoto", formData.profilePhoto);
         }
 
-        payload.append(
-            "permissions",
-            JSON.stringify(formData.permissions)
-        );
+        payload.append("permissions", JSON.stringify(formData.permissions));
 
         addManager(payload, {
             onSuccess: (res) => {
@@ -100,6 +99,7 @@ function AddNewManagerForm({ setCurrentPage }) {
                         managePayments: false,
                         managePayouts: false,
                         manageReports: false,
+                        manageLiveChat: false,
                     },
                 });
 
@@ -107,8 +107,6 @@ function AddNewManagerForm({ setCurrentPage }) {
             },
 
             onError: (err) => {
-                console.error(err);
-
                 const conflicts = err?.response?.data?.conflicts;
                 if (conflicts?.length) {
                     toast.error(

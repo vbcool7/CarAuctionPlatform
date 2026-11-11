@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { ChevronRight, ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, ExternalLink, FileText, X } from 'lucide-react';
+import DisputeChat from './DisputeChat';
 
 import { formatLabel, formatPrice, fmtDate, fmtTime } from '../../utils/formatter';
 import { useGetDisputeDetail, useStartDisputeReview, useAddDisputeNote, useResolveDispute, } from '../../../hooks/useDispute';
@@ -25,25 +26,25 @@ const ACTION_META = {
     refund_buyer: {
         label: 'Refund Buyer',
         title: 'Refund the buyer',
-        desc: 'Full amount Stripe se buyer ko refund hoga, order cancel hoga aur gaadi unsold ho jayegi. Ye wapas nahi hota.',
+        desc: 'The full amount will be refunded to the buyer through Stripe, the order will be canceled, and the vehicle will be marked as unsold. This action cannot be reversed.',
         btn: 'bg-red-600 hover:bg-red-700 text-white',
     },
     release_seller: {
         label: 'Release to Seller',
         title: 'Release to seller',
-        desc: 'Dispute seller ke favour me close hoga. Payout ka hold hat jayega.',
+        desc: 'The dispute will be resolved in favor of the seller, and the payout hold will be released.',
         btn: 'bg-green-600 hover:bg-green-700 text-white',
     },
     reject: {
         label: 'Reject Dispute',
         title: 'Reject dispute',
-        desc: 'Complaint reject hogi. Payout ka hold hat jayega.',
+        desc: 'The complaint will be rejected, and the payout hold will be released.',
         btn: 'bg-rose-600 hover:bg-rose-700 text-white',
     },
     close: {
         label: 'Close Without Decision',
         title: 'Close without decision',
-        desc: 'Bina kisi faisle ke dispute close hoga. Payout ka hold hat jayega.',
+        desc: 'The dispute will be closed without any decision, and the payout hold will be released.',
         btn: 'bg-slate-700 hover:bg-slate-800 text-white',
     },
 };
@@ -178,7 +179,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
         });
     };
 
-    // jo buttons dikhane hain (backend `actions` ke hisaab se)
+    // btns based on actions
     const resolveButtons = [];
     if (actions?.canResolve) {
         if (actions.canRefund) resolveButtons.push('refund_buyer');
@@ -240,7 +241,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                 <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
                     <AlertTriangle size={18} className="mt-0.5 text-red-500 shrink-0" />
                     <p className="text-sm text-red-700">
-                        <span className="font-semibold">Overdue.</span> Ye dispute {dispute.daysOpen} din se open hai. Payout abhi bhi hold par hai.
+                        <span className="font-semibold">Overdue.</span> This dispute has been open for {dispute.daysOpen} days. The payout is still on hold.
                     </p>
                 </div>
             )}
@@ -253,7 +254,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                             {STATUS_META[dispute.status]?.label || humanize(dispute.status)}
                             {dispute.resolution.outcome ? ` · ${OUTCOME_LABEL[dispute.resolution.outcome] || humanize(dispute.resolution.outcome)}` : ''}
                         </p>
-                        <p className="mt-1 text-[13px] break-words">{dispute.resolution.note}</p>
+                        <p className="mt-1 text-[13px] wrap-break-word">{dispute.resolution.note}</p>
                         <p className="mt-1 text-[11px] text-slate-500">
                             {dispute.resolution.by?.name ? `${dispute.resolution.by.name} · ` : ''}
                             {fmtDate(dispute.resolution.at)}, {fmtTime(dispute.resolution.at)}
@@ -294,10 +295,12 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
             </div>
 
             {/* 3-column grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 space-y-6">
 
                 {/* ============================ LEFT ============================ */}
                 <div className="space-y-6">
+
+                    {/* raised by */}
                     <Card title={`Raised By (${roleLabel(dispute.raisedBy?.role)})`}>
                         <div className="space-y-2 text-[12px]">
                             <Row label="Name" value={dispute.raisedBy?.name} />
@@ -306,6 +309,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                         </div>
                     </Card>
 
+                    {/* against */}
                     <Card title={`Against (${roleLabel(dispute.against?.role)})`}>
                         <div className="space-y-2 text-[12px]">
                             <Row label="Name" value={dispute.against?.name} />
@@ -314,6 +318,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                         </div>
                     </Card>
 
+                    {/* order / payout */}
                     <Card title="Order & Payout">
                         {order ? (
                             <div className="space-y-2 text-sm">
@@ -331,6 +336,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                         )}
                     </Card>
 
+                    {/* vehicle info */}
                     {dispute.vehicleTitle && (
                         <Card title="Vehicle">
                             <div className="flex items-center gap-3">
@@ -350,16 +356,19 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
 
                 {/* ============================ MIDDLE ============================ */}
                 <div className="space-y-6">
+
+                    {/* complaint */}
                     <Card title="Complaint">
-                        <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap break-words">{dispute.description || '—'}</p>
+                        <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap wrap-break-word">{dispute.description || '—'}</p>
                         <p className="mt-4 mb-2 text-[11px] font-semibold uppercase text-slate-400">Evidence</p>
                         <Evidence files={dispute.evidence} />
                     </Card>
 
+                    {/* response */}
                     <Card title={`Response from ${roleLabel(dispute.against?.role)}`}>
                         {dispute.response ? (
                             <>
-                                <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap break-words">{dispute.response.description}</p>
+                                <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap wrap-break-word">{dispute.response.description}</p>
                                 <p className="mt-1 text-[11px] text-slate-500">{fmtDate(dispute.response.at)}, {fmtTime(dispute.response.at)}</p>
                                 <p className="mt-4 mb-2 text-[11px] font-semibold uppercase text-slate-400">Evidence</p>
                                 <Evidence files={dispute.response.evidence} />
@@ -369,6 +378,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                         )}
                     </Card>
 
+                    {/* timeline */}
                     <Card title="Timeline">
                         {dispute.timeline?.length > 0 ? (
                             <div className="space-y-4">
@@ -386,7 +396,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                                                     <span className="ml-2 text-[10px] font-semibold uppercase text-slate-400">{humanize(t.by)}</span>
                                                 </p>
                                                 <p className="text-[11px] text-slate-500">{fmtDate(t.at)}, {fmtTime(t.at)}</p>
-                                                {t.note && <p className="text-[12px] text-slate-500 mt-0.5 break-words">{t.note}</p>}
+                                                {t.note && <p className="text-[12px] text-slate-500 mt-0.5 wrap-break-word">{t.note}</p>}
                                             </div>
                                         </div>
                                     );
@@ -400,6 +410,8 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
 
                 {/* ============================ RIGHT ============================ */}
                 <div className="space-y-6">
+
+                    {/* actions */}
                     <Card title="Actions">
                         {(actions?.canStartReview || resolveButtons.length > 0) ? (
                             <div className="space-y-2">
@@ -438,14 +450,17 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                         )}
                     </Card>
 
+                    {/* internal notes */}
                     <Card title="Internal Notes">
                         <p className="mb-3 text-[11px] text-slate-400"> Visible only to admins and managers, not to buyers or sellers.</p>
 
                         {dispute.adminNotes?.length > 0 ? (
                             <div className="mb-4 space-y-3">
                                 {dispute.adminNotes.map((n, i) => (
-                                    <div key={i} className="rounded-lg bg-slate-50 border border-slate-100 p-3">
-                                        <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap break-words">{n.note}</p>
+                                    <div
+                                        key={i}
+                                        className="rounded-lg bg-slate-50 border border-slate-100 p-3">
+                                        <p className="text-[13px] text-[#0B1E3D] whitespace-pre-wrap wrap-break-word">{n.note}</p>
                                         <p className="mt-1 text-[11px] text-slate-500">
                                             {n.by?.name || humanize(n.by?.role) || 'Staff'} · {fmtDate(n.at)}, {fmtTime(n.at)}
                                         </p>
@@ -475,13 +490,19 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                 </div>
             </div>
 
+            {/* dispute chat */}
+            <DisputeChat disputeId={dispute._id} status={dispute.status} />
+
             {/* resolve confirm modal */}
             {modalMeta && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
                         <div className="flex items-start justify-between gap-4">
                             <h3 className="text-base font-semibold text-[#0B1E3D]">{modalMeta.title}</h3>
-                            <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+                            <button
+                                type="button"
+                                onClick={closeModal}
+                                className="text-slate-400 hover:text-slate-600">
                                 <X size={18} />
                             </button>
                         </div>
@@ -508,6 +529,7 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
                                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
                                 Cancel
                             </button>
+
                             <button
                                 type="button"
                                 onClick={onConfirmResolve}
