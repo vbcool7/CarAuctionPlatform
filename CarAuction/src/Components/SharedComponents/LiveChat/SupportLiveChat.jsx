@@ -151,7 +151,7 @@ function SupportLiveChat({
             )}
 
             {/* chat window */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden h-[28rem] md:h-[32rem]">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden h-112 md:h-128">
 
                 {/* messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -7,6 +7,7 @@ import Bid from '../models/bidModelSchema.js';
 import PaymentEvent from '../models/paymentEventModelSchema.js';
 import { getStripe } from '../config/stripe.js';
 import { createNotification } from '../services/notificationService.js';
+import { hideReviewForCanceledOrder } from './reviewHelper.js';
 
 // adminController.cancelAndRefundOrder ka core. Logic wahi hai, bas req/res hata kar yahan nikala hai
 // taaki Admin "Cancel & Refund" aur Dispute resolve (refund buyer) dono ek hi code chalayein.
@@ -22,6 +23,14 @@ import { createNotification } from '../services/notificationService.js';
 // viaDispute = true sirf dispute resolve se aata hai. Direct admin cancel open dispute ke order par rukta hai.
 
 const OPEN_PAYOUT_STATUSES = ['on_hold', 'available', 'requested'];
+
+const hideReviewSafe = async (orderId) => {
+    try {
+        await hideReviewForCanceledOrder(orderId);
+    } catch (err) {
+        console.error('[refund] review hide failed:', err.message);
+    }
+};
 
 const notifySafe = async (payload) => {
     try {
@@ -159,6 +168,8 @@ export const cancelAndRefundCore = async ({ orderId, reason, actor, viaDispute =
     if (order.bidId) {
         await Bid.updateOne({ _id: order.bidId, status: 'won' }, { $set: { status: 'canceled' } });
     }
+
+    await hideReviewSafe(order._id);
 
     await notifySafe({
         recipientId: order.buyerId,

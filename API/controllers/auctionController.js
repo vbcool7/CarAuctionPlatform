@@ -4,7 +4,7 @@ import Bid from '../models/bidModelSchema.js';
 import Vehicle from '../models/vehicleModelSchema.js';
 import Seller from '../models/sellerModelSchema.js';
 import Buyer from '../models/buyerModelSchema.js';
-import Order, {PAYMENT_WINDOW_MS} from '../models/orderModelSchema.js';
+import Order, { PAYMENT_WINDOW_MS } from '../models/orderModelSchema.js';
 import mongoose from 'mongoose';
 
 import { UAE_UTC_OFFSET_HOURS, parseTime12h } from '../models/vehicleModelSchema.js';
@@ -64,15 +64,15 @@ export const runAuctionEndUpdate = async () => {
 
     const now = new Date();
     const admin = await Admin.findOne();
- 
+
     const candidates = await Vehicle.find({
         auctionStatus: 'live',
         priceType: 'reserve_price',
         auctionEndDateTime: { $lte: now },
     }).select('_id').lean();
- 
+
     let updatedCount = 0;
- 
+
     for (const { _id } of candidates) {
         try {
             const vehicle = await Vehicle.findOne({
@@ -81,17 +81,17 @@ export const runAuctionEndUpdate = async () => {
                 auctionEndDateTime: { $lte: now },
             }).lean();
             if (!vehicle) continue;
- 
+
             const winningBid = await Bid.findOne({
                 vehicleId: vehicle._id,
                 status: 'active',
             }).sort({ amount: -1 });
- 
+
             let nextStatus;
             if (!winningBid) nextStatus = 'unsold';
             else if (winningBid.amount < vehicle.reservePrice) nextStatus = 'reserve-not-met';
             else nextStatus = 'pending_payment';
- 
+
             // ATOMIC claim: cron overlap / multiple instance me ek hi run is vehicle ko close karega
             const claimed = await Vehicle.findOneAndUpdate(
                 { _id, auctionStatus: 'live', auctionEndDateTime: { $lte: now } },
@@ -99,10 +99,10 @@ export const runAuctionEndUpdate = async () => {
                 { new: true }
             ).select('listingId sellerId').lean();
             if (!claimed) continue;
- 
+
             if (nextStatus === 'pending_payment') {
                 const dueAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
- 
+
                 try {
                     await Order.create({
                         vehicleId: vehicle._id,
@@ -132,9 +132,9 @@ export const runAuctionEndUpdate = async () => {
                         continue;
                     }
                 }
- 
+
                 const dueText = dueAt.toLocaleString('en-GB', { timeZone: 'Asia/Dubai' });
- 
+
                 // winner (buyer ya seller) ko notification
                 await notifySafe({
                     recipientId: winningBid.bidderId,
@@ -144,7 +144,7 @@ export const runAuctionEndUpdate = async () => {
                     title: 'You won the auction',
                     message: `You won ${vehicle.listingId} with AED ${winningBid.amount}. Complete payment before ${dueText} (UAE time).`,
                 });
- 
+
                 await notifySafe({
                     recipientId: vehicle.sellerId,
                     recipientType: 'Seller',
@@ -153,7 +153,7 @@ export const runAuctionEndUpdate = async () => {
                     title: 'Auction ended - awaiting payment',
                     message: `${vehicle.listingId} reached the reserve with AED ${winningBid.amount}. Waiting for the winner's payment.`,
                 });
- 
+
             } else {
                 const isUnsold = nextStatus === 'unsold';
                 await notifySafe({
@@ -167,13 +167,13 @@ export const runAuctionEndUpdate = async () => {
                         : `${vehicle.listingId} did not meet the reserve price.`,
                 });
             }
- 
+
             updatedCount++;
         } catch (err) {
             console.error('[auction-cron] failed to close vehicle', _id, err);
         }
     }
- 
+
     return updatedCount;
 };
 
@@ -182,14 +182,14 @@ export const runAuctionEndUpdate = async () => {
 export const runPaymentExpiry = async () => {
     const now = new Date();
     const admin = await Admin.findOne();
- 
+
     const due = await Order.find({
         status: 'pending_payment',
         paymentDueAt: { $lte: now },
     }).select('_id').lean();
- 
+
     let expiredCount = 0;
- 
+
     for (const { _id } of due) {
         try {
             // ATOMIC: sirf pending_payment hi expire ho (beech me paid ho gaya to skip)
@@ -209,12 +209,12 @@ export const runPaymentExpiry = async () => {
                 { new: true }
             ).lean();
             if (!order) continue;
- 
+
             await Vehicle.updateOne(
                 { _id: order.vehicleId, auctionStatus: 'pending_payment' },
                 { $set: { auctionStatus: 'unsold' } }
             );
- 
+
             await notifySafe({
                 recipientId: order.buyerId,
                 recipientType: order.buyerType,
@@ -223,7 +223,7 @@ export const runPaymentExpiry = async () => {
                 title: 'Payment window expired',
                 message: `Payment for ${order.listingId} was not completed within 48 hours, so the purchase has expired.`,
             });
- 
+
             await notifySafe({
                 recipientId: order.sellerId,
                 recipientType: 'Seller',
@@ -232,7 +232,7 @@ export const runPaymentExpiry = async () => {
                 title: 'Buyer did not pay',
                 message: `The buyer did not pay for ${order.listingId} in time. The vehicle is now unsold and can be relisted by admin.`,
             });
- 
+
             if (admin) {
                 await notifySafe({
                     recipientId: admin._id,
@@ -243,13 +243,13 @@ export const runPaymentExpiry = async () => {
                     message: `Order ${order.orderId} for ${order.listingId} expired unpaid. Vehicle can be relisted.`,
                 });
             }
- 
+
             expiredCount++;
         } catch (err) {
             console.error('[auction-cron] payment expiry failed for order', _id, err);
         }
     }
- 
+
     return expiredCount;
 };
 
@@ -1667,11 +1667,16 @@ export const getPublicAuctionDetail = async (req, res) => {
         };
 
         const [seller, bids, totalBids, bidderIds] = await Promise.all([
-            Seller.findById(v.sellerId).select('businessName fullName profileImage businessType createdAt').lean(),
+            Seller.findById(v.sellerId).select('sellerId businessName fullName profileImage businessType businessYear country emirate city area createdAt ratingAverage ratingCount')
+                .lean(),
             Bid.find({
                 vehicleId: v._id,
                 status: { $nin: ['withdrawn', 'archived'] }
-            }).sort({ amount: -1 }).limit(4).select('amount createdAt bidderId').lean(),
+            })
+                .sort({ amount: -1 })
+                .limit(4)
+                .select('amount createdAt bidderId')
+                .lean(),
 
             Bid.countDocuments({ vehicleId: v._id, status: { $nin: ['withdrawn', 'archived'] } }),
             Bid.distinct('bidderId', { vehicleId: v._id, status: { $nin: ['withdrawn', 'archived'] } }),
@@ -1740,10 +1745,17 @@ export const getPublicAuctionDetail = async (req, res) => {
             data: {
                 ...v,
                 sellerInfo: seller ? {
+                    _id: seller._id,
+                    sellerId: seller.sellerId,
                     name: seller.businessName || seller.fullName,
                     profileImage: seller.profileImage,
                     businessType: seller.businessType,
-                    memberSince: seller.createdAt
+                    businessYear: seller.businessYear || null,
+                    emirate: seller.emirate || null,
+                    city: seller.city || null,
+                    memberSince: seller.createdAt,
+                    ratingAverage: seller.ratingAverage || 0,
+                    ratingCount: seller.ratingCount || 0,
                 } : null,
 
                 recentBids,
@@ -1880,3 +1892,79 @@ export const getLatestUpcomingAuctions = (req, res) =>
 
 export const getLatestEndedAuctions = (req, res) =>
     getLatestAuctionsByStatus(req, res, 'ended');
+
+// public seller's auction listing - only live and upcoming 
+export const getPublicSellerAuctions = async (req, res) => {
+    try {
+        const { sellerId } = req.params;
+
+        const page = Math.max(parseInt(req.query.page) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 4, 1), 24);
+        const skip = (page - 1) * limit;
+
+        // Validate seller ID
+        if (!mongoose.Types.ObjectId.isValid(sellerId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid seller ID'
+            });
+        }
+
+        // Only approved live and upcoming auctions
+        const filter = {
+            sellerId: new mongoose.Types.ObjectId(sellerId),
+            adminStatus: 'approved',
+            auctionStatus: { $in: ['live', 'upcoming'] }
+        };
+
+        const [vehicles, total] = await Promise.all([
+            Vehicle.find(filter)
+                .select(
+                    'make model year trim vehicleType bodyType mileage ' +
+                    'transmission fuelType emirate city priceType ' +
+                    'startingBidPrice buyNowPrice currentBid auctionType ' +
+                    'auctionStatus auctionStartDateTime auctionEndDateTime ' +
+                    'images createdAt'
+                )
+                .sort({ createdAt: -1, _id: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+
+            Vehicle.countDocuments(filter)
+        ]);
+
+        const data = vehicles.map((vehicle) => {
+            const images = (vehicle.images || [])
+                .map((image) => image?.url)
+                .filter(Boolean);
+
+            return {
+                ...vehicle,
+                image: images[0] || null,
+                images
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Seller auctions fetched successfully',
+            data,
+            pagination: {
+                currentPage: page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasNextPage: page < Math.ceil(total / limit)
+            }
+        });
+
+    } catch (err) {
+        console.error('Get Public Seller Auctions Error:', err);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Server Error Occurred'
+        });
+    }
+};

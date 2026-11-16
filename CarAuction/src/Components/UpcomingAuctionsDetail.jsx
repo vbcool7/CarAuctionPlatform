@@ -424,7 +424,7 @@ function UpcomingAuctionsDetail() {
                     />
                 </div>
 
-                {/* ======== market insights ======== */}
+                {/* ======== market insights / SellerInfo ======== */}
                 <div className="flex flex-col md:flex-row gap-8 mt-10">
 
                     <div className="w-full md:w-2/3">
@@ -674,7 +674,6 @@ function UpcomingAuctionsDetail() {
                 </div>
 
             </div>
-
         </section>
     )
 }

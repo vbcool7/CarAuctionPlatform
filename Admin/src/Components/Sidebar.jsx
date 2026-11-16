@@ -1,8 +1,12 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut, CarFront, Headphones } from 'lucide-react';
-import { RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine, RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line, RiMoneyDollarCircleLine } from "react-icons/ri";
+import { ChevronDown, LogOut, CarFront, Headphones, } from 'lucide-react';
+import {
+    RiDashboardLine, RiUserLine, RiCarLine, RiAuctionLine, RiHandCoinLine, RiBankCardLine, RiShieldCheckLine,
+    RiFileList3Line, RiBarChartGroupedLine, RiSparklingLine, RiSettings3Line, RiVerifiedBadgeLine, RiMessage2Line,
+    RiMoneyDollarCircleLine, RiStarLine
+} from "react-icons/ri";
 
 import useAdminAuthStore from '../store/useAdminAuthStore';
 import { useLiveChatUnreadCount } from '../hooks/useLiveChat';
@@ -36,7 +40,7 @@ const menuItems = [
         id: "auction-management",
         icon: RiAuctionLine,
         label: "Auction Management",
-        permissionKey: "manageAuctions", // manager access kar sakta hai agar permission true
+        permissionKey: "manageAuctions",
         active: false,
         submenu: [
             { id: "all-auctions", label: "All Auctions" },
@@ -87,6 +91,13 @@ const menuItems = [
             { id: "dispute-categories", label: "Dispute Categories", adminOnly: true },
             { id: "all-disputes", label: "All Disputes" },
         ]
+    },
+    {
+        id: "review",
+        icon: RiStarLine,
+        label: "Reviews & Moderation",
+        adminOnly: true,
+        active: false,
     },
     {
         id: "support-management",

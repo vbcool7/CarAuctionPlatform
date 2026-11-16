@@ -19,7 +19,7 @@ const buyerUploads = upload.fields([
 ]);
 
 const profileImageUpload = (req, res, next) => {
-    uploadImage.fields([{ name: 'profileImage', maxCount: 1 }])(req, res, (err) => {
+    upload.fields([{ name: 'profileImage', maxCount: 1 }])(req, res, (err) => {
         if (!err) return next();
 
         const message = err.code === 'LIMIT_FILE_SIZE'

@@ -270,6 +270,10 @@ const sellerSchema = new mongoose.Schema({
         type: Date
     },
 
+    // from reviews (hidden / order_canceled reviews not count)
+    ratingAverage: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+
 }, { timestamps: true })
 
 export default mongoose.model('Seller', sellerSchema);

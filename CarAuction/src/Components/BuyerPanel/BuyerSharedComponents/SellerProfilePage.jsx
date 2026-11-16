@@ -1,130 +1,232 @@
 
 import React, { useState } from 'react';
-import { Car, ShieldCheck, MapPin } from 'lucide-react';
-import SellerShopImage from '../../../assets/Images/SellerShopImage.png';
-import SellerAbout from './SellerAbout';
-import SellerInventory from './SellerInventory';
+import { Star, CarFront, MapPin, ArrowRight, } from 'lucide-react';
+
 import SellerReviews from './SellerReviews';
-import SellerPolicies from './SellerPolicies';
+import { useGetSellerPublicReviews } from '../../../hook/useReview';
+import { useGetPublicSellerAuctions } from '../../../hook/useAuction';
+import { formatLabel } from '../../../utils/formatters';
 
-function SellerProfilePage({ sellerId, setCurrentPage, previousPage, setSelectedVehicleId }) {
+const initialsOf = (name) =>
+    String(name || 'S')
+        .split(/\s+/)
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
 
-    const [activeTab, setActiveTab] = useState('about');
-    const [fullPage, setFullPage] = useState(null);
+function SellerProfilePage({ sellerId, setCurrentPage, previousPage }) {
+    const [page, setPage] = useState(1);
 
-    const tabs = [
-        { key: 'about', label: 'About' },
-        { key: 'inventory', label: 'Vehicle Inventory' },
-        { key: 'reviews', label: 'Reviews' },
-        { key: 'policies', label: 'Policies' },
-    ];
+    const {
+        data,
+        isLoading,
+        isError,
+        isFetching,
+    } = useGetSellerPublicReviews(sellerId, page, 10);
+
+    const {
+        data: vehiclesData,
+    } = useGetPublicSellerAuctions(sellerId, 1, 4);
+
+    const vehicleCount = vehiclesData?.pagination?.total;
+
+    const back = (
+        <button
+            onClick={() => setCurrentPage(previousPage || 'browse-auctions')}
+            className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-[#0B1E3D] mb-3 transition-colors"
+        >
+            <ArrowRight size={15} className="rotate-180" />
+            Back
+        </button>
+    );
+
+    if (isLoading) {
+        return (
+            <p className="p-10 text-center text-slate-500">
+                Loading seller...
+            </p>
+        );
+    }
+
+    if (isError || !data) {
+        return (
+            <div>
+                {back}
+                <p className="p-10 text-center text-red-500">
+                    Seller not found
+                </p>
+            </div>
+        );
+    }
+
+    const { seller, summary, reviews, pagination } = data;
+
+    const sellerName = seller?.name || 'Seller';
+
+    const location = [
+        seller?.area,
+        formatLabel(seller?.city),
+        formatLabel(seller?.emirate),
+        formatLabel(seller?.country),
+    ].filter(Boolean).join(', ');
 
     return (
-        <div className="">
+        <div className="space-y-7">
 
-            {/* heading */}
-            <div className='mb-4'>
-                <button
-                    onClick={() => setCurrentPage(previousPage)}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#0B1E3D] mb-2 transition-colors"
-                >
-                    ← Back
-                </button>
+            {/* Page Heading */}
+            <div>
+                {back}
 
                 <h1 className="text-2xl font-bold text-[#0B1E3D]">
                     Seller Profile
                 </h1>
+
+                <p className="text-sm text-slate-500 mt-1">
+                    View seller details and customer reviews.
+                </p>
             </div>
 
-            {/* seller content */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row">
+            {/* Seller Header */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                
+                <div className="h-20 bg-linear-to-r from-[#0B1E3D] via-[#132d59] to-[#0B1E3D] relative">
+                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:16px_16px]" />
+                </div>
 
-                {/* Left Side: Profile Details */}
-                <div className="p-6 md:w-1/2 flex flex-col gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-[#0B1E3D] text-white flex items-center justify-center rounded-full font-bold text-2xl">
-                            AA
+                <div className="px-5 sm:px-6 pb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-10 relative z-10">
+                        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                            
+                            <div className="w-20 h-20 rounded-2xl bg-[#0B1E3D] text-white flex items-center justify-center font-bold text-2xl shrink-0 overflow-hidden ring-4 ring-white shadow-md">
+                                {seller?.profileImage ? (
+                                    <img
+                                        src={seller.profileImage}
+                                        alt={sellerName}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    initialsOf(sellerName)
+                                )}
+                            </div>
+
+                            <div className="pt-1 sm:pb-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-xl sm:text-2xl font-bold text-[#0B1E3D] tracking-tight">
+                                        {sellerName}
+                                    </h2>
+
+                                    {seller?.status === 'approved' && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            Verified Seller
+                                        </span>
+                                    )}
+                                </div>
+
+                                {seller?.businessName && (
+                                    <p className="text-sm font-medium text-slate-500 mt-0.5">
+                                        {seller.businessName}
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                Al Yousuf Motors
-                                <span className="text-[10px] bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full uppercase">Verified Dealer</span>
-                            </h1>
-                            <div className="text-sm text-slate-600 flex items-center gap-2 mt-1">
-                                <span className="text-amber-500 font-bold">★ 4.8</span> (128 Reviews) | Member Since Jan 2022
-                            </div>
-                        </div>
-                    </div>
 
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                        Trusted automotive dealer with a wide range of quality vehicles.
-                        Specializing in premium pre-owned cars with excellent condition and verified history.
-                    </p>
+                        {/* Right-aligned Pill Metadata */}
+                        <div className="flex flex-wrap items-center gap-2 sm:pb-1">
+                            {location && (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100/80 border border-slate-200/70 px-3 py-1.5 rounded-lg">
+                                    <MapPin size={13} className="text-slate-400" />
+                                    {location}
+                                </span>
+                            )}
 
-                    <div className="flex items-center gap-6 mt-2">
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 bg-slate-50 rounded-lg text-[#0B1E3D]">
-                                <Car size={18} className='text-[#D97706]' />
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm">245</p>
-                                <p className="text-[10px] text-slate-500 uppercase">Total Vehicles</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 bg-slate-50 rounded-lg text-[#0B1E3D]">
-                                <ShieldCheck size={18} className='text-[#D97706]' />
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm">92%</p>
-                                <p className="text-[10px] text-slate-500 uppercase">Response Rate</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="p-2 bg-slate-50 rounded-lg text-[#0B1E3D]">
-                                <MapPin size={18} className='text-[#D97706]' />
-                            </div>
-                            <div>
-                                <p className="font-bold text-sm">UAE</p>
-                                <p className="text-[10px] text-slate-500 uppercase">Location</p>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-amber-50/80 border border-amber-200/80 px-3 py-1.5 rounded-lg">
+                                <Star size={13} className="text-[#D97706] fill-[#D97706]" />
+                                <strong className="text-[#0B1E3D]">
+                                    {summary?.ratingCount
+                                        ? Number(summary.ratingAverage).toFixed(1)
+                                        : '—'}
+                                </strong>
+                                <span className="text-slate-500">
+                                    ({summary?.ratingCount || 0} reviews)
+                                </span>
+                            </span>
                         </div>
                     </div>
                 </div>
-
-                {/* Right Side: Image */}
-                <div className="md:w-1/2 h-64 md:h-auto">
-                    <img
-                        src={SellerShopImage}
-                        alt="Al Yousuf Motors Showroom"
-                        className="w-full h-full object-cover"
-                    />
-                </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-6 border-b border-slate-200 mt-6">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`pb-2.5 text-sm font-medium transition-colors ${activeTab === tab.key
-                            ? 'text-[#D97706] border-b-2 border-[#D97706]'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
+            {/* Seller Statistics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                    {
+                        label: 'Listed Vehicles',
+                        value: vehicleCount ?? '—',
+                        description: 'Live and upcoming vehicles',
+                        icon: CarFront,
+                    },
+                    {
+                        label: 'Customer Rating',
+                        value: summary?.ratingCount
+                            ? `${Number(summary.ratingAverage).toFixed(1)}/5`
+                            : '—',
+                        description: `${summary?.ratingCount || 0} customer reviews`,
+                        icon: Star,
+                    },
+                ].map((item) => (
+                    <div
+                        key={item.label}
+                        className="group relative overflow-hidden bg-white border border-slate-200/80 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/80 hover:shadow-xl hover:shadow-slate-200/40"
                     >
-                        {tab.label}
-                    </button>
+                        {/* Left Accent Line */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#D97706] scale-y-0 transition-transform duration-300 origin-bottom group-hover:scale-y-100" />
+
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                    {item.label}
+                                </p>
+                                <h3 className="text-3xl font-extrabold text-[#0B1E3D] mt-2 tracking-tight">
+                                    {item.value}
+                                </h3>
+                            </div>
+
+                            <div className="w-10 h-10 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center transition-colors duration-300 group-hover:bg-amber-50 group-hover:border-amber-200 group-hover:text-[#D97706]">
+                                <item.icon size={19} strokeWidth={2} />
+                            </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />
+                            <p className="text-xs font-medium text-slate-500">{item.description}</p>
+                        </div>
+                    </div>
                 ))}
             </div>
 
-            {/* Tab Content */}
-            {activeTab === 'about' && <SellerAbout />}
-            {activeTab === 'inventory' && <SellerInventory setCurrentPage={setCurrentPage} setSelectedVehicleId={setSelectedVehicleId}/>}
-            {activeTab === 'reviews' && <SellerReviews />}
-            {activeTab === 'policies' && <SellerPolicies />}
+            {/* Customer Reviews */}
+            <section className='pt-6'>
+                <div className="mb-4">
+                    <h2 className="text-lg font-bold text-[#0B1E3D]">
+                        Customer Reviews
+                    </h2>
+
+                    <p className="text-sm text-slate-500 mt-0.5">
+                        Feedback from buyers who have interacted with this seller.
+                    </p>
+                </div>
+
+                <SellerReviews
+                    summary={summary}
+                    reviews={reviews}
+                    pagination={pagination}
+                    page={page}
+                    setPage={setPage}
+                    isFetching={isFetching}
+                />
+            </section>
+
         </div>
     );
 }

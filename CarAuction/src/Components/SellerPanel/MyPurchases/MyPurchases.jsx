@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
 import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
+import OrderReviewCard from '../../SharedComponents/Review/OrderReviewCard';
 
 import { getPaginationRange } from '../../../utils/getPaginationRange';
 import { formatLabel } from '../../../utils/formatters';
@@ -381,19 +382,29 @@ function MyPurchases({ setCurrentPage, setSelectedDisputeId }) {
                                                 </div>
                                             )}
 
-                                            {/* ---- raise dispute ---- */}
-                                            {isExpanded && order.dispute && (
-                                                <div className="mt-3">
-                                                    <DisputeActionCard
-                                                        dispute={order.dispute}
-                                                        onRaise={() => setRaiseFor(order)}
-                                                        onView={(id) => {
-                                                            setSelectedDisputeId(id);
-                                                            setCurrentPage('disputes-detail');
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
+                                            <div className='mt-4 min-w-0 flex-1 flex flex-col sm:flex-row gap-3 items-stretch'>
+                                                
+                                                {/* ---- raise dispute ---- */}
+                                                {isExpanded && order.dispute && (
+                                                    <div className="flex-1 min-w-0">
+                                                        <DisputeActionCard
+                                                            dispute={order.dispute}
+                                                            onRaise={() => setRaiseFor(order)}
+                                                            onView={(id) => {
+                                                                setSelectedDisputeId(id);
+                                                                setCurrentPage('disputes-detail');
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* ---- review ---- */}
+                                                {isExpanded && isPaid && (
+                                                    <div className="flex-1 min-w-0">
+                                                        <OrderReviewCard orderId={order._id} />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -482,7 +493,7 @@ function MyPurchases({ setCurrentPage, setSelectedDisputeId }) {
                     )}
                 </div>
             </div>
-            
+
             {/* ------- dispute modal ------- */}
             {raiseFor && (
                 <RaiseDisputeModal

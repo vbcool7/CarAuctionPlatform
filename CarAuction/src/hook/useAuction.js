@@ -335,3 +335,23 @@ export const useGetLatestEndedAuctions = () =>
             return res.data;
         },
     });
+
+
+// get public auctions by seller ID
+export const useGetPublicSellerAuctions = (sellerId, page = 1, limit = 4) => {
+    return useQuery({
+        queryKey: ['publicSellerAuctions', sellerId, page, limit],
+        queryFn: async () => {
+            const res = await API.get(
+                `/auction/get-public-seller-auctions/${sellerId}`,
+                {
+                    params: { page, limit }
+                }
+            );
+            return res.data;
+        },
+        enabled: !!sellerId,
+        placeholderData: keepPreviousData,
+        staleTime: 30_000,
+    });
+};

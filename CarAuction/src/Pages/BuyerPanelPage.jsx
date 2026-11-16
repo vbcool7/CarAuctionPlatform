@@ -19,7 +19,6 @@ import BuyerInvoices from '../Components/BuyerPanel/BuyerInvoices/BuyerInvoices'
 import BuyerProfile from '../Components/BuyerPanel/BuyerProfile/BuyerProfile';
 import BuyerSupport from '../Components/BuyerPanel/BuyerSupport/BuyerSupport';
 import SellerProfilePage from '../Components/BuyerPanel/BuyerSharedComponents/SellerProfilePage';
-import SellerInventoryDetail from '../Components/BuyerPanel/BuyerSharedComponents/SellerInventoryDetail';
 import BuyerLostAuctionsDetail from '../Components/BuyerPanel/BuyerLostAuctions/BuyerLostAuctionsDetail';
 import PlaceBidModal from '../Components/BuyerPanel/BuyerSharedComponents/PlaceBidModal';
 import BidPlacedModal from '../Components/BuyerPanel/BuyerSharedComponents/BidPlacedModal';
@@ -30,6 +29,7 @@ import BuyerBrowseAuctionsDetail from '../Components/BuyerPanel/BuyerBrowseAucti
 import BuyerNotifications from '../Components/BuyerPanel/BuyerNotifications';
 import Dispute from '../Components/SharedComponents/Dispute/Dispute';
 import DisputeDetail from '../Components/SharedComponents/Dispute/DisputeDetail';
+import GivenReviews from '../Components/SharedComponents/Review/GivenReviews';
 
 import { useDeepLinkPage } from '../hook/useDeepLinkPage';
 
@@ -166,16 +166,6 @@ function BuyerPanelPage() {
                                     previousPage={previousPage} />
                             )}
 
-                            {/* seller- inventory detail page */}
-                            {currentPage === "seller-inventory-detail" && (
-                                <SellerInventoryDetail
-                                    vehicleId={selectedVehicleId}
-                                    setCurrentPage={setCurrentPage}
-                                    setSelectedSellerId={setSelectedSellerId}
-                                    setPreviousPage={setPreviousPage}
-                                />
-                            )}
-
                             {/* watchlist */}
                             {currentPage === "watchlist" &&
                                 <BuyerWatchlist
@@ -191,7 +181,14 @@ function BuyerPanelPage() {
 
                             {/* won auctions */}
                             {currentPage === "won-auctions" && <BuyerWonAuctions setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}
-                            {currentPage === "won-auctions-detail" && <BuyerWonAuctionsDetail vehicleId={selectedVehicleId} setSelectedDisputeId={setSelectedDisputeId} setCurrentPage={setCurrentPage} />}
+                            {currentPage === "won-auctions-detail" &&
+                                <BuyerWonAuctionsDetail
+                                    vehicleId={selectedVehicleId}
+                                    setSelectedDisputeId={setSelectedDisputeId}
+                                    setCurrentPage={setCurrentPage}
+                                    setSelectedSellerId={setSelectedSellerId}
+                                    setPreviousPage={setPreviousPage} />
+                            }
 
                             {/* lost auctions */}
                             {currentPage === "lost-auctions" && <BuyerLostAuctions setSelectedLostId={setSelectedLostId} setCurrentPage={setCurrentPage} />}
@@ -218,6 +215,9 @@ function BuyerPanelPage() {
                             {/* dispute */}
                             {currentPage === 'disputes' && <Dispute setCurrentPage={setCurrentPage} setSelectedDisputeId={setSelectedDisputeId} />}
                             {currentPage === 'disputes-detail' && <DisputeDetail disputeId={selectedDisputeId} setCurrentPage={setCurrentPage} />}
+
+                            {/* my reviews */}
+                            {currentPage === 'my-reviews' && <GivenReviews showHeader />}
 
                             {/* profile */}
                             {currentPage === "profile" && <BuyerProfile setSelectedVehicleId={setSelectedVehicleId} setCurrentPage={setCurrentPage} />}

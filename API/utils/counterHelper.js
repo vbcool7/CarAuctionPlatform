@@ -20,3 +20,4 @@ export const getNextSupportId = () => getNextSequence('supportId', 'SUP');
 export const getNextCallRequestId = () => getNextSequence('callRequestId', 'CALL');
 export const getNextDisputeId = () => getNextSequence('disputeId', 'DSP');
 export const getNextDisputeCategoryId = () => getNextSequence('disputeCategoryId', 'DSC');
+export const getNextReviewId = () => getNextSequence('reviewId', 'REV')

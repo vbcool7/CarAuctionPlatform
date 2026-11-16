@@ -29,6 +29,7 @@ const notificationSchema = new mongoose.Schema(
                 'order_canceled', 
                 'purchase_pending', 'purchase_expired', 'purchase_canceled',
                 'dispute_raised', 'dispute_response_received', 'dispute_under_review', 'dispute_resolved', 'dispute_withdrawn',
+                'review_received', 'review_replied',
             ],
         },
 

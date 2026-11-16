@@ -67,6 +67,7 @@ import AllTicketsDetail from './Components/SupportManagement/AllTicketsDetail';
 import CallRequests from './Components/SupportManagement/CallRequests';
 import CallRequestsDetail from './Components/SupportManagement/CallRequestsDetail';
 import LiveChat from './Components/LiveChat/LiveChat';
+import Review from './Components/Review/Review';
 
 function App() {
 
@@ -418,6 +419,9 @@ function App() {
 
                 {/* live chat */}
                 {currentPage === 'live-chat' && <LiveChat setCurrentPage={setCurrentPage} />}
+
+                {/* review */}
+                {currentPage === 'review' && <Review setCurrentPage={setCurrentPage} />}
 
                 {/* logout */}
                 {isLogoutModalOpen && (

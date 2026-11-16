@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Download } from 'lucide-react';
 import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
 import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
+import OrderReviewCard from '../../SharedComponents/Review/OrderReviewCard';
 
-import { useGetMySaleDetail } from '../../../hook/useSales';
 import { money, fmtDate, fmtTime, fmtDateTime, imgOf, pretty, STATUS_META, SOURCE_LABEL, PAYOUT_LABEL } from '../../../utils/salesUtils';
 import { useDownloadSellerSaleStatement } from '../../../hook/useInvoice';
+import { useGetMySaleDetail } from '../../../hook/useSales';
 
 const iconByState = {
     done: 'bg-green-500 text-white',
@@ -331,6 +332,11 @@ function SalesHistoryDetail({ setCurrentPage, salesId, setSelectedDisputeId }) {
                         />
                     )}
 
+                    {/* Review */}
+                    {sale.orderStatus === 'paid' &&
+                        <OrderReviewCard orderId={sale.orderId} />
+                    }
+
                     {/* Vehicle Information */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100">
@@ -350,7 +356,7 @@ function SalesHistoryDetail({ setCurrentPage, salesId, setSelectedDisputeId }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

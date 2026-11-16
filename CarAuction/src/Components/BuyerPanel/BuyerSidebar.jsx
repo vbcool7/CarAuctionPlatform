@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, CreditCard, FileText, User, Headset, LogOut, ChevronDown, ShieldAlert } from 'lucide-react';
+import {
+    LayoutDashboard, Gavel, Radio, CalendarDays, Heart, Trophy, XCircle, Tag, CreditCard, FileText, User,
+    Headset, LogOut, ChevronDown, ShieldAlert, Star
+} from 'lucide-react';
 import { useSupportUnreadCount } from '../../hook/useSupportChat';
 
 const menuItems = [
@@ -17,6 +20,7 @@ const menuItems = [
     { id: "payments", icon: CreditCard, label: "Payments", active: false },
     { id: "invoices", icon: FileText, label: "Invoices", active: false },
     { id: "disputes", icon: ShieldAlert, label: "Dispute", active: false },
+    { id: "my-reviews", icon: Star, label: "My Reviews", active: false },
     { id: "profile", icon: User, label: "Profile Settings", active: false },
     { id: "support", icon: Headset, label: "Support", active: false },
     { id: "logout", icon: LogOut, label: "Log Out", active: false },
@@ -41,15 +45,16 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
         <>
             <div
                 className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-lg transition-transform duration-300 ease-in-out
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
-        ${collapsed ? 'lg:w-20' : 'lg:w-72'}
-    `}>
+                        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
+                        ${collapsed ? 'lg:w-20' : 'lg:w-72'}`}>
 
                 {/* Logo */}
                 <div className={`flex items-center border-b border-slate-100 p-6
-            ${collapsed ? 'justify-center' : 'justify-between'}`}>
-                    <Link to="/" className='flex items-center gap-2 hover:opacity-80 transition-opacity'>
+                    ${collapsed ? 'justify-center' : 'justify-between'}`}>
+                    <Link
+                        to="/"
+                        className='flex items-center gap-2 hover:opacity-80 transition-opacity'>
+
                         <div className="bg-[#D97706] p-1 rounded-lg">🚗</div>
                         {!collapsed && (
                             <span className="text-xl font-bold text-[#0B1E3D]">
@@ -100,8 +105,7 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                                 >
                                     <div className='flex items-center gap-3'>
                                         {/* Icon */}
-                                        <div className={`shrink-0 
-                                    ${isActive ? "text-white" : "text-slate-400 hover:text-[#D97706]"}`}>
+                                        <div className={`shrink-0 ${isActive ? "text-white" : "text-slate-400 hover:text-[#D97706]"}`}>
                                             <Icon size={18} />
                                         </div>
 
@@ -156,27 +160,6 @@ function BuyerSidebar({ collapsed, onToggle, currentPage, onPageChange, mobileOp
                         );
                     })}
                 </nav>
-
-                {/* Footer support section */}
-                {/* <div className='mt-auto p-4 border-t border-[#E2E8F0]'>
-                    {collapsed ? (
-                        <div className="flex justify-center p-2 rounded-xl bg-[#0B1E3D]/5 text-[#D97706]">
-                            <Headset size={24} />
-                        </div>
-                    ) : (
-                        <div className="bg-[#F8FAFC] p-4 rounded-2xl border border-[#E2E8F0] flex flex-col items-center text-center">
-                            <div className="p-2 bg-white rounded-lg shadow-sm text-[#0B1E3D] mb-3">
-                                <Headset size={24} />
-                            </div>
-                            <h4 className="font-bold text-[#0B1E3D] text-sm">Need Help?</h4>
-                            <p className="text-[11px] text-slate-500 mt-1 mb-3">Our support team is here to help you.</p>
-
-                            <button className="w-full py-2 text-xs font-semibold text-[#0B1E3D] bg-white border border-[#D97706] rounded-lg hover:bg-[#D97706] hover:text-white transition-colors">
-                                Contact Support
-                            </button>
-                        </div>
-                    )}
-                </div> */}
             </div>
         </>
     );

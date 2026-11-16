@@ -8,12 +8,14 @@ import AuctionDetailsTab from '../../AuctionDetailsTab';
 import DocumentsTab from '../../DocumentsTab';
 import DetailTabs from '../../DetailTabs';
 import ConditionTab from '../../ConditionTab';
-import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 import VehicleGallery from '../../VehicleGallery';
 import BuyerWonAuctionDetailStatusBanner from './BuyerWonAuctionsStatusBanner';
 import ActivityTimelineTab from '../../ActivityTimelineTab';
 import DisputeActionCard from '../../SharedComponents/Dispute/DisputeActionCard';
 import RaiseDisputeModal from '../../SharedComponents/Dispute/RaiseDisputeModal';
+import OrderReviewCard from '../../SharedComponents/Review/OrderReviewCard';
+import { toast } from 'react-toastify';
+import { UseCountDown } from '../BuyerSharedComponents/UseCountDown';
 
 import { formatDateTime, formatLabel, formatPrice } from '../../../utils/formatters';
 import { useGetMyOrderDetail } from '../../../hook/usePayment';
@@ -55,7 +57,7 @@ const statusConfig = {
     },
 };
 
-function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelectedDisputeId }) {
+function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelectedDisputeId, setSelectedSellerId, setPreviousPage }) {
 
     const [showRaise, setShowRaise] = useState(false);
 
@@ -97,7 +99,7 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelecte
 
     const pendingTabs = [
         { key: "vehicle-details", label: "Vehicle Details", content: <VehicleInfoTab vehicle={vehicle} /> },
-        { key: "invoices", label: "Invoices", content: <div /> },
+        { key: "auction-info", label: "Auction Info", content: <AuctionDetailsTab vehicle={vehicle} /> },
         { key: "documents", label: "Documents", content: <DocumentsTab vehicle={vehicle} /> },
         { key: "activity-timeline", label: "Activity Timeline", content: <ActivityTimelineTab order={order} /> },
     ];
@@ -105,7 +107,6 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelecte
     const completedTabs = [
         { key: "specifications", label: "Vehicle Details", content: <VehicleInfoTab vehicle={vehicle} /> },
         { key: "auction-info", label: "Auction Info", content: <AuctionDetailsTab vehicle={vehicle} /> },
-        { key: "invoices", label: "Invoices", content: <div /> },
         { key: "documents", label: "Documents", content: <DocumentsTab vehicle={vehicle} /> },
         { key: "activity-timeline", label: "Activity Timeline", content: <ActivityTimelineTab order={order} /> },
     ];
@@ -601,6 +602,13 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelecte
                             </div>
                         )}
 
+                        {/* ── REVIEW ── */}
+                        {(isCompleted || isHandedOver) && (
+                            <div className="mb-6">
+                                <OrderReviewCard orderId={order._id} />
+                            </div>
+                        )}
+
                         {/* ── CANCELED: Refund Summary ── */}
                         {wonStatus === 'canceled' && (
                             <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mb-6">
@@ -714,11 +722,17 @@ function BuyerWonAuctionsDetail({ vehicleId: orderId, setCurrentPage, setSelecte
                         )}
 
                         {/* ── COMPLETED + PICKUP: Seller Info ── */}
-                        {(isCompleted || isHandedOver) && (
+                        {/* {(isCompleted || isHandedOver) && ( */}
                             <div className="mb-6">
-                                <BuyerAuctionSellerCard vehicle={vehicle} />
+                                <BuyerAuctionSellerCard
+                                    seller={order.sellerId}
+                                    setCurrentPage={setCurrentPage}
+                                    setSelectedSellerId={setSelectedSellerId}
+                                    setPreviousPage={setPreviousPage}
+                                    currentPageName='won-auctions-detail'
+                                />
                             </div>
-                        )}
+                        {/* )} */}
 
                         {/* ── Need Help ── */}
                         {(isCompleted || isHandedOver) && (

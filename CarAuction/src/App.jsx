@@ -32,6 +32,7 @@ import ReUploadBuyerDocs from './Components/ReUploadBuyerDocs';
 import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
 import RoleRoute from './Components/RoleRoute';
 import PaymentResult from './Components/PaymentResult';
+import SellerInfoDetail from './Components/SellerInfoDetail';
 
 function App() {
   return (
@@ -67,6 +68,8 @@ function App() {
 
           <Route path='/ended-auctions' element={<EndedAuctions />} />
           <Route path='/ended-auction-detail/:id' element={<EndedAuctionsDetail />} />
+
+          <Route path='/seller/:sellerId' element={<SellerInfoDetail />} />
 
           <Route path='/how-it-work' element={<HowItWorks />} />
           <Route path='/about-us' element={<AboutUs />} />

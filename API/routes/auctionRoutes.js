@@ -9,7 +9,7 @@ import {
     cancelAuction,
     getAllAuctions, getDistinctMakes, getDistinctModels, getupcomingAuctionDates, getLostAuctions, getAuctionDetail,
     getHomeLiveAuctions, getHomeSoldedVehicles, getPublicAuctions, getPublicAuctionDetail, getUpcomingAuctionDates,
-    getLatestLiveAuctions, getLatestUpcomingAuctions, getLatestEndedAuctions
+    getLatestLiveAuctions, getLatestUpcomingAuctions, getLatestEndedAuctions, getPublicSellerAuctions, 
 } from '../controllers/auctionController.js';
 
 const router = express.Router();
@@ -29,7 +29,7 @@ router.get('/get-auction-detail/:id', authMiddleware(['buyer']), getAuctionDetai
 router.get('/get-upcoming-auction-dates', getupcomingAuctionDates);
 router.get('/get-lost-auctions-buyer', authMiddleware(['buyer']), getLostAuctions);
 
-// ============================================= USER
+// ============================================= PUBLIC
 router.get('/get-live-auctions', getHomeLiveAuctions);
 router.get('/get-solded-auctions', getHomeSoldedVehicles);
 router.get('/get-auction-list', getPublicAuctions);
@@ -38,5 +38,6 @@ router.get('/get-upcoming-auction-dates', getUpcomingAuctionDates);
 router.get('/get-latest-live-auctions', getLatestLiveAuctions);
 router.get('/get-latest-upcoming-auctions', getLatestUpcomingAuctions);
 router.get('/get-latest-ended-auctions', getLatestEndedAuctions);
+router.get('/get-public-seller-auctions/:sellerId', getPublicSellerAuctions);
 
 export default router;

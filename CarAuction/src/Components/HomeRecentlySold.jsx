@@ -45,7 +45,7 @@ function HomeRecentlySold() {
                     </div>
 
                     <button
-                        onClick={() => handleStatusClick('/ended-auctions')}
+                        onClick={() => handleStatusClick('sold')}
                         className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#D97706] hover:text-[#B45309] transition-colors whitespace-nowrap"
                     >
                         <span className="sm:hidden">View All</span>
@@ -88,7 +88,7 @@ function HomeRecentlySold() {
                                     </div>
 
                                     {/* Content Area */}
-                                    <div className='p-5 flex flex-col flex-grow justify-between'>
+                                    <div className='p-5 flex flex-col grow justify-between'>
                                         <div>
                                             {/* Title */}
                                             <div className="mb-3">

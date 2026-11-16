@@ -452,7 +452,9 @@ function AllDisputesDetail({ disputeId, setCurrentPage, setSelectedPaymentId }) 
 
                     {/* internal notes */}
                     <Card title="Internal Notes">
-                        <p className="mb-3 text-[11px] text-slate-400"> Visible only to admins and managers, not to buyers or sellers.</p>
+                        <p className="mb-3 text-[11px] text-slate-400">
+                            This information is visible only to admins and managers, not to buyers or sellers.
+                        </p>
 
                         {dispute.adminNotes?.length > 0 ? (
                             <div className="mb-4 space-y-3">

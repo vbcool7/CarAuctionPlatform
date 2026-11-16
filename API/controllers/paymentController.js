@@ -363,15 +363,13 @@ export const getMyOrder = async (req, res) => {
             .select(ORDER_FIELDS)
             .populate(
                 'vehicleId',
-                `
-        make model year trim vin mileage listingId vehicleType bodyType fuelType transmission drivetrain exteriorColor
-        interiorColor country emirate city zipCode titleStatus accidentHistory vehicleDescription overallCondition mechanicalCondition
-        exteriorCondition interiorCondition tiresCondition glassCondition paintType repainted sunroof smokeOdor petFriendly
-        engineSize cylinders doors seats images documents priceType buyNowPrice startingBidPrice currentBid auctionType 
-        auctionStatus auctionStartDateTime auctionEndDateTime auctionDuration
-    `
+                `make model year trim vin mileage listingId vehicleType bodyType fuelType transmission drivetrain
+                exteriorColor interiorColor country emirate city zipCode titleStatus accidentHistory vehicleDescription
+                overallCondition mechanicalCondition exteriorCondition interiorCondition tiresCondition glassCondition 
+                paintType repainted sunroof smokeOdor petFriendly engineSize cylinders doors seats images documents priceType
+                buyNowPrice startingBidPrice currentBid auctionType auctionStatus auctionStartDateTime auctionEndDateTime auctionDuration`
             )
-            .populate('sellerId', 'fullName businessName')
+            .populate('sellerId', 'fullName businessName ratingAverage ratingCount')
             .lean();
 
         if (!order) {

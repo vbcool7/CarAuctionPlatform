@@ -19,6 +19,7 @@ import Payouts from '../Components/SellerPanel/Payouts/Payouts';
 import PayoutDetails from '../Components/SellerPanel/Payouts/PayoutDetails';
 import Dispute from '../Components/SharedComponents/Dispute/Dispute';
 import DisputeDetail from '../Components/SharedComponents/Dispute/DisputeDetail';
+import Reviews from '../Components/SellerPanel/Reviews/Reviews';
 
 import useAuthStore from '../store/useAuthStore';
 import SellerNotifications from '../Components/SellerPanel/SellerNotifications';
@@ -157,6 +158,9 @@ function SellerPanelPage() {
               {/* dispute */}
               {currentPage === 'disputes' && <Dispute setCurrentPage={setCurrentPage} setSelectedDisputeId={setSelectedDisputeId} />}
               {currentPage === 'disputes-detail' && <DisputeDetail disputeId={selectedDisputeId} setCurrentPage={setCurrentPage} />}
+
+              {/* my reviews */}
+              {currentPage === 'reviews' && <Reviews setCurrentPage={setCurrentPage} />}
 
               {/* profile-settings */}
               {currentPage === 'profile-settings' && <ProfileSetting setCurrentPage={setCurrentPage} />}
