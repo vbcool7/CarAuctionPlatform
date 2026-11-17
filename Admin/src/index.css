@@ -191,3 +191,23 @@
 .react-datepicker__triangle {
     display: none;
 }
+
+/* =====================================================
+   CKEditor Content Styling
+===================================================== */
+.ck-editor__editable_inline { min-height: 320px; }
+
+.ck-content { line-height: 1.7; color: #1e293b; }
+.ck-content p { margin: 0.8em 0; }
+.ck-content h2 { font-size: 1.6em; font-weight: 700; margin: 1.2em 0 0.5em; color: #0B1E3D; }
+.ck-content h3 { font-size: 1.3em; font-weight: 700; margin: 1.1em 0 0.5em; color: #0B1E3D; }
+.ck-content h4 { font-size: 1.1em; font-weight: 600; margin: 1em 0 0.4em; color: #0B1E3D; }
+.ck-content ul { list-style: disc; padding-left: 1.6em; margin: 0.8em 0; }
+.ck-content ol { list-style: decimal; padding-left: 1.6em; margin: 0.8em 0; }
+.ck-content li { margin: 0.25em 0; }
+.ck-content a { color: #D97706; text-decoration: underline; }
+.ck-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 1em; margin: 1em 0; color: #475569; font-style: italic; }
+.ck-content img { max-width: 100%; height: auto; }
+.ck-content figure.image { margin: 1em auto; display: table; }
+.ck-content figcaption { font-size: 0.85em; color: #64748b; text-align: center; }
+.ck-image-upload-complete-icon { display: none !important; }

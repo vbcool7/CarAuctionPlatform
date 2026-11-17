@@ -19,6 +19,8 @@ import disputeRoutes from './disputeRoutes.js';
 import supportChatRoutes from './supportChatRoutes.js';
 import disputeChatRoutes from './disputeChatRoutes.js';
 import reviewRoutes from './reviewRoutes.js';
+import blogRoutes from './blogRoutes.js';
+import contactRoutes from './contactRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -41,5 +43,7 @@ rootRouter.use('/dispute', disputeRoutes);
 rootRouter.use('/support-chat', supportChatRoutes);
 rootRouter.use('/dispute-chat', disputeChatRoutes);
 rootRouter.use('/review', reviewRoutes);
+rootRouter.use('/blog', blogRoutes);
+rootRouter.use('/contact', contactRoutes);
 
 export default rootRouter;

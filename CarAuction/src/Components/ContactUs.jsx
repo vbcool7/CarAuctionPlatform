@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Breadcrumbs from '../Components/Breadcrumbs';
 import ContactMainImg from '../assets/Images/ContactMainImg.png';
-import { Headset, Clock, Mail, MessageCircle, User, Phone, BookOpen, MessageSquare, MapPin, ParkingCircle, Lock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Headset, Clock, Mail, User, Phone, BookOpen, MessageSquare, MapPin, ParkingCircle, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import { SiWhatsapp } from 'react-icons/si';
 import { useNavigate } from 'react-router-dom';
 
@@ -124,17 +124,29 @@ function ContactUs() {
 
                             <div className="relative">
                                 <User className="absolute left-3 top-3 text-slate-400" size={18} />
-                                <input type="text" placeholder="Full Name" className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none" />
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none"
+                                />
                             </div>
 
                             <div className="relative">
                                 <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
-                                <input type="email" placeholder="Email Address" className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none" />
+                                <input
+                                    type="email"
+                                    placeholder="Email Address"
+                                    className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none"
+                                />
                             </div>
 
                             <div className="relative">
                                 <Phone className="absolute left-3 top-3 text-slate-400" size={18} />
-                                <input type="tel" placeholder="Phone Number" className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none" />
+                                <input
+                                    type="tel"
+                                    placeholder="Phone Number"
+                                    className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none"
+                                />
                             </div>
 
                             <div className="relative">
@@ -146,11 +158,18 @@ function ContactUs() {
 
                             <div className="relative">
                                 <MessageSquare className="absolute left-3 top-3 text-slate-400" size={18} />
-                                <textarea placeholder="Your Message" rows="4" className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none resize-none"></textarea>
+                                <textarea
+                                    placeholder="Your Message"
+                                    rows="4"
+                                    className="w-full pl-10 p-2.5 border border-gray-400 rounded-lg focus:ring-2 focus:ring-[#D97706] outline-none resize-none">
+                                </textarea>
                             </div>
 
                             <label className="flex items-center gap-2 text-sm text-slate-600">
-                                <input type="checkbox" className="accent-[#D97706]" /> I agree to the <span className="text-[#D97706] font-semibold">Privacy Policy</span>
+                                <input
+                                    type="checkbox"
+                                    className="accent-[#D97706]" />
+                                I agree to the <span className="text-[#D97706] font-semibold">Privacy Policy</span>
                             </label>
 
                             <button className="w-full bg-[#0B1E3D] text-white py-3 rounded-lg font-semibold hover:bg-[#0B1E3D]/90 transition flex items-center justify-center gap-2">
@@ -164,25 +183,39 @@ function ContactUs() {
                     </div>
 
                     {/* Map & Office Info Section */}
-                    <div className='w-full md:w-1/2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col'>
-                        <h2 className="text-2xl font-bold text-[#0B1E3D] p-8 pb-4">Our Headquarters</h2>
-                        <div className="h-64 bg-slate-200 w-full relative">
-                            {/* Replace this div with your actual Map component */}
-                            <div className="absolute inset-0 flex items-center justify-center text-slate-500">Google Maps Placeholder</div>
+                    <div className="w-full md:w-1/2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+                        <h2 className="text-2xl font-bold text-[#0B1E3D] p-8 pb-4">
+                            Our Headquarters
+                        </h2>
+
+                        <div className="h-72 sm:h-90 w-full bg-slate-200 overflow-hidden">
+                            <iframe
+                                title="Dubai Map"
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d28884.928991405835!2d55.25122002068421!3d25.1824366112278!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e5f682def25f457%3A0x3dd4c4097970950e!2sBusiness%20Bay%20-%20Dubai%20-%20United%20Arab%20Emirates!5e0!3m2!1sen!2sin!4v1794823513502!5m2!1sen!2sin"
+                                className="w-full h-full border-0"
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                            />
                         </div>
+
                         <div className="p-8 space-y-6">
                             <div className="flex gap-4">
                                 <MapPin className="text-[#D97706] shrink-0" size={24} />
                                 <div>
                                     <h4 className="font-bold text-[#0B1E3D]">AutoBid Car Auctions FZ-LLC</h4>
-                                    <p className="text-slate-600 text-sm">Business Bay, Dubai, United Arab Emirates</p>
+                                    <p className="text-slate-600 text-sm">
+                                        Business Bay, Dubai, United Arab Emirates
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
                                 <ParkingCircle className="text-[#D97706] shrink-0" size={24} />
                                 <div>
                                     <h4 className="font-bold text-[#0B1E3D]">Free Parking Available</h4>
-                                    <p className="text-slate-600 text-sm">Visitor parking is available at our office.</p>
+                                    <p className="text-slate-600 text-sm">
+                                        Visitor parking is available at our office.
+                                    </p>
                                 </div>
                             </div>
                         </div>

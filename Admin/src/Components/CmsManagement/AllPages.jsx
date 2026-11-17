@@ -48,7 +48,7 @@ const pageStats = [
     }
 ];
 
-function AllPages({setCurrentPage}) {
+function AllPages({ setCurrentPage }) {
 
     const [selectedStatus, setSelectedStatus] = useState();
 
@@ -68,9 +68,9 @@ function AllPages({setCurrentPage}) {
 
                 {/* buttons */}
                 <div className="">
-                    <button 
-                    onClick={() => setCurrentPage('create-custom-page')}
-                    className="flex py-2.5 items-center justify-center gap-2 rounded-lg bg-[#D97706] px-4 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-amber-700 active:scale-[0.98]">
+                    <button
+                        onClick={() => setCurrentPage('create-custom-page')}
+                        className="flex py-2.5 items-center justify-center gap-2 rounded-lg bg-[#D97706] px-4 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-amber-700 active:scale-[0.98]">
                         <Plus size={16} />
                         <span>Add New Page</span>
                     </button>
@@ -151,62 +151,61 @@ function AllPages({setCurrentPage}) {
                     </thead>
 
                     <tbody className="divide-y divide-slate-100">
-                    {cmsPagesList.map((page, index) => (
-                        <tr
-                            key={index}
-                            className="hover:bg-slate-50/50 transition-colors text-[13px]"
-                        >
-                            {/* Page Title */}
-                            <td className="px-6 py-4 font-medium text-slate-800 truncate flex items-center gap-2.5">
-                                <span className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                    <FileText className="w-4 h-4" />
-                                </span>
-                                <span className="truncate">{page.title}</span>
-                            </td>
+                        {cmsPagesList.map((page, index) => (
+                            <tr
+                                key={index}
+                                className="hover:bg-slate-50/50 transition-colors text-[13px]"
+                            >
+                                {/* Page Title */}
+                                <td className="px-6 py-4 font-medium text-slate-800 truncate flex items-center gap-2.5">
+                                    <span className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                        <FileText className="w-4 h-4" />
+                                    </span>
+                                    <span className="truncate">{page.title}</span>
+                                </td>
 
-                            {/* Slug */}
-                            <td className="px-6 py-4 text-slate-500 font-mono text-xs truncate">
-                                {page.path}
-                            </td>
+                                {/* Slug */}
+                                <td className="px-6 py-4 text-slate-500 font-mono text-xs truncate">
+                                    {page.path}
+                                </td>
 
-                            {/* Status */}
-                            <td className="px-6 py-4">
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                    page.status === 'Published' 
-                                        ? 'bg-emerald-50 text-emerald-600' 
-                                        : 'bg-amber-50 text-amber-600'
-                                }`}>
-                                    {page.status}
-                                </span>
-                            </td>
+                                {/* Status */}
+                                <td className="px-6 py-4">
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${page.status === 'Published'
+                                            ? 'bg-emerald-50 text-emerald-600'
+                                            : 'bg-amber-50 text-amber-600'
+                                        }`}>
+                                        {page.status}
+                                    </span>
+                                </td>
 
-                            {/* Last Updated */}
-                            <td className="px-6 py-4 text-slate-600 truncate">
-                                {page.date}
-                            </td>
+                                {/* Last Updated */}
+                                <td className="px-6 py-4 text-slate-600 truncate">
+                                    {page.date}
+                                </td>
 
-                            {/* Updated By */}
-                            <td className="px-6 py-4 text-slate-600 truncate">
-                                {page.author}
-                            </td>
+                                {/* Updated By */}
+                                <td className="px-6 py-4 text-slate-600 truncate">
+                                    {page.author}
+                                </td>
 
-                            {/* Actions */}
-                            <td className="px-6 py-4">
-                                <div className="flex items-center justify-center gap-2">
-                                    <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                        <Eye className="w-4 h-4" />
-                                    </button>
-                                    <button className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
-                                        <Edit className="w-4 h-4" />
-                                    </button>
-                                    <button className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-                                        <MoreVertical className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
+                                {/* Actions */}
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            <Eye className="w-4 h-4" />
+                                        </button>
+                                        <button className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                                            <MoreVertical className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </table>
             </div>
         </div>

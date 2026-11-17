@@ -91,7 +91,7 @@ function SellerProfilePage({ sellerId, setCurrentPage, previousPage }) {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                 
                 <div className="h-20 bg-linear-to-r from-[#0B1E3D] via-[#132d59] to-[#0B1E3D] relative">
-                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:16px_16px]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-size-[16px_16px]" />
                 </div>
 
                 <div className="px-5 sm:px-6 pb-6">

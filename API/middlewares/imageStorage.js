@@ -23,6 +23,8 @@ const storage = new CloudinaryStorage({
             folderName = 'CarAuction/SupportTicket';
         } else if (req.baseUrl.includes('dispute')) {
             folderName = 'CarAuction/Dispute';
+        } else if (req.baseUrl.includes('blog')) {
+            folderName = 'CarAuction/Blog';
         }
 
         const isPdf = file.mimetype === 'application/pdf';

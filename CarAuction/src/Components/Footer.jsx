@@ -148,6 +148,11 @@ function Footer() {
                                 About Us
                             </NavLink>
                             <NavLink
+                                to="/blog"
+                                className={({ isActive }) => `wrap-break-word transition-all duration-300  ${isActive ? 'text-gray-300' : 'text-[#94A3B8] hover:text-[#F8FAFC]'}`}>
+                                Blog
+                            </NavLink>
+                            <NavLink
                                 to="/faq"
                                 className={({ isActive }) => `wrap-break-word transition-all duration-300  ${isActive ? 'text-gray-300' : 'text-[#94A3B8] hover:text-[#F8FAFC]'}`}>
                                 FAQ

@@ -33,6 +33,8 @@ import ReUploadSellerDocs from './Components/ReUploadSellerDocs';
 import RoleRoute from './Components/RoleRoute';
 import PaymentResult from './Components/PaymentResult';
 import SellerInfoDetail from './Components/SellerInfoDetail';
+import Blogs from './Components/Blogs';
+import BlogDetail from './Components/BlogDetail';
 
 function App() {
   return (
@@ -76,6 +78,8 @@ function App() {
           <Route path='/sell-your-car' element={<SellYourCar />} />
           <Route path='/contact' element={<ContactUs />} />
           <Route path='/faq' element={<FAQs />} />
+          <Route path='/blog' element={<Blogs />} />
+          <Route path='/blog/:slug' element={<BlogDetail />} />
 
           <Route path='/signup' element={<RegisterSelection />} />
           <Route path='/login' element={<LoginForm />} />

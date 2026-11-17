@@ -71,27 +71,6 @@ export const deleteProductAssetsFromCloudinary = async (urls) => {
 };
 
 // ============== new: extract public_id from a Cloudinary URL and delete the existing file
-// export const deleteOldFileFromCloudinary = async (url) => {
-//     try {
-//         if (!url || typeof url !== 'string') return;
-
-//         const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/);
-
-//         if (!match || !match[1]) {
-//             console.error("Could not extract public_id from URL:", url);
-//             return;
-//         }
-
-//         const publicId = match[1];
-//         const resourceType = url.includes('.pdf') ? 'raw' : 'image';
-
-//         await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
-//         console.log(`Deleted old file: ${publicId}`);
-//     } catch (error) {
-//         console.error("Error deleting old Cloudinary file:", error);
-//     }
-// };
-
 export const deleteOldFileFromCloudinary = async (url) => {
     try {
         if (!url || typeof url !== 'string') return;

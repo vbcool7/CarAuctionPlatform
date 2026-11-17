@@ -398,7 +398,7 @@ function App() {
                 {currentPage === 'all-blogs' && <BlogList setCurrentPage={setCurrentPage} setEditingBlog={setEditingBlog} />}
                 {currentPage === 'create-blog-post' && <CreateBlogPost key="new" setCurrentPage={setCurrentPage} />}
                 {currentPage === 'edit-blog-post' && (
-                  <CreateBlogPost setCurrentPage={setCurrentPage} initialData={editingBlog} key={editingBlog?.id} />
+                  <CreateBlogPost setCurrentPage={setCurrentPage} initialData={editingBlog} key={editingBlog?._id} />
                 )}
 
                 {/* kyc verification */}
