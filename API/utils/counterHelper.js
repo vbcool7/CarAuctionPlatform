@@ -5,7 +5,7 @@ export const getNextSequence = async (key, prefix, padLength = 5) => {
     const counter = await Counter.findByIdAndUpdate(
         key,
         { $inc: { seq: 1 } },
-        { new: true, upsert: true }
+        { returnDocument: 'after', upsert: true }
     );
     return `${prefix}-${String(counter.seq).padStart(padLength, '0')}`;
 };
@@ -23,3 +23,4 @@ export const getNextDisputeCategoryId = () => getNextSequence('disputeCategoryId
 export const getNextReviewId = () => getNextSequence('reviewId', 'REV');
 export const getNextBlogId = () => getNextSequence('blogId', 'BLOG');
 export const getNextContactId = () => getNextSequence('contactId', 'CONTACT');
+export const getNextFaqId = () => getNextSequence('faqId', 'FAQ');

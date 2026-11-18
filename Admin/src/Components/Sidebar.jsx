@@ -119,6 +119,7 @@ const menuItems = [
         submenu: [
             { id: "all-pages", label: "All Pages" },
             { id: "all-blogs", label: "Blog post" },
+            { id: "faq-management", label: "FAQs" },
         ]
     },
     {

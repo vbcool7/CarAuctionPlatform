@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Globe, FileEdit, Pencil, Trash2, Car, } from 'lucide-react';
-import SearchBar from '../SharedComponents/SearchBar';
-import FilterDropdown from '../SharedComponents/FilterDropdown';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
 import toast from 'react-hot-toast';
-import { fmtDate } from '../utils/formatter';
-import { getPaginationRange } from '../utils/getPaginationRange';
+import { fmtDate } from '../../utils/formatter';
+import { getPaginationRange } from '../../utils/getPaginationRange';
 
-import { useGetAllBlogs, useDeleteBlog } from '../../hooks/useBlog';
+import { useGetAllBlogs, useDeleteBlog } from '../../../hooks/useBlog';
 
 const STATUS_OPTIONS = [
     { label: 'All Status', value: '' },

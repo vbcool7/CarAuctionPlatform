@@ -1,6 +1,6 @@
 
 import mongoose from 'mongoose';
-import { FAQ_DEFAULT_ICON, FAQ_ICON_KEYS } from '../utils/faqIcons';
+import { FAQ_DEFAULT_ICON, FAQ_ICON_KEYS } from '../utils/faqIcons.js';
 
 const faqCategorySchema = new mongoose.Schema(
     {

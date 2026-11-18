@@ -42,9 +42,9 @@ import AddNewCategory from './Components/DisputeManagement/DisputeCategories/Add
 import AllDisputesDetail from './Components/DisputeManagement/AllDisputes/AllDisputesDetail';
 import ReportAndAnalytics from './Components/ReportAndAnalytics/ReportAndAnalytics';
 import CreateCustomPage from './Components/CmsManagement/CreateCustomPage';
-import CreateBlogPost from './Components/CmsManagement/CreateBlogPost';
+import CreateBlogPost from './Components/CmsManagement/Blog/CreateBlogPost';
 import AllPages from './Components/CmsManagement/AllPages';
-import BlogList from './Components/CmsManagement/BlogList';
+import BlogList from './Components/CmsManagement/Blog/BlogList';
 import SystemSetting from './Components/SystemSetting/SystemSetting';
 import AdvancedFeatures from './Components/AdvancedFeatures/AdvancedFeatures';
 import PayoutsDetail from './Components/PayoutManagement/Payouts/PayoutsDetail';
@@ -68,6 +68,7 @@ import CallRequests from './Components/SupportManagement/CallRequests';
 import CallRequestsDetail from './Components/SupportManagement/CallRequestsDetail';
 import LiveChat from './Components/LiveChat/LiveChat';
 import Review from './Components/Review/Review';
+import FaqManagement from './Components/CmsManagement/FaqManagement/FaqManagement';
 
 function App() {
 
@@ -400,6 +401,8 @@ function App() {
                 {currentPage === 'edit-blog-post' && (
                   <CreateBlogPost setCurrentPage={setCurrentPage} initialData={editingBlog} key={editingBlog?._id} />
                 )}
+
+                {currentPage === 'faq-management' && <FaqManagement setCurrentPage={setCurrentPage} />}
 
                 {/* kyc verification */}
                 {currentPage === 'buyer-kyc' && <BuyerKycVerification setSelectedBuyerKycId={setSelectedBuyerKycId} setCurrentPage={setCurrentPage} />}

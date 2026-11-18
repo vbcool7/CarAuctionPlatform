@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ArrowLeft, ImagePlus, Upload, X } from 'lucide-react';
-import RichTextEditor from './RichTextEditor';
-import { useGetAllBlogs, useGetBlogById, useCreateBlog, useUpdateBlog } from '../../hooks/useBlog';
+import RichTextEditor from '../RichTextEditor';
+import { useGetAllBlogs, useGetBlogById, useCreateBlog, useUpdateBlog } from '../../../hooks/useBlog';
 
 const MAX_COVER = 2 * 1024 * 1024;
 const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
