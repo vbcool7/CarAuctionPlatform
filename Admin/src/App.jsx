@@ -41,9 +41,8 @@ import EditDisputeCategory from './Components/DisputeManagement/DisputeCategorie
 import AddNewCategory from './Components/DisputeManagement/DisputeCategories/AddNewCategory';
 import AllDisputesDetail from './Components/DisputeManagement/AllDisputes/AllDisputesDetail';
 import ReportAndAnalytics from './Components/ReportAndAnalytics/ReportAndAnalytics';
-import CreateCustomPage from './Components/CmsManagement/CreateCustomPage';
 import CreateBlogPost from './Components/CmsManagement/Blog/CreateBlogPost';
-import AllPages from './Components/CmsManagement/AllPages';
+import CreateCustomPage from './Components/CmsManagement/Page/CreateCustomPage';
 import BlogList from './Components/CmsManagement/Blog/BlogList';
 import SystemSetting from './Components/SystemSetting/SystemSetting';
 import AdvancedFeatures from './Components/AdvancedFeatures/AdvancedFeatures';
@@ -69,6 +68,8 @@ import CallRequestsDetail from './Components/SupportManagement/CallRequestsDetai
 import LiveChat from './Components/LiveChat/LiveChat';
 import Review from './Components/Review/Review';
 import FaqManagement from './Components/CmsManagement/FaqManagement/FaqManagement';
+import SiteSetting from './Components/CmsManagement/SiteSetting/SiteSetting';
+import PageList from './Components/CmsManagement/Page/PageList';
 
 function App() {
 
@@ -120,6 +121,7 @@ function App() {
 
   // cms man
   const [editingBlog, setEditingBlog] = useState(null);
+  const [editingPage, setEditingPage] = useState(null);
 
   // kyc
   const [selectedBuyerKycId, setSelectedBuyerKycId] = useState(null);
@@ -393,8 +395,8 @@ function App() {
                 {currentPage === 'reports-analytics' && <ReportAndAnalytics setCurrentPage={setCurrentPage} />}
 
                 {/* cms management */}
-                {currentPage === 'all-pages' && <AllPages setCurrentPage={setCurrentPage} />}
-                {currentPage === 'create-custom-page' && <CreateCustomPage setCurrentPage={setCurrentPage} />}
+                {currentPage === 'all-pages' && <PageList setCurrentPage={setCurrentPage} setEditingPage={setEditingPage} />}
+                {currentPage === 'create-custom-page' && <CreateCustomPage key={editingPage?._id} initialData={editingPage} setCurrentPage={setCurrentPage} />}
 
                 {currentPage === 'all-blogs' && <BlogList setCurrentPage={setCurrentPage} setEditingBlog={setEditingBlog} />}
                 {currentPage === 'create-blog-post' && <CreateBlogPost key="new" setCurrentPage={setCurrentPage} />}
@@ -403,6 +405,8 @@ function App() {
                 )}
 
                 {currentPage === 'faq-management' && <FaqManagement setCurrentPage={setCurrentPage} />}
+
+                {currentPage === 'site-setting' && <SiteSetting setCurrentPage={setCurrentPage} />}
 
                 {/* kyc verification */}
                 {currentPage === 'buyer-kyc' && <BuyerKycVerification setSelectedBuyerKycId={setSelectedBuyerKycId} setCurrentPage={setCurrentPage} />}

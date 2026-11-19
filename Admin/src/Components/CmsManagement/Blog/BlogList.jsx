@@ -89,16 +89,23 @@ function BlogList({ setCurrentPage, setEditingBlog }) {
 
     return (
         <div className='pb-6'>
+
             {/* Header */}
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between pb-6">
-                <div className="flex-1">
-                    <h1 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl">
-                        All Blogs
-                    </h1>
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">All Blogs</h1>
 
-                    <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-                        Create, edit, and manage all blog posts published on your website.
-                    </p>
+                    <div className="mt-2 flex items-center text-[11px] md:text-[13px]">
+                        <span
+                            onClick={() => setCurrentPage('dashboard')}
+                            className="cursor-pointer text-slate-500 hover:text-[#D97706] transition-colors">
+                            Dashboard
+                        </span>
+                        <span className="mx-2 text-slate-300">/</span>
+                        <span className="text-slate-500">CMS Management</span>
+                        <span className="mx-2 text-slate-300">/</span>
+                        <span className="font-medium text-[#D97706]">All Blogs</span>
+                    </div>
                 </div>
 
                 {/* buttons */}

@@ -76,6 +76,4 @@ const supportCallRequestSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-const SupportCallRequest = mongoose.model("SupportCallRequest", supportCallRequestSchema);
-
-export default SupportCallRequest;
+export default mongoose.model("SupportCallRequest", supportCallRequestSchema);

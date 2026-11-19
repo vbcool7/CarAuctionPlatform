@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { FileText, CheckCircle, Pencil, Trash2, Plus, Eye, Edit, MoreVertical } from 'lucide-react';
-import SearchBar from '../SharedComponents/SearchBar';
-import FilterDropdown from '../SharedComponents/FilterDropdown';
-import { cmsPagesList } from '../Data';
+import SearchBar from '../../SharedComponents/SearchBar';
+import FilterDropdown from '../../SharedComponents/FilterDropdown';
+import { cmsPagesList } from '../../Data';
 
 const pageStats = [
     {

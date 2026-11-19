@@ -22,6 +22,8 @@ import reviewRoutes from './reviewRoutes.js';
 import blogRoutes from './blogRoutes.js';
 import contactRoutes from './contactRoutes.js';
 import faqRoutes from './faqRoutes.js';
+import siteSettingRoutes from './siteSettingRoutes.js';
+import pageRoutes from './pageRoutes.js';
 
 const rootRouter = express.Router();
 
@@ -47,5 +49,7 @@ rootRouter.use('/review', reviewRoutes);
 rootRouter.use('/blog', blogRoutes);
 rootRouter.use('/contact', contactRoutes);
 rootRouter.use('/faq', faqRoutes);
+rootRouter.use('/site-setting', siteSettingRoutes);
+rootRouter.use('/page', pageRoutes);
 
 export default rootRouter;

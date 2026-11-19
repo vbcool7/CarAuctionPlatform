@@ -17,7 +17,7 @@ function BlogDetail() {
     const blog = data?.blog;
     const related = data?.related ?? [];
 
-    // browser tab ka title
+    // title of browser tab
     useEffect(() => {
         if (!blog?.title) return;
         const prev = document.title;
@@ -65,9 +65,7 @@ function BlogDetail() {
         <article className="bg-white">
             <div className="mx-auto max-w-4xl px-4 pb-16 pt-10 sm:px-6">
 
-                {/* Top Row: All Blogs (Left) & Category (Right) in one line */}
                 <div className="flex items-center justify-between gap-4">
-                    {/* Back button */}
                     <Link
                         to="/blog"
                         className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-[#D97706] hover:text-white"
@@ -75,7 +73,6 @@ function BlogDetail() {
                         <ArrowLeft size={14} /> All Blogs
                     </Link>
 
-                    {/* Category badge */}
                     {blog.category && (
                         <Link
                             to={`/blog?category=${blog.categorySlug}`}

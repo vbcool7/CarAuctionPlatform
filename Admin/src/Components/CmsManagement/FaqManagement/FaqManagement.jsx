@@ -206,8 +206,8 @@ const FaqManagement = () => {
     };
 
     const liveCount = categories
-    .filter((c) => c.isActive)
-    .reduce((sum, c) => sum + (c.activeFaqCount || 0), 0);
+        .filter((c) => c.isActive)
+        .reduce((sum, c) => sum + (c.activeFaqCount || 0), 0);
 
     // stats
     const faqStatsCards = [
@@ -250,14 +250,20 @@ const FaqManagement = () => {
 
             {/* Header */}
             <div className="flex flex-col gap-5 pb-6 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex-1">
-                    <h1 className="text-xl font-bold text-[#0B1E3D] sm:text-2xl">
-                        FAQ Management
-                    </h1>
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-[#0B1E3D]">FAQ Management</h1>
 
-                    <p className="mt-2 text-xs text-slate-500 sm:text-sm">
-                        Manage FAQ categories and questions displayed on your website.
-                    </p>
+                    <div className="mt-2 flex items-center text-[11px] md:text-[13px]">
+                        <span
+                            onClick={() => setCurrentPage('dashboard')}
+                            className="cursor-pointer text-slate-500 hover:text-[#D97706] transition-colors">
+                            Dashboard
+                        </span>
+                        <span className="mx-2 text-slate-300">/</span>
+                        <span className="text-slate-500">CMS Management</span>
+                        <span className="mx-2 text-slate-300">/</span>
+                        <span className="font-medium text-[#D97706]">FAQ Management</span>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

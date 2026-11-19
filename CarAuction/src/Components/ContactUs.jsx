@@ -1,17 +1,14 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../Components/Breadcrumbs';
 import ContactMainImg from '../assets/Images/ContactMainImg.png';
-import { Headset, Clock, Mail, User, Phone, BookOpen, MessageSquare, MapPin, ParkingCircle, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import { SiWhatsapp } from 'react-icons/si';
-import { useNavigate } from 'react-router-dom';
+import {
+    Headset, Clock, Mail, User, Phone, BookOpen, MessageSquare, MapPin, ParkingCircle, Lock, ChevronDown, ChevronUp
+} from 'lucide-react';
 
-const contactMethods = [
-    { icon: Phone, title: "Call Us", info: "+971 4 123 4567", sub: "Mon - Sun: 9:00 AM - 8:00 PM (GST)" },
-    { icon: Mail, title: "Email Us", info: "support@autobid.ae", sub: "We reply within 24 hours" },
-    { icon: MessageSquare, title: "Live Chat", info: "Chat with our support team", sub: "Available 9:00 AM - 8:00 PM (GST)" },
-    { icon: SiWhatsapp, title: "WhatsApp", info: "+971 50 123 4567", sub: "Mon - Sun: 9:00 AM - 8:00 PM (GST)" },
-];
+import { useGetPublicSettings } from '../hook/useSiteSetting';
 
 const faqs = [
     { q: "How do I register on AutoBid?", a: "Click on the 'Sign Up' button on the top right, provide your details, and verify your account via email." },
@@ -19,7 +16,7 @@ const faqs = [
     { q: "What payment methods do you accept?", a: "We accept all major credit/debit cards, bank transfers, and secure digital wallet payments." },
     { q: "How do I sell my car on AutoBid?", a: "Visit the 'Sell Your Car' page, fill in your vehicle details, and our team will get in touch for an inspection." },
     { q: "How long does delivery take?", a: "Delivery typically takes 3-5 business days depending on your location after the final payment is cleared." },
-    { q: "How can I contact support?", a: "You can reach us via live chat, email at support@autobid.ae, or by calling our support helpline." }
+    { q: "How can I contact support?", a: "You can reach us via live chat, email, or by calling our support helpline." }
 ];
 
 function ContactUs() {
@@ -27,9 +24,26 @@ function ContactUs() {
     const navigate = useNavigate();
     const [openIndex, setOpenIndex] = useState(null);
 
+    const { data } = useGetPublicSettings();
+    const s = {
+        phone: '+97141234567',
+        email: 'support@biddrive.ae',
+        address: 'Business Bay, Dubai, United Arab Emirates',
+        supportHours: '',
+        ...data,
+    };
+    const hours = s.supportHours || 'Mon - Sun: 9:00 AM - 8:00 PM (GST)';
+
+    const contactMethods = [
+        { icon: Phone, title: "Call Us", info: s.phone, sub: hours },
+        { icon: Mail, title: "Email Us", info: s.email, sub: "We reply within 24 hours" },
+        { icon: MessageSquare, title: "Live Chat", info: "Chat with our support team", sub: `Available ${hours}` },
+        { icon: SiWhatsapp, title: "WhatsApp", info: "+971 50 123 4567", sub: hours },
+    ];
+
     const breadcrumbItems = [
         { label: 'Home', path: '/' },
-        { label: 'Contact Us', path: '/contact-us' }
+        { label: 'Contact Us', path: '/contact' }
     ];
 
     const toggleFAQ = (index) => {
@@ -203,10 +217,8 @@ function ContactUs() {
                             <div className="flex gap-4">
                                 <MapPin className="text-[#D97706] shrink-0" size={24} />
                                 <div>
-                                    <h4 className="font-bold text-[#0B1E3D]">AutoBid Car Auctions FZ-LLC</h4>
-                                    <p className="text-slate-600 text-sm">
-                                        Business Bay, Dubai, United Arab Emirates
-                                    </p>
+                                    <h4 className="font-bold text-[#0B1E3D]">BidDrive Car Auctions FZ-LLC</h4>
+                                    <p className="text-slate-600 text-sm">{s.address}</p>
                                 </div>
                             </div>
                             <div className="flex gap-4">
